@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="edu.ni.uam.proyecto_final_pae.controller.MonitorController"
+            prefWidth="1100" prefHeight="680">
+    <padding>
+        <Insets top="14" right="14" bottom="14" left="14"/>
+    </padding>
+
+    <top>
+        <VBox spacing="6">
+            <Label text="Monitor de flota" style="-fx-font-size: 20px; -fx-font-weight: bold;"/>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Button text="Actualizar" onAction="#refrescar"/>
+                <TextField fx:id="txtFiltro" promptText="Filtrar por unidad, operador o carga" prefWidth="300"/>
+                <Label fx:id="lblEstado" text="Sin datos."/>
+            </HBox>
+            <padding>
+                <Insets bottom="10"/>
+            </padding>
+        </VBox>
+    </top>
+
+    <center>
+        <TableView fx:id="tabla">
+            <columns>
+                <TableColumn fx:id="colViaje" text="Viaje" prefWidth="70"/>
+                <TableColumn fx:id="colUnidad" text="Unidad" prefWidth="90"/>
+                <TableColumn fx:id="colOperador" text="Operador" prefWidth="150"/>
+                <TableColumn fx:id="colCarga" text="Carga" prefWidth="100"/>
+                <TableColumn fx:id="colRuta" text="Origen → destino" prefWidth="190"/>
+                <TableColumn fx:id="colSla" text="Límite del cliente" prefWidth="130"/>
+                <TableColumn fx:id="colManejo" text="Manejo acumulado" prefWidth="140"/>
+                <TableColumn fx:id="colSemaforo" text="Semáforo" prefWidth="150"/>
+                <TableColumn fx:id="colEstado" text="Estado del viaje" prefWidth="130"/>
+            </columns>
+        </TableView>
+    </center>
+
+    <bottom>
+        <HBox spacing="18">
+            <padding>
+                <Insets top="10"/>
+            </padding>
+            <Label text="Semáforo:" style="-fx-font-weight: bold;"/>
+            <Label text="● A tiempo" style="-fx-text-fill: #1b7f3b; -fx-font-weight: bold;"/>
+            <Label text="● Descanso pendiente" style="-fx-text-fill: #b8860b; -fx-font-weight: bold;"/>
+            <Label text="● Retraso (SLA)" style="-fx-text-fill: #b22222; -fx-font-weight: bold;"/>
+            <Label text="Se actualiza cada 5 segundos." style="-fx-text-fill: #555555;"/>
+        </HBox>
+    </bottom>
+</BorderPane>
