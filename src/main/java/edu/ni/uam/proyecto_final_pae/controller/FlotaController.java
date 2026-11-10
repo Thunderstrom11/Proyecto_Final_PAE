@@ -13,7 +13,14 @@ import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.stage.Stage;
+
+import java.io.IOException;
+import java.math.BigDecimal;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -63,6 +70,10 @@ public class FlotaController {
     @FXML private Button btnActualizarUnidad;
     @FXML private Button btnEliminarUnidad;
     @FXML private Button btnLimpiarUnidad;
+
+    @FXML private Button btnCargas;
+    @FXML private Button btnViajes;
+    @FXML private Button btnMonitor;
 
     @FXML private Button btnVerOperadores;
     @FXML private Button btnVerOperadoresDisponibles;
@@ -357,6 +368,35 @@ public class FlotaController {
     }
 
     // ------------------------------------------------------------------ apoyo
+
+    @FXML
+    private void abrirCargas() {
+        abrirVista("cargas-view.fxml", "Cargas");
+    }
+
+    @FXML
+    private void abrirViajes() {
+        abrirVista("viajes-view.fxml", "Viajes");
+    }
+
+    @FXML
+    private void abrirMonitor() {
+        abrirVista("monitor-view.fxml", "Monitor de flota");
+    }
+
+    private void abrirVista(String archivo, String titulo) {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    getClass().getResource("/edu/ni/uam/proyecto_final_pae/" + archivo));
+            Parent root = loader.load();
+            Stage stage = new Stage();
+            stage.setTitle("FleetRoute Pro — " + titulo);
+            stage.setScene(new Scene(root, 980, 700));
+            stage.show();
+        } catch (IOException e) {
+            advertencia("No se pudo abrir " + titulo + ": " + e.getMessage());
+        }
+    }
 
     private String requerido(TextField campo, String nombre, int maximo) {
         String valor = campo.getText() == null ? "" : campo.getText().trim();

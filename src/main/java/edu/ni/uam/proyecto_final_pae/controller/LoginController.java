@@ -10,9 +10,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
@@ -63,30 +61,25 @@ public class LoginController {
 
             SesionActual.iniciar(usuario);
             if (usuario.getRol() == RolUsuario.ADMIN) {
-                abrirAdmin();
+                abrirVista("flota-view.fxml", "FleetRoute Pro — Administración de flota");
             } else {
-                Alert alerta = new Alert(Alert.AlertType.INFORMATION,
-                        "Bienvenido, " + usuario.getUsername()
-                                + ". El módulo de cabina lo integra Persona 4.",
-                        ButtonType.OK);
-                alerta.setHeaderText("Sesión de operador iniciada");
-                alerta.showAndWait();
+                abrirVista("cabina-view.fxml", "FleetRoute Pro — Cabina del operador");
             }
         } catch (PersistenciaException e) {
             lblMensaje.setText("No se pudo iniciar sesión: " + e.getMessage());
         }
     }
 
-    private void abrirAdmin() {
+    private void abrirVista(String archivo, String titulo) {
         try {
             FXMLLoader loader = new FXMLLoader(
-                    getClass().getResource("/edu/ni/uam/proyecto_final_pae/flota-view.fxml"));
+                    getClass().getResource("/edu/ni/uam/proyecto_final_pae/" + archivo));
             Parent root = loader.load();
             Stage stage = (Stage) txtUsuario.getScene().getWindow();
             stage.setScene(new Scene(root, 980, 700));
-            stage.setTitle("FleetRoute Pro — Administración de flota");
+            stage.setTitle(titulo);
         } catch (IOException e) {
-            lblMensaje.setText("No se pudo abrir la pantalla de flota.");
+            lblMensaje.setText("No se pudo abrir la pantalla " + archivo + ".");
         }
     }
 }

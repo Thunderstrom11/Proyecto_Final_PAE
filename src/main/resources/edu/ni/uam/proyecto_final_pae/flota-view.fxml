@@ -20,6 +20,17 @@
         <VBox spacing="4">
             <Label text="Gestión de flota" styleClass="page-title"/>
             <Label fx:id="lblEstado" text="Listo." styleClass="status-label"/>
+            <HBox spacing="8" styleClass="actions-bar">
+                <Button fx:id="btnCargas" text="Cargas" styleClass="btn-secondary" onAction="#abrirCargas">
+                    <graphic><FontIcon iconLiteral="fas-box-open"/></graphic>
+                </Button>
+                <Button fx:id="btnViajes" text="Viajes" styleClass="btn-secondary" onAction="#abrirViajes">
+                    <graphic><FontIcon iconLiteral="fas-truck-moving"/></graphic>
+                </Button>
+                <Button fx:id="btnMonitor" text="Monitor" styleClass="btn-secondary" onAction="#abrirMonitor">
+                    <graphic><FontIcon iconLiteral="fas-desktop"/></graphic>
+                </Button>
+            </HBox>
             <padding>
                 <Insets bottom="10"/>
             </padding>
