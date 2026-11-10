@@ -48,7 +48,7 @@ public class RegistroJornada {
     private Integer idViaje;
 
     /** Consecutivo por viaje; lo calcula la base de datos. */
-    @Column(name = "num_evento", insertable = false, updatable = false)
+    @Column(name = "num_evento", nullable = false)
     private Integer numEvento;
 
     /** Catalogo pequeno: EAGER para leerlo fuera de la sesion sin LazyInitializationException. */
@@ -86,6 +86,10 @@ public class RegistroJornada {
 
     public void setIdViaje(Integer idViaje) {
         this.idViaje = idViaje;
+    }
+
+    public void setNumEvento(Integer numEvento) {
+        this.numEvento = numEvento;
     }
 
     public Integer getNumEvento() {

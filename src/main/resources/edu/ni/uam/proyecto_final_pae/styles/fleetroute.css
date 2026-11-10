@@ -1,0 +1,95 @@
+/* FleetRoute Pro - estilos compartidos de las pantallas JavaFX */
+
+.root {
+    -fx-font-family: "Segoe UI", "Noto Sans", "DejaVu Sans", sans-serif;
+    -fx-font-size: 13px;
+    -fx-background-color: #f3f6fa;
+}
+
+.page-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1f2a3d;
+}
+
+.status-label {
+    -fx-text-fill: #3b4a63;
+}
+
+.form-pane {
+    -fx-background-color: white;
+    -fx-border-color: #dfe5ee;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 12;
+}
+
+.form-scroll {
+    -fx-background-color: transparent;
+}
+
+.actions-bar {
+    -fx-padding: 4 0 4 0;
+}
+
+.text-field, .combo-box, .date-picker {
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+}
+
+.button {
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+
+.btn-primary {
+    -fx-background-color: #2563eb;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.btn-primary:hover {
+    -fx-background-color: #1d4ed8;
+}
+
+.btn-secondary {
+    -fx-background-color: #e5e9f0;
+    -fx-text-fill: #1f2a3d;
+}
+
+.btn-secondary:hover {
+    -fx-background-color: #d3d9e3;
+}
+
+.btn-success {
+    -fx-background-color: #1b7f3b;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.btn-success:hover {
+    -fx-background-color: #166a31;
+}
+
+.btn-danger {
+    -fx-background-color: #b22222;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.btn-danger:hover {
+    -fx-background-color: #961c1c;
+}
+
+.btn-ghost {
+    -fx-background-color: transparent;
+    -fx-text-fill: #2563eb;
+}
+
+.btn-ghost:hover {
+    -fx-background-color: #e8effd;
+}
+
+.button:disabled {
+    -fx-opacity: 0.5;
+}
