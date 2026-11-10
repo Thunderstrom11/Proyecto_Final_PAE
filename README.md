@@ -18,7 +18,7 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 - **Script de base de datos:** el repositorio incluye [`database/fleetroute_pro.sql`](../../Qoder/2026-11-04/91b5298e/database/fleetroute_pro.sql), con la creación de tablas, restricciones, triggers, índices, catálogos y datos de ejemplo.
 - **Extensión:** el script crea `pgcrypto` para generar los hashes BCrypt de los usuarios de demostración.
 - **Conexión a la base de datos:** se realiza mediante un archivo **`.env`**. Cada integrante mantiene su propio archivo `.env` en su equipo con sus credenciales locales de PostgreSQL (usuario, contraseña, puerto, etc.). Este archivo **no se sube al repositorio**.
-- **Archivo de ejemplo:** se incluye **`example.env`** como plantilla. Cualquier persona que descargue el proyecto debe copiarlo, renombrarlo a `.env` y colocar en él sus propias credenciales.
+- **Archivo de ejemplo:** se incluye **`.env.example`** como plantilla. Cualquier persona que descargue el proyecto debe copiarlo, renombrarlo a `.env` y colocar en él sus propias credenciales.
 
 ---
 
@@ -38,6 +38,7 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 - [Datos de ejemplo](#datos-de-ejemplo)
 - [Variables de entorno](#variables-de-entorno)
 - [Flujo de uso](#flujo-de-uso)
+- [Módulo de jornada, cabina y monitor de flota](#módulo-de-jornada-cabina-y-monitor-de-flota)
 - [Solución de problemas](#solución-de-problemas)
 - [Documentación](#documentación)
 
@@ -321,21 +322,19 @@ Copia el archivo de ejemplo y renómbralo a `.env`:
 **Windows (CMD):**
 
 ```bat
-copy example.env .env
+copy .env.example .env
 ```
 
 **Linux / macOS:**
 
 ```bash
-cp example.env .env
+cp .env.example .env
 ```
 
 Edita `.env` con los datos de **tu** instancia local de PostgreSQL:
 
 ```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=fleetroute_pro
+DB_URL=jdbc:postgresql://localhost:5432/fleetroute_pro
 DB_USER=postgres
 DB_PASSWORD=tu_contrasena
 ```
@@ -388,23 +387,20 @@ El script inserta los catálogos y un conjunto mínimo de datos para probar el s
 
 | Variable | Descripción | Ejemplo |
 |----------|-------------|---------|
-| `DB_HOST` | Host donde se ejecuta PostgreSQL. | `localhost` |
-| `DB_PORT` | Puerto del servicio PostgreSQL. | `5432` |
-| `DB_NAME` | Nombre de la base de datos. | `fleetroute_pro` |
+| `DB_URL` | Cadena de conexión JDBC completa (host, puerto y base de datos). | `jdbc:postgresql://localhost:5432/fleetroute_pro` |
 | `DB_USER` | Usuario de PostgreSQL. | `postgres` |
 | `DB_PASSWORD` | Contraseña del usuario. | `tu_contrasena` |
 
-Contenido de la plantilla `example.env`:
+Contenido de la plantilla `.env.example`:
 
 ```env
-# Configuracion de conexion a PostgreSQL
-# Copia este archivo como .env y coloca tus credenciales locales.
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=fleetroute_pro
+[TEMPLATE]
+DB_URL=jdbc:postgresql://localhost:5432/fleetroute_pro
 DB_USER=postgres
 DB_PASSWORD=tu_contrasena
 ```
+
+> Estas tres claves son las que lee `config/Entorno`; si cambias el nombre de alguna, `HibernateUtil` no podrá iniciar la conexión.
 
 > El esquema usa `TIMESTAMP` en hora local de Nicaragua (`America/Managua`) y el script configura esa zona. Configura la sesión JDBC con la misma zona horaria para que `NOW()` y las fechas sean consistentes.
 
@@ -431,15 +427,120 @@ DB_PASSWORD=tu_contrasena
 
 ---
 
+## Módulo de jornada, cabina y monitor de flota
+
+Módulo construido sobre Hibernate ORM. Cubre **RF-06** (eventos de jornada), **RF-07** (horas acumuladas y descanso mínimo), **RF-08** (alertas de fatiga y semáforo), la transición de **RF-09** y el monitor de **RF-12**.
+
+### Clases del módulo
+
+| Clase | Rol |
+|-------|-----|
+| `model/RegistroJornada` | Entidad de `registro_jornada`. `num_evento` es de solo lectura porque lo asigna el trigger `trg_rj_num_evento`; `tipoEvento` es `@ManyToOne` contra `cat_tipo_evento`. |
+| `dao/RegistroJornadaDAO` | Inserta eventos resolviendo el tipo **por nombre** y los consulta con `join fetch` de su tipo. |
+| `dao/FlotaDAO` | Consultas HQL de viajes, viaje activo del operador, viaje encadenado y cambios de estado por nombre de catálogo. |
+| `service/JornadaService` | Cálculo de horas acumuladas, semáforo y validaciones de las reglas de jornada. |
+| `controller/CabinaController` + `cabina-view.fxml` | Pantalla del operador. |
+| `controller/MonitorController` + `monitor-view.fxml` | Monitor de flota del administrador. |
+| `JornadaApplication` | Arranque de prueba con las dos pantallas en pestañas (no depende del login). |
+
+### Cálculo de horas y semáforo
+
+Las horas no se guardan en columnas: se suman los intervalos de la bitácora `registro_jornada`.
+
+- **Manejo:** de `INICIO_TRAYECTO` o `REANUDAR` hasta el siguiente `PAUSA_DESCANSO` o `CONFIRMAR_ENTREGA`; si el tramo sigue abierto, hasta el momento actual.
+- **Descanso:** de `PAUSA_DESCANSO` a `REANUDAR` (o hasta ahora si la pausa sigue abierta). Los descansos fragmentados se acumulan y el acumulado se reinicia con cada `INICIO_TRAYECTO`.
+- **Descanso pendiente (amarillo):** el manejo acumulado alcanza el 80 % de `operadores.horas_max_conduccion` (RF-08).
+- **Retraso (rojo):** la proyección de llegada (`ahora + tiempo_estimado − manejo`) supera `cargas.fecha_limite_cliente`.
+- **A tiempo (verde):** no se cumple ninguna de las dos condiciones anteriores.
+- **Reanudar bloqueado (RF-07):** mientras el descanso acumulado no alcance `operadores.horas_min_descanso`.
+- **Confirmar entrega:** registra el evento, deja el viaje en `FINALIZADO` y, si existe un viaje encadenado (`id_viaje_previo`), lo pasa a `EN_CURSO`; si no hay encadenado, la unidad y el operador vuelven a `DISPONIBLE`.
+
+### Pantallas
+
+| Pantalla | Contenido | Refresco |
+|----------|-----------|----------|
+| Cabina del operador | Viaje activo, cronómetro de manejo y descanso, semáforo, mensaje de alerta, bitácora de eventos y los botones **Iniciar trayecto**, **Pausa**, **Reanudar** y **Confirmar entrega**. Los botones se habilitan según el paso real de la jornada. | 2 s |
+| Monitor de flota | Viajes activos con unidad, operador, carga, ruta, límite del cliente, manejo acumulado, semáforo y estado del viaje; incluye filtro de texto y leyenda de colores. | 5 s |
+
+Para abrir ambas pantallas sin pasar por el login:
+
+```bash
+mvn clean javafx:run -Djavafx.mainClass=edu.ni.uam.proyecto_final_pae.JornadaApplication
+```
+
+También se puede ejecutar la clase `JornadaApplication` desde IntelliJ IDEA.
+
+### Consultas HQL del módulo
+
+1. **Eventos de un viaje con su tipo de evento** (`RegistroJornadaDAO.listarPorViaje`):
+
+   ```hql
+   select r from RegistroJornada r join fetch r.tipoEvento
+    where r.idViaje = :id order by r.fechaHora, r.id
+   ```
+
+2. **Viajes activos con su unidad, operador y carga** (`FlotaDAO.viajesActivos`):
+
+   ```hql
+   select v.id, u.numeroUnidad, o.nombre, c.numeroCarga, c.fechaLimiteCliente,
+          v.tiempoEstimado, origen.nombre, destino.nombre, ev.nombre
+     from Viaje v
+     join v.unidad u join v.operador o join v.carga c
+     join v.origen origen join v.destino destino join v.estado ev
+    where ev.nombre in ('PROGRAMADO', 'EN_CURSO', 'PAUSADO')
+    order by c.fechaLimiteCliente
+   ```
+
+> `FlotaDAO` consulta `Viaje`, `Unidad` y `Operador` porque esas entidades pertenecen a los módulos de flota y viajes. Los nombres de atributo esperados están documentados al inicio de la clase: si esos módulos usan otros nombres, se corrige únicamente ese archivo.
+
+### Datos de demo para la cabina
+
+El script no crea viajes. Para probar la cabina y el monitor se pueden insertar dos viajes encadenados (Managua → León → Granada), **una sola vez**:
+
+```sql
+INSERT INTO cargas (numero_carga, descripcion, peso_toneladas, id_cliente, fecha_limite_cliente, id_estado_carga)
+VALUES
+ ('C-DEMO-1', 'Carga demo Managua - Leon', 12.50, 1,
+  (CURRENT_TIMESTAMP AT TIME ZONE 'America/Managua') + interval '8 hours',
+  (SELECT id_estado_carga FROM cat_estado_carga WHERE nombre = 'ASIGNADA')),
+ ('C-DEMO-2', 'Carga demo encadenada Leon - Granada', 8.00, 1,
+  (CURRENT_TIMESTAMP AT TIME ZONE 'America/Managua') + interval '30 hours',
+  (SELECT id_estado_carga FROM cat_estado_carga WHERE nombre = 'ASIGNADA'));
+
+INSERT INTO viajes (id_unidad, id_operador, id_carga, origen, destino, tiempo_estimado, cobro_viaje, id_estado_viaje)
+SELECT u.id_unidad, o.id_operador, c.id_carga,
+       (SELECT id_ubicacion FROM ubicaciones WHERE nombre = 'Managua'),
+       (SELECT id_ubicacion FROM ubicaciones WHERE nombre = 'León'),
+       4.00, 2500.00,
+       (SELECT id_estado_viaje FROM cat_estado_viaje WHERE nombre = 'PROGRAMADO')
+FROM cargas c, unidades u, operadores o
+WHERE c.numero_carga = 'C-DEMO-1' AND u.numero_unidad = 'U-001' AND o.cedula = '001-000000-0001A';
+
+INSERT INTO viajes (id_unidad, id_operador, id_carga, origen, destino, id_viaje_previo, tiempo_estimado, cobro_viaje, id_estado_viaje)
+SELECT u.id_unidad, o.id_operador, c2.id_carga,
+       (SELECT id_ubicacion FROM ubicaciones WHERE nombre = 'León'),
+       (SELECT id_ubicacion FROM ubicaciones WHERE nombre = 'Granada'),
+       v1.id_viaje, 2.50, 1500.00,
+       (SELECT id_estado_viaje FROM cat_estado_viaje WHERE nombre = 'PROGRAMADO')
+FROM cargas c2, cargas c1, viajes v1, unidades u, operadores o
+WHERE c2.numero_carga = 'C-DEMO-2' AND c1.numero_carga = 'C-DEMO-1'
+  AND v1.id_carga = c1.id_carga AND u.numero_unidad = 'U-001' AND o.cedula = '001-000000-0001A';
+```
+
+> El operador de ejemplo tiene `horas_min_descanso = 8`. Para mostrar **Reanudar** en la demo sin esperar 8 horas reales, baja el mínimo temporalmente:
+> `UPDATE operadores SET horas_min_descanso = 0.05 WHERE cedula = '001-000000-0001A';`
+
+---
+
 ## Solución de problemas
 
 | Problema | Causa probable | Solución |
 |----------|----------------|----------|
 | `JavaFX runtime components are missing` | La aplicación se ejecutó sin el módulo de JavaFX. | Ejecutar con `mvn clean javafx:run` o configurar el module-path en el IDE. |
-| `Connection refused` | El servicio de PostgreSQL no está activo o el puerto es incorrecto. | Iniciar el servicio y revisar `DB_HOST` y `DB_PORT` en `.env`. |
+| `Connection refused` | El servicio de PostgreSQL no está activo o el puerto es incorrecto. | Iniciar el servicio y revisar el host y el puerto dentro de `DB_URL` en `.env`. |
 | `FATAL: password authentication failed` | Credenciales incorrectas. | Verificar `DB_USER` y `DB_PASSWORD` en el `.env` local. |
 | `database "fleetroute_pro" does not exist` | No se creó la base de datos o no se ejecutó el script. | Ejecutar el paso 2 de la instalación. |
-| No se encuentra el archivo `.env` | No se copió la plantilla. | Copiar `example.env` a `.env` en la raíz del proyecto. |
+| No se encuentra el archivo `.env` | No se copió la plantilla. | Copiar `.env.example` a `.env` en la raíz del proyecto. |
 | Acentos o caracteres extraños en la interfaz | Codificación incorrecta. | Configurar la codificación del proyecto en UTF-8. |
 | `ERROR: La fecha límite del cliente ... no puede ser anterior...` | Se intentó guardar una carga con fecha pasada. | Usar la fecha actual o una futura. |
 | `violates check constraint "ck_viaje_cobro"` | Cobro del viaje en cero o nulo. | Enviar un `cobro_viaje` mayor a cero. |
