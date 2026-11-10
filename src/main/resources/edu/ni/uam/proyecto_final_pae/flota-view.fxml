@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="edu.ni.uam.proyecto_final_pae.controller.FlotaController"
+            prefWidth="980" prefHeight="700">
+    <padding>
+        <Insets top="14" right="14" bottom="14" left="14"/>
+    </padding>
+
+    <top>
+        <VBox spacing="4">
+            <Label text="Gestión de flota" style="-fx-font-size: 20px; -fx-font-weight: bold;"/>
+            <Label fx:id="lblEstado" text="Listo."/>
+            <padding>
+                <Insets bottom="10"/>
+            </padding>
+        </VBox>
+    </top>
+
+    <center>
+        <TabPane tabClosingPolicy="UNAVAILABLE">
+
+            <Tab text="Unidades">
+                <BorderPane>
+                    <center>
+                        <VBox spacing="8">
+                            <HBox spacing="8">
+                                <Button text="Ver todas" onAction="#verUnidades"/>
+                                <Button text="Ver disponibles (HQL)" onAction="#verUnidadesDisponibles"/>
+                            </HBox>
+                            <TableView fx:id="tablaUnidades" VBox.vgrow="ALWAYS">
+                                <columns>
+                                    <TableColumn fx:id="colNumeroUnidad" text="N.º unidad" prefWidth="110"/>
+                                    <TableColumn fx:id="colPlacas" text="Placas" prefWidth="110"/>
+                                    <TableColumn fx:id="colModelo" text="Modelo" prefWidth="160"/>
+                                    <TableColumn fx:id="colCapacidad" text="Capacidad (t)" prefWidth="110"/>
+                                    <TableColumn fx:id="colEstadoUnidad" text="Estado" prefWidth="120"/>
+                                </columns>
+                            </TableView>
+                        </VBox>
+                    </center>
+                    <right>
+                        <VBox spacing="8" prefWidth="290">
+                            <padding>
+                                <Insets left="14"/>
+                            </padding>
+                            <Label text="N.º de unidad *"/>
+                            <TextField fx:id="txtNumeroUnidad" promptText="U-001"/>
+                            <Label text="Placas *"/>
+                            <TextField fx:id="txtPlacas" promptText="M 000001"/>
+                            <Label text="Modelo *"/>
+                            <TextField fx:id="txtModelo"/>
+                            <Label text="Capacidad en toneladas (opcional)"/>
+                            <TextField fx:id="txtCapacidad" promptText="30.00"/>
+                            <Label text="Estado *"/>
+                            <ComboBox fx:id="cmbEstadoUnidad" maxWidth="Infinity"/>
+                            <Separator/>
+                            <Button text="Guardar nueva" maxWidth="Infinity" onAction="#guardarUnidad"/>
+                            <Button text="Actualizar seleccionada" maxWidth="Infinity" onAction="#actualizarUnidad"/>
+                            <Button text="Eliminar seleccionada" maxWidth="Infinity" onAction="#eliminarUnidad"/>
+                            <Button text="Limpiar formulario" maxWidth="Infinity" onAction="#limpiarUnidad"/>
+                        </VBox>
+                    </right>
+                </BorderPane>
+            </Tab>
+
+            <Tab text="Operadores">
+                <BorderPane>
+                    <center>
+                        <VBox spacing="8">
+                            <HBox spacing="8">
+                                <Button text="Ver todos" onAction="#verOperadores"/>
+                                <Button text="Ver disponibles (HQL)" onAction="#verOperadoresDisponibles"/>
+                            </HBox>
+                            <TableView fx:id="tablaOperadores" VBox.vgrow="ALWAYS">
+                                <columns>
+                                    <TableColumn fx:id="colCedula" text="Cédula" prefWidth="130"/>
+                                    <TableColumn fx:id="colNombreOperador" text="Nombre" prefWidth="180"/>
+                                    <TableColumn fx:id="colTelefono" text="Teléfono" prefWidth="110"/>
+                                    <TableColumn fx:id="colHorasMax" text="Máx. conducción" prefWidth="120"/>
+                                    <TableColumn fx:id="colHorasMin" text="Mín. descanso" prefWidth="110"/>
+                                    <TableColumn fx:id="colEstadoOperador" text="Estado" prefWidth="120"/>
+                                </columns>
+                            </TableView>
+                        </VBox>
+                    </center>
+                    <right>
+                        <VBox spacing="8" prefWidth="290">
+                            <padding>
+                                <Insets left="14"/>
+                            </padding>
+                            <Label text="Cédula *"/>
+                            <TextField fx:id="txtCedula" promptText="001-000000-0001A"/>
+                            <Label text="Nombre completo *"/>
+                            <TextField fx:id="txtNombreOperador"/>
+                            <Label text="Teléfono"/>
+                            <TextField fx:id="txtTelefonoOperador"/>
+                            <Label text="Horas máximas de conducción *"/>
+                            <TextField fx:id="txtHorasMax" promptText="8.00"/>
+                            <Label text="Horas mínimas de descanso *"/>
+                            <TextField fx:id="txtHorasMin" promptText="8.00"/>
+                            <Label text="Estado *"/>
+                            <ComboBox fx:id="cmbEstadoOperador" maxWidth="Infinity"/>
+                            <Separator/>
+                            <Button text="Guardar nuevo" maxWidth="Infinity" onAction="#guardarOperador"/>
+                            <Button text="Actualizar seleccionado" maxWidth="Infinity" onAction="#actualizarOperador"/>
+                            <Button text="Eliminar seleccionado" maxWidth="Infinity" onAction="#eliminarOperador"/>
+                            <Button text="Limpiar formulario" maxWidth="Infinity" onAction="#limpiarOperador"/>
+                        </VBox>
+                    </right>
+                </BorderPane>
+            </Tab>
+
+        </TabPane>
+    </center>
+</BorderPane>
