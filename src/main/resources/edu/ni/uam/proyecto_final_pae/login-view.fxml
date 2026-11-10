@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="edu.ni.uam.proyecto_final_pae.controller.LoginController"
+      alignment="CENTER" spacing="12" prefWidth="420" prefHeight="340">
+    <padding>
+        <Insets top="28" right="36" bottom="28" left="36"/>
+    </padding>
+
+    <Label text="FleetRoute Pro" style="-fx-font-size: 26px; -fx-font-weight: bold;"/>
+    <Label text="Sistema de despacho de cargas" style="-fx-font-size: 13px;"/>
+    <Separator/>
+
+    <Label text="Usuario"/>
+    <TextField fx:id="txtUsuario" promptText="admin"/>
+    <Label text="Contraseña"/>
+    <PasswordField fx:id="txtPassword" promptText="Admin123!" onAction="#ingresar"/>
+
+    <Button text="Ingresar" maxWidth="Infinity" onAction="#ingresar" defaultButton="true"/>
+    <Label fx:id="lblMensaje" textFill="#b00020" wrapText="true"/>
+
+    <Label text="Demo: admin / Admin123! · operador / Operador123!"
+           style="-fx-font-size: 11px; -fx-text-fill: #666;"/>
+</VBox>

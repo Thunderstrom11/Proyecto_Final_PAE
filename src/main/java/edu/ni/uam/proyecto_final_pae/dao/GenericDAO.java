@@ -23,7 +23,9 @@ public abstract class GenericDAO<T, ID extends Serializable> {
     }
 
     public T actualizar(T entidad) {
-        return Transaccion.ejecutar(sesion -> sesion.merge(entidad));
+        return Transaccion.ejecutar(sesion -> {
+            return sesion.merge(entidad);
+        });
     }
 
     public void eliminar(ID id) {
@@ -32,6 +34,7 @@ public abstract class GenericDAO<T, ID extends Serializable> {
             if (entidad != null) {
                 sesion.remove(entidad);
             }
+            return null;
         });
     }
 
