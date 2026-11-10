@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="edu.ni.uam.proyecto_final_pae.controller.CargaController"
+            prefWidth="1000" prefHeight="640">
+    <padding>
+        <Insets top="14" right="14" bottom="14" left="14"/>
+    </padding>
+
+    <top>
+        <VBox spacing="4">
+            <Label text="Gestión de cargas" style="-fx-font-size: 20px; -fx-font-weight: bold;"/>
+            <Label fx:id="lblEstado" text="Listo."/>
+            <padding>
+                <Insets bottom="10"/>
+            </padding>
+        </VBox>
+    </top>
+
+    <center>
+        <VBox spacing="8">
+            <HBox spacing="8">
+                <Button text="Ver todas" onAction="#verTodas"/>
+                <Button text="Ver pendientes (HQL)" onAction="#verPendientes"/>
+            </HBox>
+            <TableView fx:id="tabla" VBox.vgrow="ALWAYS">
+                <columns>
+                    <TableColumn fx:id="colNumero" text="N.º carga" prefWidth="110"/>
+                    <TableColumn fx:id="colDescripcion" text="Descripción" prefWidth="200"/>
+                    <TableColumn fx:id="colPeso" text="Peso (t)" prefWidth="80"/>
+                    <TableColumn fx:id="colCliente" text="Cliente" prefWidth="160"/>
+                    <TableColumn fx:id="colLimite" text="Fecha límite" prefWidth="150"/>
+                    <TableColumn fx:id="colEstado" text="Estado" prefWidth="100"/>
+                </columns>
+            </TableView>
+        </VBox>
+    </center>
+
+    <right>
+        <VBox spacing="8" prefWidth="270">
+            <padding>
+                <Insets left="14"/>
+            </padding>
+            <Label text="N.º de carga *"/>
+            <TextField fx:id="txtNumero" promptText="C-001"/>
+            <Label text="Descripción"/>
+            <TextField fx:id="txtDescripcion"/>
+            <Label text="Peso en toneladas *"/>
+            <TextField fx:id="txtPeso" promptText="12.50"/>
+            <Label text="Cliente (opcional)"/>
+            <HBox spacing="6">
+                <ComboBox fx:id="cmbCliente" prefWidth="190"/>
+                <Button text="+" onAction="#nuevoCliente"/>
+            </HBox>
+            <Label text="Fecha límite *"/>
+            <DatePicker fx:id="dpFecha"/>
+            <Label text="Hora límite (HH:mm)"/>
+            <TextField fx:id="txtHora" text="17:00"/>
+            <Separator/>
+            <Button text="Guardar nueva" maxWidth="Infinity" onAction="#guardar"/>
+            <Button text="Actualizar seleccionada" maxWidth="Infinity" onAction="#actualizar"/>
+            <Button text="Eliminar seleccionada" maxWidth="Infinity" onAction="#eliminar"/>
+            <Button text="Limpiar formulario" maxWidth="Infinity" onAction="#limpiar"/>
+        </VBox>
+    </right>
+</BorderPane>

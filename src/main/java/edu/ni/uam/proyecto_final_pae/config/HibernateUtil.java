@@ -1,13 +1,25 @@
 package edu.ni.uam.proyecto_final_pae.config;
 
+import jakarta.persistence.Entity;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.JarURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
 import java.util.Properties;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 public final class HibernateUtil {
+
+    /** Paquete donde viven las clases @Entity. Se detectan solas: nadie tiene que registrarlas aqui. */
+    private static final String PAQUETE_MODELO = "edu.ni.uam.proyecto_final_pae.model";
 
     private static final SessionFactory FACTORY = crear();
 
@@ -22,8 +34,9 @@ public final class HibernateUtil {
             propiedades.setProperty("hibernate.connection.password", Entorno.requerido("DB_PASSWORD"));
 
             Configuration configuracion = new Configuration().addProperties(propiedades);
-            // Aquí se registrarán las clases @Entity cuando se creen:
-            // configuracion.addAnnotatedClass(MiEntidad.class);
+            for (Class<?> entidad : detectarEntidades()) {
+                configuracion.addAnnotatedClass(entidad);
+            }
             return configuracion.buildSessionFactory();
         } catch (Exception e) {
             throw new IllegalStateException(
@@ -40,6 +53,52 @@ public final class HibernateUtil {
             propiedades.load(archivo);
             return propiedades;
         }
+    }
+
+    // ---------------------------------------------------------------- deteccion de entidades
+
+    private static List<Class<?>> detectarEntidades() throws IOException {
+        ClassLoader cargador = Thread.currentThread().getContextClassLoader();
+        String ruta = PAQUETE_MODELO.replace('.', '/');
+        List<String> nombres = new ArrayList<>();
+
+        Enumeration<URL> recursos = cargador.getResources(ruta);
+        while (recursos.hasMoreElements()) {
+            URL url = recursos.nextElement();
+            if ("file".equals(url.getProtocol())) {
+                File carpeta = new File(java.net.URLDecoder.decode(url.getPath(), java.nio.charset.StandardCharsets.UTF_8));
+                File[] archivos = carpeta.listFiles((dir, nombre) -> nombre.endsWith(".class"));
+                if (archivos != null) {
+                    for (File archivo : archivos) {
+                        String simple = archivo.getName();
+                        nombres.add(PAQUETE_MODELO + "." + simple.substring(0, simple.length() - 6));
+                    }
+                }
+            } else if ("jar".equals(url.getProtocol())) {
+                JarFile jar = ((JarURLConnection) url.openConnection()).getJarFile();
+                Enumeration<JarEntry> entradas = jar.entries();
+                while (entradas.hasMoreElements()) {
+                    String nombre = entradas.nextElement().getName();
+                    if (nombre.startsWith(ruta + "/") && nombre.endsWith(".class")
+                            && nombre.indexOf('/', ruta.length() + 1) < 0) {
+                        nombres.add(nombre.substring(0, nombre.length() - 6).replace('/', '.'));
+                    }
+                }
+            }
+        }
+
+        List<Class<?>> entidades = new ArrayList<>();
+        for (String nombre : nombres) {
+            try {
+                Class<?> clase = Class.forName(nombre, false, cargador);
+                if (clase.isAnnotationPresent(Entity.class)) {
+                    entidades.add(clase);
+                }
+            } catch (ClassNotFoundException ignorada) {
+                // clase no cargable: se omite
+            }
+        }
+        return entidades;
     }
 
     public static SessionFactory factory() {

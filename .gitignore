@@ -39,3 +39,5 @@ build/
 
 ### Mac OS ###
 .DS_Store
+### IntelliJ (carpeta de usuario) ###
+.idea/
