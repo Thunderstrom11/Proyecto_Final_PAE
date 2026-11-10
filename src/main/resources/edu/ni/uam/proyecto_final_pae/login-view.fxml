@@ -1,18 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import java.net.URL?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="edu.ni.uam.proyecto_final_pae.controller.LoginController"
       alignment="CENTER" spacing="12" prefWidth="420" prefHeight="340">
+    <stylesheets>
+        <URL value="@styles/fleetroute.css"/>
+    </stylesheets>
     <padding>
         <Insets top="28" right="36" bottom="28" left="36"/>
     </padding>
 
-    <Label text="FleetRoute Pro" style="-fx-font-size: 26px; -fx-font-weight: bold;"/>
-    <Label text="Sistema de despacho de cargas" style="-fx-font-size: 13px;"/>
+    <Label text="FleetRoute Pro" styleClass="page-title"/>
+    <Label text="Sistema de despacho de cargas" styleClass="status-label"/>
     <Separator/>
 
     <Label text="Usuario"/>
@@ -20,9 +25,14 @@
     <Label text="Contraseña"/>
     <PasswordField fx:id="txtPassword" promptText="Admin123!" onAction="#ingresar"/>
 
-    <Button text="Ingresar" maxWidth="Infinity" onAction="#ingresar" defaultButton="true"/>
-    <Label fx:id="lblMensaje" textFill="#b00020" wrapText="true"/>
+    <Button fx:id="btnIngresar" text="Ingresar" maxWidth="Infinity"
+            styleClass="btn-primary" onAction="#ingresar" defaultButton="true">
+        <graphic>
+            <FontIcon iconLiteral="fas-sign-in-alt"/>
+        </graphic>
+    </Button>
+    <Label fx:id="lblMensaje" textFill="#B42318" wrapText="true"/>
 
     <Label text="Demo: admin / Admin123! · operador / Operador123!"
-           style="-fx-font-size: 11px; -fx-text-fill: #666;"/>
+           styleClass="status-label"/>
 </VBox>

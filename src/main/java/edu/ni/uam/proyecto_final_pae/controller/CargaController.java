@@ -7,6 +7,8 @@ import edu.ni.uam.proyecto_final_pae.dao.ClienteDAO;
 import edu.ni.uam.proyecto_final_pae.model.Carga;
 import edu.ni.uam.proyecto_final_pae.model.Cliente;
 import edu.ni.uam.proyecto_final_pae.model.EstadoCarga;
+import javafx.beans.binding.Bindings;
+import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -46,6 +48,14 @@ public class CargaController {
     @FXML private TextField txtHora;
     @FXML private Label lblEstado;
 
+    @FXML private Button btnVerTodas;
+    @FXML private Button btnVerPendientes;
+    @FXML private Button btnGuardar;
+    @FXML private Button btnActualizar;
+    @FXML private Button btnEliminar;
+    @FXML private Button btnLimpiar;
+    @FXML private Button btnNuevoCliente;
+
     @FXML
     private void initialize() {
         colNumero.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getNumeroCarga()));
@@ -62,6 +72,16 @@ public class CargaController {
                 llenarFormulario(actual);
             }
         });
+
+        BooleanBinding datosIncompletos = Bindings.createBooleanBinding(
+                () -> vacio(txtNumero) || vacio(txtPeso) || dpFecha.getValue() == null || vacio(txtHora),
+                txtNumero.textProperty(), txtPeso.textProperty(),
+                dpFecha.valueProperty(), txtHora.textProperty());
+        BooleanBinding sinSeleccion = tabla.getSelectionModel().selectedItemProperty().isNull();
+
+        btnGuardar.disableProperty().bind(datosIncompletos);
+        btnActualizar.disableProperty().bind(sinSeleccion.or(datosIncompletos));
+        btnEliminar.disableProperty().bind(sinSeleccion);
 
         try {
             recargarClientes();
@@ -233,6 +253,10 @@ public class CargaController {
 
     private void recargarClientes() {
         cmbCliente.setItems(FXCollections.observableArrayList(clienteDAO.listarActivos()));
+    }
+
+    private boolean vacio(TextField campo) {
+        return campo.getText() == null || campo.getText().isBlank();
     }
 
     private void mostrar(java.util.function.Supplier<List<Carga>> consulta, String titulo) {

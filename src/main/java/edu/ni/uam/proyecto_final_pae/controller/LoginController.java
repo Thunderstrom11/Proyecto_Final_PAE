@@ -5,11 +5,13 @@ import edu.ni.uam.proyecto_final_pae.dao.UsuarioDAO;
 import edu.ni.uam.proyecto_final_pae.model.RolUsuario;
 import edu.ni.uam.proyecto_final_pae.model.Usuario;
 import edu.ni.uam.proyecto_final_pae.security.SesionActual;
+import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
@@ -25,10 +27,16 @@ public class LoginController {
 
     @FXML private TextField txtUsuario;
     @FXML private PasswordField txtPassword;
+    @FXML private Button btnIngresar;
     @FXML private Label lblMensaje;
 
     @FXML
     private void initialize() {
+        btnIngresar.disableProperty().bind(Bindings.createBooleanBinding(
+                () -> txtUsuario.getText() == null || txtUsuario.getText().isBlank()
+                        || txtPassword.getText() == null || txtPassword.getText().isEmpty(),
+                txtUsuario.textProperty(), txtPassword.textProperty()));
+
         try {
             usuarioDAO.asegurarAdminDemo();
         } catch (PersistenciaException e) {

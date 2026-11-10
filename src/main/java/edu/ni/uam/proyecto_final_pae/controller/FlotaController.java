@@ -8,6 +8,8 @@ import edu.ni.uam.proyecto_final_pae.model.EstadoOperador;
 import edu.ni.uam.proyecto_final_pae.model.EstadoUnidad;
 import edu.ni.uam.proyecto_final_pae.model.Operador;
 import edu.ni.uam.proyecto_final_pae.model.Unidad;
+import javafx.beans.binding.Bindings;
+import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -55,6 +57,20 @@ public class FlotaController {
 
     @FXML private Label lblEstado;
 
+    @FXML private Button btnVerUnidades;
+    @FXML private Button btnVerUnidadesDisponibles;
+    @FXML private Button btnGuardarUnidad;
+    @FXML private Button btnActualizarUnidad;
+    @FXML private Button btnEliminarUnidad;
+    @FXML private Button btnLimpiarUnidad;
+
+    @FXML private Button btnVerOperadores;
+    @FXML private Button btnVerOperadoresDisponibles;
+    @FXML private Button btnGuardarOperador;
+    @FXML private Button btnActualizarOperador;
+    @FXML private Button btnEliminarOperador;
+    @FXML private Button btnLimpiarOperador;
+
     @FXML
     private void initialize() {
         colNumeroUnidad.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getNumeroUnidad()));
@@ -82,6 +98,30 @@ public class FlotaController {
                 llenarOperador(actual);
             }
         });
+
+        BooleanBinding unidadIncompleta = Bindings.createBooleanBinding(
+                () -> vacio(txtNumeroUnidad) || vacio(txtPlacas) || vacio(txtModelo)
+                        || cmbEstadoUnidad.getValue() == null,
+                txtNumeroUnidad.textProperty(), txtPlacas.textProperty(),
+                txtModelo.textProperty(), cmbEstadoUnidad.valueProperty());
+
+        BooleanBinding operadorIncompleto = Bindings.createBooleanBinding(
+                () -> vacio(txtCedula) || vacio(txtNombreOperador) || vacio(txtHorasMax)
+                        || vacio(txtHorasMin) || cmbEstadoOperador.getValue() == null,
+                txtCedula.textProperty(), txtNombreOperador.textProperty(),
+                txtHorasMax.textProperty(), txtHorasMin.textProperty(),
+                cmbEstadoOperador.valueProperty());
+
+        BooleanBinding sinUnidadSeleccionada = tablaUnidades.getSelectionModel().selectedItemProperty().isNull();
+        BooleanBinding sinOperadorSeleccionado = tablaOperadores.getSelectionModel().selectedItemProperty().isNull();
+
+        btnGuardarUnidad.disableProperty().bind(unidadIncompleta);
+        btnActualizarUnidad.disableProperty().bind(sinUnidadSeleccionada.or(unidadIncompleta));
+        btnEliminarUnidad.disableProperty().bind(sinUnidadSeleccionada);
+
+        btnGuardarOperador.disableProperty().bind(operadorIncompleto);
+        btnActualizarOperador.disableProperty().bind(sinOperadorSeleccionado.or(operadorIncompleto));
+        btnEliminarOperador.disableProperty().bind(sinOperadorSeleccionado);
 
         try {
             cmbEstadoUnidad.setItems(FXCollections.observableArrayList(catalogoDAO.listar(EstadoUnidad.class)));
@@ -327,6 +367,10 @@ public class FlotaController {
             throw new IllegalArgumentException(nombre + " no puede pasar de " + maximo + " caracteres.");
         }
         return valor;
+    }
+
+    private boolean vacio(TextField campo) {
+        return campo.getText() == null || campo.getText().isBlank();
     }
 
     private BigDecimal decimal(String valor, String nombre) {
