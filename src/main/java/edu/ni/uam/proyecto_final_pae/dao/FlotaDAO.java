@@ -2,6 +2,7 @@ package edu.ni.uam.proyecto_final_pae.dao;
 
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.config.Transaccion;
+import edu.ni.uam.proyecto_final_pae.model.EstadoCarga;
 import edu.ni.uam.proyecto_final_pae.model.EstadoOperador;
 import edu.ni.uam.proyecto_final_pae.model.EstadoUnidad;
 import edu.ni.uam.proyecto_final_pae.model.EstadoViaje;
@@ -145,15 +146,49 @@ public class FlotaDAO {
         });
     }
 
-    /** Cambia el estado del viaje por NOMBRE de catalogo (nunca por ID quemado). */
+    /**
+     * Cambia el estado del viaje por NOMBRE de catalogo (nunca por ID quemado) y deja coherentes las
+     * fechas del viaje y el estado de su carga: EN_CURSO -> carga EN_TRANSITO y fecha_inicio;
+     * FINALIZADO -> carga ENTREGADA y fecha_fin (ck_viaje_fechas exige fecha_inicio si hay fecha_fin).
+     */
     public void cambiarEstadoViaje(int idViaje, String nombreEstado) {
         Transaccion.ejecutar(sesion -> {
             EstadoViaje estado = catalogo(sesion, EstadoViaje.class, nombreEstado);
-            return sesion.createMutationQuery("update Viaje v set v.estado = :estado where v.id = :id")
+            LocalDateTime ahora = LocalDateTime.now(ZONA);
+            sesion.createMutationQuery("update Viaje v set v.estado = :estado where v.id = :id")
                     .setParameter("estado", estado)
                     .setParameter("id", idViaje)
                     .executeUpdate();
+            if ("EN_CURSO".equals(nombreEstado)) {
+                sesion.createMutationQuery("update Viaje v set v.fechaInicio = :ahora "
+                                + "where v.id = :id and v.fechaInicio is null")
+                        .setParameter("ahora", ahora)
+                        .setParameter("id", idViaje)
+                        .executeUpdate();
+                cambiarEstadoCarga(sesion, idViaje, "EN_TRANSITO");
+            } else if ("FINALIZADO".equals(nombreEstado)) {
+                sesion.createMutationQuery("update Viaje v set v.fechaInicio = coalesce(v.fechaInicio, :ahora), "
+                                + "v.fechaFin = :ahora where v.id = :id")
+                        .setParameter("ahora", ahora)
+                        .setParameter("id", idViaje)
+                        .executeUpdate();
+                cambiarEstadoCarga(sesion, idViaje, "ENTREGADA");
+            }
+            return null;
         });
+    }
+
+    private static void cambiarEstadoCarga(Session sesion, int idViaje, String nombreEstado) {
+        EstadoCarga estadoCarga = catalogo(sesion, EstadoCarga.class, nombreEstado);
+        Integer idCarga = sesion.createQuery("select v.carga.id from Viaje v where v.id = :id", Integer.class)
+                .setParameter("id", idViaje)
+                .getSingleResultOrNull();
+        if (idCarga != null) {
+            sesion.createMutationQuery("update Carga c set c.estado = :estado where c.id = :id")
+                    .setParameter("estado", estadoCarga)
+                    .setParameter("id", idCarga)
+                    .executeUpdate();
+        }
     }
 
     /** RF-04: al cerrar el ultimo viaje de la cadena, la unidad y el operador vuelven a DISPONIBLE. */
