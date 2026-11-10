@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="edu.ni.uam.proyecto_final_pae.controller.ViajeController"
+            prefWidth="1150" prefHeight="700">
+    <padding>
+        <Insets top="14" right="14" bottom="14" left="14"/>
+    </padding>
+
+    <top>
+        <VBox spacing="4">
+            <Label text="Despacho de viajes y control financiero"
+                   style="-fx-font-size: 20px; -fx-font-weight: bold;"/>
+            <Label fx:id="lblEstado" text="Listo."/>
+            <padding><Insets bottom="10"/></padding>
+        </VBox>
+    </top>
+
+    <center>
+        <TabPane tabClosingPolicy="UNAVAILABLE">
+
+            <!-- ===================== Pestaña Viajes ===================== -->
+            <Tab text="Viajes">
+                <BorderPane>
+                    <center>
+                        <VBox spacing="8">
+                            <HBox spacing="8">
+                                <Button text="Ver todos" onAction="#verTodos"/>
+                                <Button text="Ver activos" onAction="#verActivos"/>
+                                <Button text="Finalizar entrega" onAction="#finalizar"/>
+                            </HBox>
+                            <TableView fx:id="tabla" VBox.vgrow="ALWAYS">
+                                <columns>
+                                    <TableColumn fx:id="colId" text="ID" prefWidth="50"/>
+                                    <TableColumn fx:id="colUnidad" text="Unidad" prefWidth="90"/>
+                                    <TableColumn fx:id="colOperador" text="Operador" prefWidth="140"/>
+                                    <TableColumn fx:id="colCarga" text="Carga" prefWidth="90"/>
+                                    <TableColumn fx:id="colOrigen" text="Origen" prefWidth="100"/>
+                                    <TableColumn fx:id="colDestino" text="Destino" prefWidth="100"/>
+                                    <TableColumn fx:id="colCobro" text="Cobro" prefWidth="90"/>
+                                    <TableColumn fx:id="colEstado" text="Estado" prefWidth="100"/>
+                                </columns>
+                            </TableView>
+                        </VBox>
+                    </center>
+
+                    <right>
+                        <VBox spacing="6" prefWidth="280">
+                            <padding><Insets left="14"/></padding>
+
+                            <CheckBox fx:id="chkEncadenado" text="Viaje encadenado (usa viaje previo)"/>
+                            <Label text="Viaje previo (solo si encadenado)"/>
+                            <ComboBox fx:id="cmbViajePrevio" maxWidth="Infinity" disable="true"/>
+
+                            <Label text="Unidad *"/>
+                            <ComboBox fx:id="cmbUnidad" maxWidth="Infinity"/>
+
+                            <Label text="Operador *"/>
+                            <ComboBox fx:id="cmbOperador" maxWidth="Infinity"/>
+
+                            <Label text="Carga pendiente *"/>
+                            <ComboBox fx:id="cmbCarga" maxWidth="Infinity"/>
+
+                            <Label text="Origen *"/>
+                            <ComboBox fx:id="cmbOrigen" maxWidth="Infinity"/>
+
+                            <Label text="Destino *"/>
+                            <ComboBox fx:id="cmbDestino" maxWidth="Infinity"/>
+
+                            <Label text="Tiempo estimado (horas) *"/>
+                            <TextField fx:id="txtTiempo" promptText="8.50"/>
+
+                            <Label text="Cobro del viaje *"/>
+                            <TextField fx:id="txtCobro" promptText="1500.00"/>
+
+                            <Separator/>
+                            <Button text="Crear viaje" maxWidth="Infinity" onAction="#crear"/>
+                            <Button text="Limpiar formulario" maxWidth="Infinity" onAction="#limpiar"/>
+                        </VBox>
+                    </right>
+                </BorderPane>
+            </Tab>
+
+            <!-- ===================== Pestaña Reporte ===================== -->
+            <Tab text="Reporte financiero">
+                <VBox spacing="10">
+                    <padding><Insets top="10"/></padding>
+                    <HBox spacing="8">
+                        <Button text="Calcular totales (HQL)" onAction="#calcularReporte"/>
+                    </HBox>
+                    <Label text="Total facturado por operador" style="-fx-font-weight: bold;"/>
+                    <TableView fx:id="tablaOperadores" prefHeight="220">
+                        <columns>
+                            <TableColumn fx:id="colOpNombre" text="Operador" prefWidth="260"/>
+                            <TableColumn fx:id="colOpViajes" text="# Viajes" prefWidth="100"/>
+                            <TableColumn fx:id="colOpTotal" text="Total facturado" prefWidth="160"/>
+                        </columns>
+                    </TableView>
+
+                    <Label text="Total facturado por unidad" style="-fx-font-weight: bold;"/>
+                    <TableView fx:id="tablaUnidades" prefHeight="220">
+                        <columns>
+                            <TableColumn fx:id="colUniNumero" text="Unidad" prefWidth="260"/>
+                            <TableColumn fx:id="colUniViajes" text="# Viajes" prefWidth="100"/>
+                            <TableColumn fx:id="colUniTotal" text="Total facturado" prefWidth="160"/>
+                        </columns>
+                    </TableView>
+                </VBox>
+            </Tab>
+
+        </TabPane>
+    </center>
+</BorderPane>
