@@ -23,7 +23,10 @@ public abstract class GenericDAO<T, ID extends Serializable> {
     }
 
     public T actualizar(T entidad) {
-        return Transaccion.ejecutar(sesion -> sesion.merge(entidad));
+        // Bloque con return explicito: evita la ambiguedad entre ejecutar(Function) y ejecutar(Consumer).
+        return Transaccion.ejecutar(sesion -> {
+            return sesion.merge(entidad);
+        });
     }
 
     public void eliminar(ID id) {
