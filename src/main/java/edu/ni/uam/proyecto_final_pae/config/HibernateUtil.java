@@ -37,7 +37,9 @@ public final class HibernateUtil {
             for (Class<?> entidad : detectarEntidades()) {
                 configuracion.addAnnotatedClass(entidad);
             }
-            return configuracion.buildSessionFactory();
+            SessionFactory fabrica = configuracion.buildSessionFactory();
+            DatosIniciales.sembrar(fabrica);
+            return fabrica;
         } catch (Exception e) {
             throw new IllegalStateException(
                     "No se pudo iniciar Hibernate. Revise el archivo .env y que PostgreSQL este disponible.", e);

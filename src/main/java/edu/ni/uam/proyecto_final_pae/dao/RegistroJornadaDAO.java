@@ -44,7 +44,7 @@ public class RegistroJornadaDAO extends GenericDAO<RegistroJornada, Integer> {
 
     /**
      * Inserta un evento resolviendo su tipo por NOMBRE en cat_tipo_evento
-     * (nunca se queman IDs de catalogo). El num_evento lo asigna el trigger.
+     * (nunca se queman IDs de catalogo). El num_evento lo calcula la aplicacion (y el trigger, si existe).
      */
     public RegistroJornada registrar(Integer idViaje, String nombreTipoEvento, LocalDateTime fechaHora, String observacion) {
         return Transaccion.ejecutar(sesion -> {
@@ -57,6 +57,11 @@ public class RegistroJornadaDAO extends GenericDAO<RegistroJornada, Integer> {
                         + "' en cat_tipo_evento. Ejecute database/fleetroute_pro.sql.", null);
             }
             RegistroJornada registro = new RegistroJornada(idViaje, tipo, fechaHora, observacion);
+            // Consecutivo por viaje. Si el trigger trg_rj_num_evento existe, recalcula el mismo valor.
+            Integer maximo = sesion.createQuery(
+                            "select max(r.numEvento) from RegistroJornada r where r.idViaje = :id", Integer.class)
+                    .setParameter("id", idViaje).getSingleResult();
+            registro.setNumEvento(maximo == null ? 1 : maximo + 1);
             sesion.persist(registro);
             return registro;
         });
