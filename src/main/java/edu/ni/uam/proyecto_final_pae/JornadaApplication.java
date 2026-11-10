@@ -25,7 +25,10 @@ public class JornadaApplication extends Application {
         pestanas.getTabs().add(new Tab("Monitor de flota", cargar("monitor-view.fxml")));
 
         stage.setTitle("FleetRoute Pro - Jornada del operador y monitor de flota");
-        stage.setScene(new Scene(pestanas, 1080, 700));
+        Scene scene = new Scene(pestanas, 980, 700);
+        scene.getStylesheets().add(
+                JornadaApplication.class.getResource("styles/fleetroute.css").toExternalForm());
+        stage.setScene(scene);
         stage.show();
     }
 

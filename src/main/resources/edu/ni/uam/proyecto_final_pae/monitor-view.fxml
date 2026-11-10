@@ -1,23 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import java.net.URL?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="edu.ni.uam.proyecto_final_pae.controller.MonitorController"
-            prefWidth="1100" prefHeight="680">
+            prefWidth="980" prefHeight="700">
+    <stylesheets>
+        <URL value="@styles/fleetroute.css"/>
+    </stylesheets>
     <padding>
         <Insets top="14" right="14" bottom="14" left="14"/>
     </padding>
 
     <top>
         <VBox spacing="6">
-            <Label text="Monitor de flota" style="-fx-font-size: 20px; -fx-font-weight: bold;"/>
-            <HBox spacing="10" alignment="CENTER_LEFT">
-                <Button text="Actualizar" onAction="#refrescar"/>
+            <Label text="Monitor de flota" styleClass="page-title"/>
+            <HBox spacing="10" alignment="CENTER_LEFT" styleClass="actions-bar">
+                <Button text="Actualizar" styleClass="btn-secondary" onAction="#refrescar">
+                    <graphic><FontIcon iconLiteral="fas-sync-alt"/></graphic>
+                </Button>
                 <TextField fx:id="txtFiltro" promptText="Filtrar por unidad, operador o carga" prefWidth="300"/>
-                <Label fx:id="lblEstado" text="Sin datos."/>
+                <Label fx:id="lblEstado" text="Sin datos." styleClass="status-label"/>
             </HBox>
             <padding>
                 <Insets bottom="10"/>
@@ -28,29 +35,29 @@
     <center>
         <TableView fx:id="tabla">
             <columns>
-                <TableColumn fx:id="colViaje" text="Viaje" prefWidth="70"/>
-                <TableColumn fx:id="colUnidad" text="Unidad" prefWidth="90"/>
-                <TableColumn fx:id="colOperador" text="Operador" prefWidth="150"/>
-                <TableColumn fx:id="colCarga" text="Carga" prefWidth="100"/>
-                <TableColumn fx:id="colRuta" text="Origen → destino" prefWidth="190"/>
-                <TableColumn fx:id="colSla" text="Límite del cliente" prefWidth="130"/>
-                <TableColumn fx:id="colManejo" text="Manejo acumulado" prefWidth="140"/>
-                <TableColumn fx:id="colSemaforo" text="Semáforo" prefWidth="150"/>
-                <TableColumn fx:id="colEstado" text="Estado del viaje" prefWidth="130"/>
+                <TableColumn fx:id="colViaje" text="Viaje" prefWidth="55"/>
+                <TableColumn fx:id="colUnidad" text="Unidad" prefWidth="75"/>
+                <TableColumn fx:id="colOperador" text="Operador" prefWidth="110"/>
+                <TableColumn fx:id="colCarga" text="Carga" prefWidth="75"/>
+                <TableColumn fx:id="colRuta" text="Origen → destino" prefWidth="150"/>
+                <TableColumn fx:id="colSla" text="Límite del cliente" prefWidth="110"/>
+                <TableColumn fx:id="colManejo" text="Manejo" prefWidth="105"/>
+                <TableColumn fx:id="colSemaforo" text="Semáforo" prefWidth="120"/>
+                <TableColumn fx:id="colEstado" text="Estado" prefWidth="100"/>
             </columns>
         </TableView>
     </center>
 
     <bottom>
-        <HBox spacing="18">
+        <HBox spacing="18" styleClass="actions-bar">
             <padding>
                 <Insets top="10"/>
             </padding>
-            <Label text="Semáforo:" style="-fx-font-weight: bold;"/>
-            <Label text="● A tiempo" style="-fx-text-fill: #1b7f3b; -fx-font-weight: bold;"/>
-            <Label text="● Descanso pendiente" style="-fx-text-fill: #b8860b; -fx-font-weight: bold;"/>
-            <Label text="● Retraso (SLA)" style="-fx-text-fill: #b22222; -fx-font-weight: bold;"/>
-            <Label text="Se actualiza cada 5 segundos." style="-fx-text-fill: #555555;"/>
+            <Label text="Semáforo:" styleClass="field-label"/>
+            <Label text="● A tiempo" styleClass="legend-ok"/>
+            <Label text="● Descanso pendiente" styleClass="legend-warn"/>
+            <Label text="● Retraso (SLA)" styleClass="legend-danger"/>
+            <Label text="Se actualiza cada 5 segundos." styleClass="status-label"/>
         </HBox>
     </bottom>
 </BorderPane>

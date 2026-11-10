@@ -1,24 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import java.net.URL?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="edu.ni.uam.proyecto_final_pae.controller.CabinaController"
-            prefWidth="1040" prefHeight="680">
+            prefWidth="980" prefHeight="700">
+    <stylesheets>
+        <URL value="@styles/fleetroute.css"/>
+    </stylesheets>
     <padding>
         <Insets top="14" right="14" bottom="14" left="14"/>
     </padding>
 
     <top>
-        <VBox spacing="6">
-            <Label text="Cabina del operador" style="-fx-font-size: 20px; -fx-font-weight: bold;"/>
-            <HBox spacing="10" alignment="CENTER_LEFT">
+        <VBox spacing="8">
+            <Label text="Cabina del operador" styleClass="page-title"/>
+            <HBox spacing="10" alignment="CENTER_LEFT" styleClass="actions-bar">
                 <Label text="Operador:"/>
                 <ComboBox fx:id="cmbOperador" prefWidth="260"/>
-                <Button text="Actualizar" onAction="#refrescar"/>
-                <Label fx:id="lblEstado" text="Seleccione un operador."/>
+                <Button text="Actualizar" styleClass="btn-secondary" onAction="#refrescar">
+                    <graphic><FontIcon iconLiteral="fas-sync-alt"/></graphic>
+                </Button>
+                <Label fx:id="lblEstado" text="Seleccione un operador." styleClass="status-label"/>
             </HBox>
             <padding>
                 <Insets bottom="10"/>
@@ -27,51 +34,69 @@
     </top>
 
     <center>
-        <HBox spacing="16">
-            <VBox spacing="8" HBox.hgrow="ALWAYS">
-                <Label fx:id="lblViaje" text="Sin viaje asignado" style="-fx-font-size: 17px; -fx-font-weight: bold;"/>
-                <Label fx:id="lblRuta" text="—"/>
-                <Label fx:id="lblSla" text="—" wrapText="true"/>
-                <Separator/>
-                <GridPane hgap="30" vgap="6">
-                    <VBox spacing="2" GridPane.columnIndex="0" GridPane.rowIndex="0">
-                        <Label text="Manejo acumulado" style="-fx-text-fill: #555555;"/>
-                        <Label fx:id="lblManejo" text="0 h 00 min" style="-fx-font-size: 24px; -fx-font-weight: bold;"/>
-                    </VBox>
-                    <VBox spacing="2" GridPane.columnIndex="1" GridPane.rowIndex="0">
-                        <Label text="Descanso acumulado" style="-fx-text-fill: #555555;"/>
-                        <Label fx:id="lblDescanso" text="0 h 00 min" style="-fx-font-size: 24px; -fx-font-weight: bold;"/>
-                    </VBox>
-                    <VBox spacing="2" GridPane.columnIndex="2" GridPane.rowIndex="0">
-                        <Label text="Paso de la jornada" style="-fx-text-fill: #555555;"/>
-                        <Label fx:id="lblPaso" text="—" style="-fx-font-size: 24px; -fx-font-weight: bold;"/>
-                    </VBox>
-                </GridPane>
-                <Separator/>
-                <Label fx:id="lblSemaforo" text="Sin datos"/>
-                <Label fx:id="lblMensaje" text="—" wrapText="true" style="-fx-font-size: 13px;"/>
-            </VBox>
+        <BorderPane>
+            <center>
+                <VBox spacing="8" styleClass="form-pane">
+                    <padding>
+                        <Insets top="14" right="14" bottom="14" left="14"/>
+                    </padding>
+                    <Label fx:id="lblViaje" text="Sin viaje asignado" styleClass="section-title"/>
+                    <Label fx:id="lblRuta" text="—"/>
+                    <Label fx:id="lblSla" text="—" wrapText="true" styleClass="status-label"/>
+                    <Separator/>
+                    <GridPane hgap="30" vgap="6">
+                        <VBox spacing="2" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                            <Label text="Manejo acumulado" styleClass="metric-label"/>
+                            <Label fx:id="lblManejo" text="0 h 00 min" styleClass="metric-value"/>
+                        </VBox>
+                        <VBox spacing="2" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                            <Label text="Descanso acumulado" styleClass="metric-label"/>
+                            <Label fx:id="lblDescanso" text="0 h 00 min" styleClass="metric-value"/>
+                        </VBox>
+                        <VBox spacing="2" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                            <Label text="Paso de la jornada" styleClass="metric-label"/>
+                            <Label fx:id="lblPaso" text="—" styleClass="metric-value"/>
+                        </VBox>
+                    </GridPane>
+                    <Separator/>
+                    <Label fx:id="lblSemaforo" text="Sin datos" styleClass="semaphore-chip"/>
+                    <Label fx:id="lblMensaje" text="—" wrapText="true" styleClass="status-label"/>
+                </VBox>
+            </center>
 
-            <VBox spacing="6" prefWidth="330">
-                <Label text="Bitácora de eventos (registro_jornada)" style="-fx-font-weight: bold;"/>
-                <ListView fx:id="lstBitacora" VBox.vgrow="ALWAYS"/>
-            </VBox>
-        </HBox>
+            <right>
+                <VBox spacing="6" prefWidth="300" styleClass="form-pane">
+                    <padding>
+                        <Insets top="14" right="14" bottom="14" left="14"/>
+                    </padding>
+                    <Label text="Bitácora de eventos" styleClass="field-label"/>
+                    <ListView fx:id="lstBitacora" VBox.vgrow="ALWAYS"/>
+                </VBox>
+            </right>
+        </BorderPane>
     </center>
 
     <bottom>
-        <HBox spacing="10">
+        <HBox spacing="10" styleClass="actions-bar">
             <padding>
                 <Insets top="12"/>
             </padding>
             <Button fx:id="btnIniciar" text="Iniciar trayecto" onAction="#iniciar"
-                    maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
+                    maxWidth="Infinity" HBox.hgrow="ALWAYS" styleClass="btn-primary">
+                <graphic><FontIcon iconLiteral="fas-play"/></graphic>
+            </Button>
             <Button fx:id="btnPausar" text="Pausa" onAction="#pausar"
-                    maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
+                    maxWidth="Infinity" HBox.hgrow="ALWAYS" styleClass="btn-secondary">
+                <graphic><FontIcon iconLiteral="fas-pause"/></graphic>
+            </Button>
             <Button fx:id="btnReanudar" text="Reanudar" onAction="#reanudar"
-                    maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
+                    maxWidth="Infinity" HBox.hgrow="ALWAYS" styleClass="btn-success">
+                <graphic><FontIcon iconLiteral="fas-redo"/></graphic>
+            </Button>
             <Button fx:id="btnConfirmar" text="Confirmar entrega" onAction="#confirmarEntrega"
-                    maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
+                    maxWidth="Infinity" HBox.hgrow="ALWAYS" styleClass="btn-primary">
+                <graphic><FontIcon iconLiteral="fas-check-circle"/></graphic>
+            </Button>
         </HBox>
     </bottom>
 </BorderPane>

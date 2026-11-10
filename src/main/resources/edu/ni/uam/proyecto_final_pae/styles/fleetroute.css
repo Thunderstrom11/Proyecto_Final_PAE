@@ -1,95 +1,263 @@
-/* FleetRoute Pro - estilos compartidos de las pantallas JavaFX */
+/* Estilo visual propio de FleetRoute Pro.
+   Paleta: azul marino, cobre y teal; no reutiliza la paleta de Fact_App. */
 
 .root {
-    -fx-font-family: "Segoe UI", "Noto Sans", "DejaVu Sans", sans-serif;
+    -fx-font-family: "Segoe UI", "Inter", sans-serif;
     -fx-font-size: 13px;
-    -fx-background-color: #f3f6fa;
+    -fx-background-color: #F4F6FB;
+    -fx-text-fill: #1F2A44;
+}
+
+.label {
+    -fx-text-fill: #1F2A44;
 }
 
 .page-title {
     -fx-font-size: 22px;
-    -fx-font-weight: bold;
-    -fx-text-fill: #1f2a3d;
+    -fx-font-weight: 700;
+    -fx-text-fill: #1B2B44;
 }
 
 .status-label {
-    -fx-text-fill: #3b4a63;
+    -fx-text-fill: #5D6B82;
+    -fx-font-size: 12px;
+}
+
+.field-label {
+    -fx-text-fill: #44546A;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
 }
 
 .form-pane {
-    -fx-background-color: white;
-    -fx-border-color: #dfe5ee;
-    -fx-border-radius: 8;
-    -fx-background-radius: 8;
-    -fx-padding: 12;
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+    -fx-border-color: #DDE6F2;
+    -fx-border-width: 1;
 }
 
-.form-scroll {
+.form-scroll,
+.form-scroll > .viewport {
     -fx-background-color: transparent;
 }
 
-.actions-bar {
-    -fx-padding: 4 0 4 0;
+.form-scroll {
+    -fx-padding: 0;
+    -fx-background-insets: 0;
 }
 
-.text-field, .combo-box, .date-picker {
-    -fx-background-radius: 6;
-    -fx-border-radius: 6;
+.form-pane .label {
+    -fx-text-fill: #44546A;
+    -fx-font-size: 12px;
+}
+
+.actions-bar {
+    -fx-padding: 0 0 4 0;
 }
 
 .button {
-    -fx-background-radius: 6;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-padding: 8 14 8 14;
+    -fx-font-weight: 600;
     -fx-cursor: hand;
+    -fx-graphic-text-gap: 7;
+}
+
+.button:disabled {
+    -fx-opacity: 0.42;
+    -fx-cursor: default;
 }
 
 .btn-primary {
-    -fx-background-color: #2563eb;
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
+    -fx-background-color: #223A5E;
+    -fx-text-fill: #FFFFFF;
 }
 
 .btn-primary:hover {
-    -fx-background-color: #1d4ed8;
+    -fx-background-color: #2E4A75;
 }
 
 .btn-secondary {
-    -fx-background-color: #e5e9f0;
-    -fx-text-fill: #1f2a3d;
+    -fx-background-color: #FFFFFF;
+    -fx-text-fill: #223A5E;
+    -fx-border-color: #C9D5E8;
+    -fx-border-width: 1;
 }
 
 .btn-secondary:hover {
-    -fx-background-color: #d3d9e3;
-}
-
-.btn-success {
-    -fx-background-color: #1b7f3b;
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
-}
-
-.btn-success:hover {
-    -fx-background-color: #166a31;
+    -fx-background-color: #EDF2FA;
 }
 
 .btn-danger {
-    -fx-background-color: #b22222;
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
+    -fx-background-color: #B42318;
+    -fx-text-fill: #FFFFFF;
 }
 
 .btn-danger:hover {
-    -fx-background-color: #961c1c;
+    -fx-background-color: #912018;
+}
+
+.btn-success {
+    -fx-background-color: #0E7490;
+    -fx-text-fill: #FFFFFF;
+}
+
+.btn-success:hover {
+    -fx-background-color: #0B5C73;
 }
 
 .btn-ghost {
     -fx-background-color: transparent;
-    -fx-text-fill: #2563eb;
+    -fx-text-fill: #223A5E;
 }
 
 .btn-ghost:hover {
-    -fx-background-color: #e8effd;
+    -fx-background-color: #E8EEF8;
 }
 
-.button:disabled {
-    -fx-opacity: 0.5;
+.button .ikonli-font-icon {
+    -fx-icon-color: #FFFFFF;
+    -fx-icon-size: 13px;
+}
+
+.btn-secondary .ikonli-font-icon,
+.btn-ghost .ikonli-font-icon {
+    -fx-icon-color: #223A5E;
+}
+
+.text-field,
+.password-field,
+.combo-box,
+.date-picker {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: #C9D5E8;
+    -fx-border-width: 1;
+    -fx-padding: 7 10 7 10;
+}
+
+.text-field:focused,
+.password-field:focused,
+.combo-box:focused,
+.date-picker:focused {
+    -fx-border-color: #C2712C;
+    -fx-border-width: 2;
+}
+
+.table-view {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 12;
+    -fx-border-color: #DDE6F2;
+    -fx-border-radius: 12;
+    -fx-padding: 2;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #E9EFF8;
+    -fx-background-radius: 12 12 0 0;
+}
+
+.table-view .column-header,
+.table-view .filler {
+    -fx-background-color: transparent;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: #223A5E;
+    -fx-font-weight: 700;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #DCE8FA;
+    -fx-text-background-color: #1F2A44;
+}
+
+.tab-pane .tab-header-area .tab-header-background {
+    -fx-background-color: #E9EFF8;
+}
+
+.tab-pane .tab {
+    -fx-background-color: #E9EFF8;
+    -fx-background-radius: 8 8 0 0;
+    -fx-padding: 7 16 7 16;
+}
+
+.tab-pane .tab .tab-label {
+    -fx-text-fill: #5D6B82;
+    -fx-font-weight: 600;
+}
+
+.tab-pane .tab:selected {
+    -fx-background-color: #223A5E;
+}
+
+.tab-pane .tab:selected .tab-label {
+    -fx-text-fill: #FFFFFF;
+}
+
+.separator .line {
+    -fx-border-color: #DDE6F2;
+}
+
+.check-box .box {
+    -fx-background-radius: 5;
+    -fx-border-radius: 5;
+}
+
+.section-title {
+    -fx-font-size: 18px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #1B2B44;
+}
+
+.metric-label {
+    -fx-text-fill: #5D6B82;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+}
+
+.metric-value {
+    -fx-font-size: 24px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #223A5E;
+}
+
+.semaphore-chip {
+    -fx-background-color: #E2E8F0;
+    -fx-background-radius: 10;
+    -fx-text-fill: #334155;
+    -fx-font-size: 18px;
+    -fx-font-weight: 700;
+    -fx-padding: 8 14 8 14;
+}
+
+.list-view {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 10;
+    -fx-border-color: #DDE6F2;
+    -fx-border-radius: 10;
+    -fx-padding: 2;
+}
+
+.list-cell:selected {
+    -fx-background-color: #DCE8FA;
+    -fx-text-background-color: #1F2A44;
+}
+
+.legend-ok {
+    -fx-text-fill: #0E7490;
+    -fx-font-weight: 700;
+}
+
+.legend-warn {
+    -fx-text-fill: #B45309;
+    -fx-font-weight: 700;
+}
+
+.legend-danger {
+    -fx-text-fill: #B42318;
+    -fx-font-weight: 700;
 }

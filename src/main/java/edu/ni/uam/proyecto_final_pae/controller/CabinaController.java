@@ -36,7 +36,7 @@ public class CabinaController {
 
     private static final String ESTILO_NEUTRO =
             "-fx-font-size: 18px; -fx-font-weight: bold; -fx-padding: 8 14 8 14; "
-                    + "-fx-background-radius: 6; -fx-background-color: #e0e0e0;";
+                    + "-fx-background-radius: 10; -fx-background-color: #E2E8F0; -fx-text-fill: #334155;";
 
     private final JornadaService servicio = new JornadaService();
     private final FlotaDAO flotaDAO = new FlotaDAO();
@@ -158,7 +158,7 @@ public class CabinaController {
 
         lblSemaforo.setText(resumen.semaforo().getEtiqueta());
         lblSemaforo.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white; "
-                + "-fx-padding: 8 14 8 14; -fx-background-radius: 6; -fx-background-color: "
+                + "-fx-padding: 8 14 8 14; -fx-background-radius: 10; -fx-background-color: "
                 + resumen.semaforo().getColor() + ";");
         lblMensaje.setText(resumen.mensaje());
 
