@@ -1,21 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import java.net.URL?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="edu.ni.uam.proyecto_final_pae.controller.ViajeController"
-            prefWidth="1150" prefHeight="700">
+            prefWidth="980" prefHeight="700">
+    <stylesheets>
+        <URL value="@styles/fleetroute.css"/>
+    </stylesheets>
     <padding>
         <Insets top="14" right="14" bottom="14" left="14"/>
     </padding>
 
     <top>
         <VBox spacing="4">
-            <Label text="Despacho de viajes y control financiero"
-                   style="-fx-font-size: 20px; -fx-font-weight: bold;"/>
-            <Label fx:id="lblEstado" text="Listo."/>
+            <Label text="Despacho de viajes y control financiero" styleClass="page-title"/>
+            <Label fx:id="lblEstado" text="Listo." styleClass="status-label"/>
             <padding><Insets bottom="10"/></padding>
         </VBox>
     </top>
@@ -23,34 +27,47 @@
     <center>
         <TabPane tabClosingPolicy="UNAVAILABLE">
 
-            <!-- ===================== Pestaña Viajes ===================== -->
             <Tab text="Viajes">
                 <BorderPane>
                     <center>
                         <VBox spacing="8">
-                            <HBox spacing="8">
-                                <Button text="Ver todos" onAction="#verTodos"/>
-                                <Button text="Ver activos" onAction="#verActivos"/>
-                                <Button text="Finalizar entrega" onAction="#finalizar"/>
+                            <HBox spacing="8" styleClass="actions-bar">
+                                <Button fx:id="btnVerTodos" text="Ver todos"
+                                        styleClass="btn-secondary" onAction="#verTodos">
+                                    <graphic><FontIcon iconLiteral="fas-list"/></graphic>
+                                </Button>
+                                <Button fx:id="btnVerActivos" text="Ver activos"
+                                        styleClass="btn-secondary" onAction="#verActivos">
+                                    <graphic><FontIcon iconLiteral="fas-truck-moving"/></graphic>
+                                </Button>
+                                <Button fx:id="btnFinalizar" text="Finalizar entrega"
+                                        styleClass="btn-success" onAction="#finalizar">
+                                    <graphic><FontIcon iconLiteral="fas-check-circle"/></graphic>
+                                </Button>
                             </HBox>
                             <TableView fx:id="tabla" VBox.vgrow="ALWAYS">
                                 <columns>
-                                    <TableColumn fx:id="colId" text="ID" prefWidth="50"/>
-                                    <TableColumn fx:id="colUnidad" text="Unidad" prefWidth="90"/>
-                                    <TableColumn fx:id="colOperador" text="Operador" prefWidth="140"/>
-                                    <TableColumn fx:id="colCarga" text="Carga" prefWidth="90"/>
-                                    <TableColumn fx:id="colOrigen" text="Origen" prefWidth="100"/>
-                                    <TableColumn fx:id="colDestino" text="Destino" prefWidth="100"/>
-                                    <TableColumn fx:id="colCobro" text="Cobro" prefWidth="90"/>
-                                    <TableColumn fx:id="colEstado" text="Estado" prefWidth="100"/>
+                                    <TableColumn fx:id="colId" text="ID" prefWidth="40"/>
+                                    <TableColumn fx:id="colUnidad" text="Unidad" prefWidth="75"/>
+                                    <TableColumn fx:id="colOperador" text="Operador" prefWidth="110"/>
+                                    <TableColumn fx:id="colCarga" text="Carga" prefWidth="75"/>
+                                    <TableColumn fx:id="colOrigen" text="Origen" prefWidth="85"/>
+                                    <TableColumn fx:id="colDestino" text="Destino" prefWidth="85"/>
+                                    <TableColumn fx:id="colCobro" text="Cobro" prefWidth="75"/>
+                                    <TableColumn fx:id="colEstado" text="Estado" prefWidth="85"/>
                                 </columns>
                             </TableView>
                         </VBox>
                     </center>
 
                     <right>
-                        <VBox spacing="6" prefWidth="280">
-                            <padding><Insets left="14"/></padding>
+                        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                                    prefWidth="296" styleClass="form-scroll">
+                            <content>
+                                <VBox spacing="6" prefWidth="280" styleClass="form-pane">
+                            <padding>
+                                <Insets top="12" right="12" bottom="12" left="14"/>
+                            </padding>
 
                             <CheckBox fx:id="chkEncadenado" text="Viaje encadenado (usa viaje previo)"/>
                             <Label text="Viaje previo (solo si encadenado)"/>
@@ -78,19 +95,29 @@
                             <TextField fx:id="txtCobro" promptText="1500.00"/>
 
                             <Separator/>
-                            <Button text="Crear viaje" maxWidth="Infinity" onAction="#crear"/>
-                            <Button text="Limpiar formulario" maxWidth="Infinity" onAction="#limpiar"/>
-                        </VBox>
+                            <Button fx:id="btnCrear" text="Crear viaje" maxWidth="Infinity"
+                                    styleClass="btn-primary" onAction="#crear">
+                                <graphic><FontIcon iconLiteral="fas-plus"/></graphic>
+                            </Button>
+                            <Button fx:id="btnLimpiar" text="Limpiar formulario" maxWidth="Infinity"
+                                    styleClass="btn-ghost" onAction="#limpiar">
+                                <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
+                            </Button>
+                                </VBox>
+                            </content>
+                        </ScrollPane>
                     </right>
                 </BorderPane>
             </Tab>
 
-            <!-- ===================== Pestaña Reporte ===================== -->
             <Tab text="Reporte financiero">
                 <VBox spacing="10">
                     <padding><Insets top="10"/></padding>
-                    <HBox spacing="8">
-                        <Button text="Calcular totales (HQL)" onAction="#calcularReporte"/>
+                    <HBox spacing="8" styleClass="actions-bar">
+                        <Button fx:id="btnCalcularReporte" text="Calcular totales"
+                                styleClass="btn-primary" onAction="#calcularReporte">
+                            <graphic><FontIcon iconLiteral="fas-chart-bar"/></graphic>
+                        </Button>
                     </HBox>
                     <Label text="Total facturado por operador" style="-fx-font-weight: bold;"/>
                     <TableView fx:id="tablaOperadores" prefHeight="220">

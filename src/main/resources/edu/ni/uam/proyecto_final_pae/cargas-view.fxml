@@ -1,20 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import java.net.URL?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="edu.ni.uam.proyecto_final_pae.controller.CargaController"
-            prefWidth="1000" prefHeight="640">
+            prefWidth="980" prefHeight="700">
+    <stylesheets>
+        <URL value="@styles/fleetroute.css"/>
+    </stylesheets>
     <padding>
         <Insets top="14" right="14" bottom="14" left="14"/>
     </padding>
 
     <top>
         <VBox spacing="4">
-            <Label text="Gestión de cargas" style="-fx-font-size: 20px; -fx-font-weight: bold;"/>
-            <Label fx:id="lblEstado" text="Listo."/>
+            <Label text="Gestión de cargas" styleClass="page-title"/>
+            <Label fx:id="lblEstado" text="Listo." styleClass="status-label"/>
             <padding>
                 <Insets bottom="10"/>
             </padding>
@@ -23,27 +28,33 @@
 
     <center>
         <VBox spacing="8">
-            <HBox spacing="8">
-                <Button text="Ver todas" onAction="#verTodas"/>
-                <Button text="Ver pendientes (HQL)" onAction="#verPendientes"/>
+            <HBox spacing="8" styleClass="actions-bar">
+                <Button fx:id="btnVerTodas" text="Ver todas"
+                        styleClass="btn-secondary" onAction="#verTodas">
+                    <graphic><FontIcon iconLiteral="fas-list"/></graphic>
+                </Button>
+                <Button fx:id="btnVerPendientes" text="Pendientes"
+                        styleClass="btn-secondary" onAction="#verPendientes">
+                    <graphic><FontIcon iconLiteral="fas-clock"/></graphic>
+                </Button>
             </HBox>
             <TableView fx:id="tabla" VBox.vgrow="ALWAYS">
                 <columns>
-                    <TableColumn fx:id="colNumero" text="N.º carga" prefWidth="110"/>
-                    <TableColumn fx:id="colDescripcion" text="Descripción" prefWidth="200"/>
-                    <TableColumn fx:id="colPeso" text="Peso (t)" prefWidth="80"/>
-                    <TableColumn fx:id="colCliente" text="Cliente" prefWidth="160"/>
-                    <TableColumn fx:id="colLimite" text="Fecha límite" prefWidth="150"/>
-                    <TableColumn fx:id="colEstado" text="Estado" prefWidth="100"/>
+                    <TableColumn fx:id="colNumero" text="N.º carga" prefWidth="95"/>
+                    <TableColumn fx:id="colDescripcion" text="Descripción" prefWidth="150"/>
+                    <TableColumn fx:id="colPeso" text="Peso (t)" prefWidth="65"/>
+                    <TableColumn fx:id="colCliente" text="Cliente" prefWidth="115"/>
+                    <TableColumn fx:id="colLimite" text="Fecha límite" prefWidth="135"/>
+                    <TableColumn fx:id="colEstado" text="Estado" prefWidth="85"/>
                 </columns>
             </TableView>
         </VBox>
     </center>
 
     <right>
-        <VBox spacing="8" prefWidth="270">
+        <VBox spacing="8" prefWidth="280" styleClass="form-pane">
             <padding>
-                <Insets left="14"/>
+                <Insets top="12" right="12" bottom="12" left="14"/>
             </padding>
             <Label text="N.º de carga *"/>
             <TextField fx:id="txtNumero" promptText="C-001"/>
@@ -54,17 +65,32 @@
             <Label text="Cliente (opcional)"/>
             <HBox spacing="6">
                 <ComboBox fx:id="cmbCliente" prefWidth="190"/>
-                <Button text="+" onAction="#nuevoCliente"/>
+                <Button fx:id="btnNuevoCliente" styleClass="btn-secondary" onAction="#nuevoCliente">
+                    <tooltip><Tooltip text="Crear cliente"/></tooltip>
+                    <graphic><FontIcon iconLiteral="fas-user-plus"/></graphic>
+                </Button>
             </HBox>
             <Label text="Fecha límite *"/>
             <DatePicker fx:id="dpFecha"/>
             <Label text="Hora límite (HH:mm)"/>
             <TextField fx:id="txtHora" text="17:00"/>
             <Separator/>
-            <Button text="Guardar nueva" maxWidth="Infinity" onAction="#guardar"/>
-            <Button text="Actualizar seleccionada" maxWidth="Infinity" onAction="#actualizar"/>
-            <Button text="Eliminar seleccionada" maxWidth="Infinity" onAction="#eliminar"/>
-            <Button text="Limpiar formulario" maxWidth="Infinity" onAction="#limpiar"/>
+            <Button fx:id="btnGuardar" text="Guardar" maxWidth="Infinity"
+                    styleClass="btn-primary" onAction="#guardar">
+                <graphic><FontIcon iconLiteral="fas-save"/></graphic>
+            </Button>
+            <Button fx:id="btnActualizar" text="Actualizar" maxWidth="Infinity"
+                    styleClass="btn-secondary" onAction="#actualizar">
+                <graphic><FontIcon iconLiteral="fas-edit"/></graphic>
+            </Button>
+            <Button fx:id="btnEliminar" text="Eliminar" maxWidth="Infinity"
+                    styleClass="btn-danger" onAction="#eliminar">
+                <graphic><FontIcon iconLiteral="fas-trash-alt"/></graphic>
+            </Button>
+            <Button fx:id="btnLimpiar" text="Limpiar" maxWidth="Infinity"
+                    styleClass="btn-ghost" onAction="#limpiar">
+                <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
+            </Button>
         </VBox>
     </right>
 </BorderPane>

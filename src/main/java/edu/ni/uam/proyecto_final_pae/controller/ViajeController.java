@@ -4,6 +4,8 @@ import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.dao.UbicacionDAO;
 import edu.ni.uam.proyecto_final_pae.dao.ViajeDAO;
 import edu.ni.uam.proyecto_final_pae.model.*;
+import javafx.beans.binding.Bindings;
+import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -39,6 +41,13 @@ public class ViajeController {
     @FXML private TextField txtCobro;
     @FXML private Label lblEstado;
     @FXML private CheckBox chkEncadenado;
+
+    @FXML private Button btnVerTodos;
+    @FXML private Button btnVerActivos;
+    @FXML private Button btnFinalizar;
+    @FXML private Button btnCrear;
+    @FXML private Button btnLimpiar;
+    @FXML private Button btnCalcularReporte;
 
     // ------------------- pestaña Reporte
     @FXML private TableView<Object[]> tablaOperadores;
@@ -88,6 +97,32 @@ public class ViajeController {
                 recargarDisponibles();
             }
         });
+
+        BooleanBinding datosViajeIncompletos = Bindings.createBooleanBinding(() -> {
+            boolean encadenado = chkEncadenado.isSelected();
+            boolean base = cmbCarga.getValue() == null
+                    || cmbOrigen.getValue() == null
+                    || cmbDestino.getValue() == null
+                    || vacio(txtTiempo)
+                    || vacio(txtCobro);
+            if (encadenado) {
+                return base || cmbViajePrevio.getValue() == null;
+            }
+            return base || cmbUnidad.getValue() == null || cmbOperador.getValue() == null;
+        }, cmbUnidad.valueProperty(), cmbOperador.valueProperty(),
+                cmbCarga.valueProperty(), cmbOrigen.valueProperty(),
+                cmbDestino.valueProperty(), cmbViajePrevio.valueProperty(),
+                txtTiempo.textProperty(), txtCobro.textProperty(),
+                chkEncadenado.selectedProperty());
+
+        BooleanBinding sinViajeEnCurso = Bindings.createBooleanBinding(() -> {
+            Viaje viaje = tabla.getSelectionModel().getSelectedItem();
+            return viaje == null || viaje.getEstado() == null
+                    || !"EN_CURSO".equals(viaje.getEstado().getNombre());
+        }, tabla.getSelectionModel().selectedItemProperty());
+
+        btnCrear.disableProperty().bind(datosViajeIncompletos);
+        btnFinalizar.disableProperty().bind(sinViajeEnCurso);
 
         try {
             recargarDisponibles();
@@ -215,6 +250,10 @@ public class ViajeController {
             throw new IllegalArgumentException("Selecciona " + campo + ".");
         }
         return valor;
+    }
+
+    private boolean vacio(TextField campo) {
+        return campo.getText() == null || campo.getText().isBlank();
     }
 
     private BigDecimal numero(String texto, String campo) {
