@@ -87,48 +87,59 @@ public class ViajeDAO extends GenericDAO<Viaje, Integer> {
      * Crea un viaje aplicando las reglas del despacho:
      *  1) Unidad y operador deben estar DISPONIBLE.
      *  2) Si viene viajePrevio, el origen del nuevo debe coincidir con el destino del previo.
-     *  3) Al persistir: unidad y operador pasan a EN_RUTA; la carga a EN_TRANSITO.
+     *  3) Al persistir: unidad y operador pasan a EN_RUTA (salvo en un encadenado, que reutiliza los
+     *     del viaje previo) y la carga a ASIGNADA; pasa a EN_TRANSITO cuando el viaje arranca.
      */
     public Viaje crear(Viaje viaje) {
         return Transaccion.ejecutar(sesion -> {
-            Unidad unidad = sesion.find(Unidad.class, viaje.getUnidad().getId());
-            Operador operador = sesion.find(Operador.class, viaje.getOperador().getId());
             Carga carga = sesion.find(Carga.class, viaje.getCarga().getId());
-
-            if (unidad == null || !"DISPONIBLE".equals(unidad.getEstado().getNombre())) {
-                throw new PersistenciaException(
-                        "La unidad seleccionada ya no está DISPONIBLE.", null);
-            }
-            if (operador == null || !"DISPONIBLE".equals(operador.getEstado().getNombre())) {
-                throw new PersistenciaException(
-                        "El operador seleccionado ya no está DISPONIBLE.", null);
+            if (carga == null) {
+                throw new PersistenciaException("La carga seleccionada ya no existe.", null);
             }
 
+            Unidad unidad;
+            Operador operador;
+            Viaje previo = null;
             if (viaje.getViajePrevio() != null) {
-                Viaje previo = sesion.find(Viaje.class, viaje.getViajePrevio().getId());
+                // Encadenado: usa la unidad y el operador del viaje previo (ya estan EN_RUTA).
+                previo = sesion.find(Viaje.class, viaje.getViajePrevio().getId());
                 if (previo == null) {
                     throw new PersistenciaException("El viaje previo ya no existe.", null);
                 }
+                String estadoPrevio = previo.getEstado().getNombre();
+                if ("FINALIZADO".equals(estadoPrevio) || "CANCELADO".equals(estadoPrevio)) {
+                    throw new PersistenciaException(
+                            "El viaje previo ya terminó; no se puede encadenar otro después de él.", null);
+                }
                 if (!previo.getDestino().getId().equals(viaje.getOrigen().getId())) {
                     throw new PersistenciaException(
-                            "El origen del nuevo viaje debe coincidir con el destino del viaje previo.",
-                            null);
+                            "El origen del nuevo viaje debe coincidir con el destino del viaje previo.", null);
                 }
-                viaje.setViajePrevio(previo);
-                viaje.setUnidad(previo.getUnidad());
-                viaje.setOperador(previo.getOperador());
+                unidad = previo.getUnidad();
+                operador = previo.getOperador();
             } else {
-                viaje.setUnidad(unidad);
-                viaje.setOperador(operador);
+                unidad = sesion.find(Unidad.class, viaje.getUnidad().getId());
+                operador = sesion.find(Operador.class, viaje.getOperador().getId());
+                if (unidad == null || !"DISPONIBLE".equals(unidad.getEstado().getNombre())) {
+                    throw new PersistenciaException("La unidad seleccionada ya no está DISPONIBLE.", null);
+                }
+                if (operador == null || !"DISPONIBLE".equals(operador.getEstado().getNombre())) {
+                    throw new PersistenciaException("El operador seleccionado ya no está DISPONIBLE.", null);
+                }
             }
 
+            viaje.setViajePrevio(previo);
+            viaje.setUnidad(unidad);
+            viaje.setOperador(operador);
             viaje.setCarga(carga);
             viaje.setEstado(catalogo(sesion, EstadoViaje.class, "PROGRAMADO"));
             sesion.persist(viaje);
 
-            unidad.setEstado(catalogo(sesion, EstadoUnidad.class, "EN_RUTA"));
-            operador.setEstado(catalogo(sesion, EstadoOperador.class, "EN_RUTA"));
-            carga.setEstado(catalogo(sesion, EstadoCarga.class, "EN_TRANSITO"));
+            if (previo == null) {
+                unidad.setEstado(catalogo(sesion, EstadoUnidad.class, "EN_RUTA"));
+                operador.setEstado(catalogo(sesion, EstadoOperador.class, "EN_RUTA"));
+            }
+            carga.setEstado(catalogo(sesion, EstadoCarga.class, "ASIGNADA"));
             return viaje;
         });
     }
