@@ -7,9 +7,13 @@ import org.hibernate.Session;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 public class ViajeDAO extends GenericDAO<Viaje, Integer> {
+
+    /** Misma zona que hibernate.jdbc.time_zone. */
+    private static final ZoneId ZONA = ZoneId.of("America/Managua");
 
     public ViajeDAO() { super(Viaje.class); }
 
@@ -156,16 +160,24 @@ public class ViajeDAO extends GenericDAO<Viaje, Integer> {
             if (actual == null) {
                 throw new PersistenciaException("El viaje ya no existe.", null);
             }
+            LocalDateTime ahora = LocalDateTime.now(ZONA);
             actual.setEstado(catalogo(sesion, EstadoViaje.class, "FINALIZADO"));
-            actual.setFechaFin(LocalDateTime.now());
+            // ck_viaje_fechas exige fecha_inicio cuando hay fecha_fin.
+            if (actual.getFechaInicio() == null) {
+                actual.setFechaInicio(ahora);
+            }
+            actual.setFechaFin(ahora);
+            actual.getCarga().setEstado(catalogo(sesion, EstadoCarga.class, "ENTREGADA"));
 
             List<Viaje> encadenados = sesion.createQuery(
                     "select v from Viaje v where v.viajePrevio.id = :id",
                     Viaje.class).setParameter("id", idViaje).getResultList();
 
             if (!encadenados.isEmpty()) {
-                encadenados.get(0).setEstado(catalogo(sesion, EstadoViaje.class, "EN_CURSO"));
-                encadenados.get(0).setFechaInicio(LocalDateTime.now());
+                Viaje siguiente = encadenados.get(0);
+                siguiente.setEstado(catalogo(sesion, EstadoViaje.class, "EN_CURSO"));
+                siguiente.setFechaInicio(ahora);
+                siguiente.getCarga().setEstado(catalogo(sesion, EstadoCarga.class, "EN_TRANSITO"));
             } else {
                 Unidad unidad = sesion.find(Unidad.class, actual.getUnidad().getId());
                 Operador operador = sesion.find(Operador.class, actual.getOperador().getId());
