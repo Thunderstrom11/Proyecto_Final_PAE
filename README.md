@@ -1,6 +1,6 @@
 # FleetRoute Pro
 
-![Java](https://img.shields.io/badge/Java-25.0.2%20Temurin-orange)
+![Java](https://img.shields.io/badge/Java-17%2B-orange)
 ![JavaFX](https://img.shields.io/badge/JavaFX-21%2B-blue)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14%2B-336791?logo=postgresql&logoColor=white)
 ![Maven](https://img.shields.io/badge/Maven-3.9%2B-C71A36?logo=apachemaven&logoColor=white)
@@ -13,9 +13,9 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 
 ## Información importante del entorno
 
-- **JDK:** el proyecto se desarrolla con **Eclipse Temurin 25.0.2**, cumpliendo con el requisito de Java 17 o superior.
+- **JDK:** el proyecto compila con **Java 17 o superior** (probado con JDK 21 y 25).
 - **Base de datos:** se utiliza **PostgreSQL 14+** como sistema gestor de base de datos; el esquema tiene **13 tablas**.
-- **Script de base de datos:** el repositorio incluye [`database/fleetroute_pro.sql`](../../Qoder/2026-11-04/91b5298e/database/fleetroute_pro.sql), con la creación de tablas, restricciones, triggers, índices, catálogos y datos de ejemplo.
+- **Script de base de datos:** el repositorio incluye [`database/fleetroute_pro.sql`](database/fleetroute_pro.sql), con la creación de tablas, restricciones, triggers, índices, catálogos y datos de ejemplo.
 - **Extensión:** el script crea `pgcrypto` para generar los hashes BCrypt de los usuarios de demostración.
 - **Conexión a la base de datos:** se realiza mediante un archivo **`.env`**. Cada integrante mantiene su propio archivo `.env` en su equipo con sus credenciales locales de PostgreSQL (usuario, contraseña, puerto, etc.). Este archivo **no se sube al repositorio**.
 - **Archivo de ejemplo:** se incluye **`.env.example`** como plantilla. Cualquier persona que descargue el proyecto debe copiarlo, renombrarlo a `.env` y colocar en él sus propias credenciales.
@@ -67,14 +67,16 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 
 | Componente | Tecnología |
 |------------|------------|
-| Lenguaje base | Java (Eclipse Temurin 25.0.2) |
+| Lenguaje base | Java 17+ (probado con JDK 21 y 25) |
 | Interfaz gráfica | JavaFX + FXML |
-| Acceso a datos | JDBC · Patrón DAO |
+| Acceso a datos | Hibernate ORM 6 (JDBC por debajo) · Patrón DAO |
 | Base de datos | PostgreSQL |
 | Gestión de dependencias | Maven |
 | Configuración | Archivo `.env` (variables de conexión) |
 | Seguridad | Contraseñas con hash BCrypt y acceso por rol |
 | Arquitectura | Capas: Vista → Servicios → DAO → Modelo |
+
+> **Nota de stack:** la rúbrica de entrega exige mapeo ORM con JPA y operaciones de persistencia con Hibernate. Por eso el acceso a datos se implementa con Hibernate ORM sobre el driver JDBC de PostgreSQL, manteniendo el patrón DAO.
 
 ---
 
@@ -175,27 +177,28 @@ El código sigue una arquitectura en capas con el patrón **DAO**, separando la 
 | **Servicios** | Reglas de negocio: encadenamiento, cálculo de jornadas, alertas de fatiga y SLA. |
 | **DAO** | Operaciones CRUD y consultas contra PostgreSQL (`ViajeDAO`, `OperadorDAO`, `CargaDAO`, `UsuarioDAO`, `ClienteDAO`, `UbicacionDAO`, entre otros). |
 | **Modelo** | Clases de dominio: `Unidad`, `Operador`, `Carga`, `Viaje`, `RegistroJornada`, `Usuario`, `Cliente`, `Ubicacion`. |
-| **Configuración** | Conexión JDBC (Singleton) y carga de variables desde el archivo `.env`. |
+| **Configuración** | `HibernateUtil`, transacciones y carga de variables desde el archivo `.env`. |
 
 ### Estructura del repositorio
 
 ```text
-FleetRoute-Pro/
+Proyecto_Final_PAE/
 ├── database/
 │   └── fleetroute_pro.sql      # Esquema, catálogos, triggers y datos de ejemplo
 ├── src/
-│   └── main/
-│       ├── java/
-│       │   ├── config/         # Conexión JDBC (Singleton) y lectura del .env
-│       │   ├── model/          # Clases de dominio
-│       │   ├── dao/            # Acceso a datos (DAO)
-│       │   ├── service/        # Lógica y reglas de negocio
-│       │   ├── controller/     # Controladores de las vistas
-│       │   └── view/           # Clases de apoyo de la interfaz
-│       └── resources/
-│           ├── fxml/           # Vistas FXML
-│           └── styles/         # Hojas de estilo CSS
-├── example.env                 # Plantilla de variables de entorno
+│   ├── main/
+│   │   ├── java/edu/ni/uam/proyecto_final_pae/
+│   │   │   ├── config/         # HibernateUtil, transacciones y lectura del .env
+│   │   │   ├── controller/     # Controladores JavaFX
+│   │   │   ├── dao/            # Acceso a datos (DAO)
+│   │   │   ├── model/          # Entidades y catálogos
+│   │   │   ├── security/       # Sesión y control de acceso
+│   │   │   └── service/        # Reglas de negocio
+│   │   └── resources/edu/ni/uam/proyecto_final_pae/
+│   │       ├── *.fxml          # Vistas FXML
+│   │       └── styles/         # Hojas de estilo CSS
+│   └── test/java/…             # Pruebas de JornadaService
+├── .env.example                # Plantilla de variables de entorno
 ├── .env                        # Credenciales locales (NO se sube al repositorio)
 ├── .gitignore
 ├── pom.xml
@@ -206,7 +209,7 @@ FleetRoute-Pro/
 
 ## Modelo de datos
 
-La base de datos `fleetroute_pro` tiene **13 tablas**: 5 catálogos, 4 maestros, 1 de acceso, 2 operativas y 1 bitácora. El esquema completo, las restricciones, los índices, los triggers y los datos de ejemplo están en [`database/fleetroute_pro.sql`](../../Qoder/2026-11-04/91b5298e/database/fleetroute_pro.sql).
+La base de datos `fleetroute_pro` tiene **13 tablas**: 5 catálogos, 4 maestros, 1 de acceso, 2 operativas y 1 bitácora. El esquema completo, las restricciones, los índices, los triggers y los datos de ejemplo están en [`database/fleetroute_pro.sql`](database/fleetroute_pro.sql).
 
 | Grupo | Tablas |
 |-------|--------|
@@ -269,13 +272,13 @@ La base de datos `fleetroute_pro` tiene **13 tablas**: 5 catálogos, 4 maestros,
 
 | Herramienta | Versión mínima | Notas |
 |-------------|----------------|-------|
-| JDK Eclipse Temurin | **25.0.2** | Debe estar configurado como SDK del proyecto. |
-| Maven | 3.9 o superior | Gestiona JavaFX y el driver JDBC de PostgreSQL. |
+| JDK | **17 o superior** (probado con 21 y 25) | Debe estar configurado como SDK del proyecto. |
+| Maven | 3.9 o superior | Gestiona JavaFX, Hibernate y el driver JDBC de PostgreSQL. |
 | PostgreSQL | 14 o superior | Servicio activo en `localhost:5432` (o el puerto configurado); probado con PostgreSQL 18.4. |
 | Git | Cualquier versión reciente | Para clonar el repositorio. |
 | IDE (opcional) | IntelliJ IDEA / Eclipse | Recomendado para desarrollo y depuración. |
 
-Las dependencias de JavaFX y del driver JDBC se descargan automáticamente mediante Maven; no es necesario instalar el SDK de JavaFX por separado.
+Las dependencias de JavaFX, Hibernate y el driver JDBC se descargan automáticamente mediante Maven; no es necesario instalar el SDK de JavaFX por separado.
 
 > El script crea la extensión `pgcrypto` para generar los hashes BCrypt de los usuarios de ejemplo. El usuario de PostgreSQL debe tener permiso para crear extensiones; si no, un superusuario debe ejecutar `CREATE EXTENSION pgcrypto;`.
 
@@ -291,13 +294,15 @@ Descargas:
 ### 1. Clonar el repositorio
 
 ```bash
-git clone <URL_DEL_REPOSITORIO>
-cd FleetRoute-Pro
+git clone https://github.com/Thunderstrom11/Proyecto_Final_PAE.git
+cd Proyecto_Final_PAE
 ```
 
 ### 2. Crear la base de datos
 
 El script `database/fleetroute_pro.sql` crea las tablas, restricciones, índices, triggers, catálogos y datos de ejemplo. **Incluye `DROP TABLE`**, así que úsalo en desarrollo o haz un respaldo antes.
+
+> Hibernate está configurado con `hibernate.hbm2ddl.auto=validate`: el esquema debe existir y coincidir con el SQL. Esto evita que la aplicación cree una versión más débil sin los CHECK, índices, triggers o restricciones de unicidad.
 
 **Opción A — Línea de comandos (`psql`):**
 
@@ -353,10 +358,16 @@ Para verificar únicamente la compilación:
 mvn clean compile
 ```
 
+Para ejecutar las pruebas de las reglas de jornada:
+
+```bash
+mvn test
+```
+
 **Desde IntelliJ IDEA:**
 
 1. Abrir la carpeta del proyecto (IntelliJ detecta el `pom.xml`).
-2. Configurar el SDK del proyecto en **File → Project Structure → Project** y seleccionar **Temurin 25.0.2**.
+2. Configurar el SDK del proyecto en **File → Project Structure → Project** con un JDK 17 o superior (por ejemplo, Temurin 21 o 25).
 3. Verificar que el archivo `.env` esté en la raíz del proyecto.
 4. Ejecutar la clase principal o la meta de Maven `javafx:run`.
 
@@ -402,7 +413,7 @@ DB_PASSWORD=tu_contrasena
 
 > Estas tres claves son las que lee `config/Entorno`; si cambias el nombre de alguna, `HibernateUtil` no podrá iniciar la conexión.
 
-> El esquema usa `TIMESTAMP` en hora local de Nicaragua (`America/Managua`) y el script configura esa zona. Configura la sesión JDBC con la misma zona horaria para que `NOW()` y las fechas sean consistentes.
+> El esquema usa `TIMESTAMP` en hora local de Nicaragua (`America/Managua`) y el script configura esa zona. Hibernate fija `hibernate.jdbc.time_zone=America/Managua` para que las fechas de los eventos sean consistentes.
 
 ---
 
@@ -419,11 +430,14 @@ DB_PASSWORD=tu_contrasena
 
 ### Operador
 
-1. Iniciar sesión con credenciales de operador (demo: `operador` / `Operador123!`) y visualizar el viaje asignado.
+1. Iniciar sesión con credenciales de operador (demo: `operador` / `Operador123!`). La cabina muestra **solo el operador vinculado a ese usuario**; no hay selector libre de operadores.
 2. Presionar `INICIAR TRAYECTO` para comenzar el registro de la jornada.
-3. Registrar pausas de descanso y reanudar el manejo; el sistema acumula los tiempos.
-4. Presionar `CONFIRMAR ENTREGA` al finalizar el viaje.
+3. Registrar pausas de descanso y reanudar el manejo; el sistema acumula los tiempos y muestra cuánto descanso falta.
+4. Presionar `CONFIRMAR ENTREGA` al finalizar el viaje; el botón solo se habilita con un tramo en marcha.
 5. Si existe un viaje encadenado, se activa automáticamente en la cabina; si no, la unidad y el operador vuelven a estado **Disponible**.
+6. La sesión expira tras **15 minutos de inactividad**; también se puede cerrar con el botón **Salir**.
+
+> Si un operador no puede entrar, verifique que exista un registro en `usuarios` con `rol = 'OPERADOR'` y su `id_operador` asociado. El usuario demo `operador` está vinculado a **Operador Demo**.
 
 ---
 
@@ -435,13 +449,13 @@ Módulo construido sobre Hibernate ORM. Cubre **RF-06** (eventos de jornada), **
 
 | Clase | Rol |
 |-------|-----|
-| `model/RegistroJornada` | Entidad de `registro_jornada`. `num_evento` es de solo lectura porque lo asigna el trigger `trg_rj_num_evento`; `tipoEvento` es `@ManyToOne` contra `cat_tipo_evento`. |
+| `model/RegistroJornada` | Entidad de `registro_jornada`. `num_evento` es de solo lectura porque lo asigna el trigger `trg_rj_num_evento`; `viaje` y `tipoEvento` son relaciones `@ManyToOne`. |
 | `dao/RegistroJornadaDAO` | Inserta eventos resolviendo el tipo **por nombre** y los consulta con `join fetch` de su tipo. |
 | `dao/FlotaDAO` | Consultas HQL de viajes, viaje activo del operador, viaje encadenado y cambios de estado por nombre de catálogo. |
 | `service/JornadaService` | Cálculo de horas acumuladas, semáforo y validaciones de las reglas de jornada. |
 | `controller/CabinaController` + `cabina-view.fxml` | Pantalla del operador. |
 | `controller/MonitorController` + `monitor-view.fxml` | Monitor de flota del administrador. |
-| `JornadaApplication` | Arranque de prueba con las dos pantallas en pestañas (no depende del login). |
+| `JornadaApplication` | Arranque de desarrollo con las dos pantallas; desde la corrección de RF-11 ambas exigen una sesión válida. |
 
 ### Cálculo de horas y semáforo
 
@@ -459,16 +473,10 @@ Las horas no se guardan en columnas: se suman los intervalos de la bitácora `re
 
 | Pantalla | Contenido | Refresco |
 |----------|-----------|----------|
-| Cabina del operador | Viaje activo, cronómetro de manejo y descanso, semáforo, mensaje de alerta, bitácora de eventos y los botones **Iniciar trayecto**, **Pausa**, **Reanudar** y **Confirmar entrega**. Los botones se habilitan según el paso real de la jornada. | 2 s |
-| Monitor de flota | Viajes activos con unidad, operador, carga, ruta, límite del cliente, manejo acumulado, semáforo y estado del viaje; incluye filtro de texto y leyenda de colores. | 5 s |
+| Cabina del operador | Viaje activo, cronómetro de manejo y descanso, semáforo, mensaje de alerta con el descanso restante, panel de **siguiente asignación**, bitácora de eventos y los botones **Iniciar trayecto**, **Pausa**, **Reanudar** y **Confirmar entrega**. Los botones se habilitan según el paso real de la jornada. | 2 s |
+| Monitor de flota | Pestañas de viajes activos, unidades y operadores; viajes con unidad, operador, carga, ruta, límite del cliente, manejo acumulado, semáforo y estado; filtro de texto y leyenda de colores. | 5 s |
 
-Para abrir ambas pantallas sin pasar por el login:
-
-```bash
-mvn clean javafx:run -Djavafx.mainClass=edu.ni.uam.proyecto_final_pae.JornadaApplication
-```
-
-También se puede ejecutar la clase `JornadaApplication` desde IntelliJ IDEA.
+La aplicación principal se inicia con el login (`mvn clean javafx:run`). Los arranques alternativos (`JornadaApplication`, `FlotaApplication`, etc.) ya no permiten saltarse RF-11: si no hay una sesión válida, las pantallas muestran acceso denegado y no consultan datos.
 
 ### Consultas HQL del módulo
 

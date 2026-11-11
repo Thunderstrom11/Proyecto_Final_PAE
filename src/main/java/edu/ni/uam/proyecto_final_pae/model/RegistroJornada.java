@@ -24,15 +24,6 @@ import java.util.Objects;
  * {@code trg_rj_num_evento} de PostgreSQL, por eso se mapea de solo lectura
  * (insertable/updatable = false): Java nunca lo escribe.</p>
  *
- * <p><b>Pendiente de integracion (Persona 3):</b> la columna {@code id_viaje} se
- * mapea como entero porque la entidad {@code Viaje} vive en la rama de la Persona 3.
- * Cuando esa rama se integre solo hay que reemplazar el campo {@code idViaje} por:</p>
- * <pre>
- *   &#64;ManyToOne(fetch = FetchType.LAZY, optional = false)
- *   &#64;JoinColumn(name = "id_viaje", nullable = false)
- *   private Viaje viaje;
- * </pre>
- * <p>y ajustar el constructor. La columna de la base y el esquema no cambian.</p>
  */
 @Entity
 @Table(name = "registro_jornada")
@@ -43,12 +34,13 @@ public class RegistroJornada {
     @Column(name = "id_registro")
     private Integer id;
 
-    /** FK a viajes.id_viaje (ver nota de la clase). */
-    @Column(name = "id_viaje", nullable = false)
-    private Integer idViaje;
+    /** Relacion JPA con el viaje al que pertenece el evento. */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "id_viaje", nullable = false)
+    private Viaje viaje;
 
-    /** Consecutivo por viaje; lo calcula la base de datos. */
-    @Column(name = "num_evento", nullable = false)
+    /** Consecutivo por viaje; lo calcula el trigger trg_rj_num_evento. */
+    @Column(name = "num_evento", nullable = false, insertable = false, updatable = false)
     private Integer numEvento;
 
     /** Catalogo pequeno: EAGER para leerlo fuera de la sesion sin LazyInitializationException. */
@@ -65,8 +57,8 @@ public class RegistroJornada {
     public RegistroJornada() {
     }
 
-    public RegistroJornada(Integer idViaje, TipoEvento tipoEvento, LocalDateTime fechaHora, String observacion) {
-        this.idViaje = idViaje;
+    public RegistroJornada(Viaje viaje, TipoEvento tipoEvento, LocalDateTime fechaHora, String observacion) {
+        this.viaje = viaje;
         this.tipoEvento = tipoEvento;
         this.fechaHora = fechaHora;
         this.observacion = observacion;
@@ -80,12 +72,17 @@ public class RegistroJornada {
         this.id = id;
     }
 
-    public Integer getIdViaje() {
-        return idViaje;
+    public Viaje getViaje() {
+        return viaje;
     }
 
-    public void setIdViaje(Integer idViaje) {
-        this.idViaje = idViaje;
+    public void setViaje(Viaje viaje) {
+        this.viaje = viaje;
+    }
+
+    /** Compatibilidad para vistas que solo necesitan el ID. */
+    public Integer getIdViaje() {
+        return viaje == null ? null : viaje.getId();
     }
 
     public void setNumEvento(Integer numEvento) {

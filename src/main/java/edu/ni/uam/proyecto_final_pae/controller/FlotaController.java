@@ -2,12 +2,17 @@ package edu.ni.uam.proyecto_final_pae.controller;
 
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.dao.CatalogoDAO;
+import edu.ni.uam.proyecto_final_pae.dao.FlotaDAO;
 import edu.ni.uam.proyecto_final_pae.dao.OperadorDAO;
 import edu.ni.uam.proyecto_final_pae.dao.UnidadDAO;
 import edu.ni.uam.proyecto_final_pae.model.EstadoOperador;
 import edu.ni.uam.proyecto_final_pae.model.EstadoUnidad;
 import edu.ni.uam.proyecto_final_pae.model.Operador;
+import edu.ni.uam.proyecto_final_pae.model.RolUsuario;
 import edu.ni.uam.proyecto_final_pae.model.Unidad;
+import edu.ni.uam.proyecto_final_pae.security.SesionActual;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleStringProperty;
@@ -33,6 +38,7 @@ public class FlotaController {
     private final UnidadDAO unidadDAO = new UnidadDAO();
     private final OperadorDAO operadorDAO = new OperadorDAO();
     private final CatalogoDAO catalogoDAO = new CatalogoDAO();
+    private final FlotaDAO flotaDAO = new FlotaDAO();
 
     @FXML private TableView<Unidad> tablaUnidades;
     @FXML private TableColumn<Unidad, String> colNumeroUnidad;
@@ -74,6 +80,7 @@ public class FlotaController {
     @FXML private Button btnCargas;
     @FXML private Button btnViajes;
     @FXML private Button btnMonitor;
+    @FXML private Button btnSalir;
 
     @FXML private Button btnVerOperadores;
     @FXML private Button btnVerOperadoresDisponibles;
@@ -84,6 +91,9 @@ public class FlotaController {
 
     @FXML
     private void initialize() {
+        if (!sesionAdmin()) {
+            return;
+        }
         colNumeroUnidad.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getNumeroUnidad()));
         colPlacas.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getPlacas()));
         colModelo.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getModelo()));
@@ -142,22 +152,56 @@ public class FlotaController {
         } catch (PersistenciaException e) {
             error("No se pudo conectar con la base de datos", e);
         }
+
+        Timeline reloj = new Timeline(new KeyFrame(javafx.util.Duration.seconds(30), evento -> verificarSesion()));
+        reloj.setCycleCount(Timeline.INDEFINITE);
+        reloj.play();
+    }
+
+    @FXML
+    private void salir() {
+        Navegacion.cerrarSesion(Navegacion.stageDe(btnSalir));
+    }
+
+    private boolean sesionAdmin() {
+        try {
+            SesionActual.requerir(RolUsuario.ADMIN);
+            return true;
+        } catch (SecurityException e) {
+            lblEstado.setText(e.getMessage());
+            return false;
+        }
+    }
+
+    private void verificarSesion() {
+        if (SesionActual.getUsuario() != null && !SesionActual.activa()) {
+            Navegacion.sesionExpirada(Navegacion.stageDe(lblEstado));
+        }
     }
 
     // ------------------------------------------------------------------ unidades
 
     @FXML
     private void verUnidades() {
+        if (!sesionAdmin()) {
+            return;
+        }
         mostrarUnidades(unidadDAO::listar, "Todas las unidades");
     }
 
     @FXML
     private void verUnidadesDisponibles() {
+        if (!sesionAdmin()) {
+            return;
+        }
         mostrarUnidades(unidadDAO::listarDisponibles, "Unidades disponibles (consulta HQL)");
     }
 
     @FXML
     private void guardarUnidad() {
+        if (!sesionAdmin()) {
+            return;
+        }
         try {
             Unidad unidad = construirUnidad(new Unidad());
             unidadDAO.guardar(unidad);
@@ -173,13 +217,23 @@ public class FlotaController {
 
     @FXML
     private void actualizarUnidad() {
+        if (!sesionAdmin()) {
+            return;
+        }
         Unidad seleccionada = tablaUnidades.getSelectionModel().getSelectedItem();
         if (seleccionada == null) {
             advertencia("Seleccione una unidad de la tabla para actualizarla.");
             return;
         }
         try {
+            String estadoAnterior = seleccionada.getEstado().getNombre();
             Unidad unidad = construirUnidad(seleccionada);
+            if (flotaDAO.unidadTieneViajeActivo(unidad.getId())
+                    && !estadoAnterior.equals(unidad.getEstado().getNombre())) {
+                throw new IllegalArgumentException(
+                        "No se puede cambiar el estado de una unidad con viajes activos. "
+                                + "Finalice o cancele esos viajes primero.");
+            }
             unidadDAO.actualizar(unidad);
             limpiarUnidad();
             verUnidades();
@@ -193,6 +247,9 @@ public class FlotaController {
 
     @FXML
     private void eliminarUnidad() {
+        if (!sesionAdmin()) {
+            return;
+        }
         Unidad seleccionada = tablaUnidades.getSelectionModel().getSelectedItem();
         if (seleccionada == null) {
             advertencia("Seleccione una unidad de la tabla para eliminarla.");
@@ -258,16 +315,25 @@ public class FlotaController {
 
     @FXML
     private void verOperadores() {
+        if (!sesionAdmin()) {
+            return;
+        }
         mostrarOperadores(operadorDAO::listar, "Todos los operadores");
     }
 
     @FXML
     private void verOperadoresDisponibles() {
+        if (!sesionAdmin()) {
+            return;
+        }
         mostrarOperadores(operadorDAO::listarDisponibles, "Operadores disponibles (consulta HQL)");
     }
 
     @FXML
     private void guardarOperador() {
+        if (!sesionAdmin()) {
+            return;
+        }
         try {
             Operador operador = construirOperador(new Operador());
             operadorDAO.guardar(operador);
@@ -283,13 +349,23 @@ public class FlotaController {
 
     @FXML
     private void actualizarOperador() {
+        if (!sesionAdmin()) {
+            return;
+        }
         Operador seleccionado = tablaOperadores.getSelectionModel().getSelectedItem();
         if (seleccionado == null) {
             advertencia("Seleccione un operador de la tabla para actualizarlo.");
             return;
         }
         try {
+            String estadoAnterior = seleccionado.getEstado().getNombre();
             Operador operador = construirOperador(seleccionado);
+            if (flotaDAO.operadorTieneViajeActivo(operador.getId())
+                    && !estadoAnterior.equals(operador.getEstado().getNombre())) {
+                throw new IllegalArgumentException(
+                        "No se puede cambiar el estado de un operador con viajes activos. "
+                                + "Finalice o cancele esos viajes primero.");
+            }
             operadorDAO.actualizar(operador);
             limpiarOperador();
             verOperadores();
@@ -303,6 +379,9 @@ public class FlotaController {
 
     @FXML
     private void eliminarOperador() {
+        if (!sesionAdmin()) {
+            return;
+        }
         Operador seleccionado = tablaOperadores.getSelectionModel().getSelectedItem();
         if (seleccionado == null) {
             advertencia("Seleccione un operador de la tabla para eliminarlo.");
@@ -371,16 +450,25 @@ public class FlotaController {
 
     @FXML
     private void abrirCargas() {
+        if (!sesionAdmin()) {
+            return;
+        }
         abrirVista("cargas-view.fxml", "Cargas");
     }
 
     @FXML
     private void abrirViajes() {
+        if (!sesionAdmin()) {
+            return;
+        }
         abrirVista("viajes-view.fxml", "Viajes");
     }
 
     @FXML
     private void abrirMonitor() {
+        if (!sesionAdmin()) {
+            return;
+        }
         abrirVista("monitor-view.fxml", "Monitor de flota");
     }
 

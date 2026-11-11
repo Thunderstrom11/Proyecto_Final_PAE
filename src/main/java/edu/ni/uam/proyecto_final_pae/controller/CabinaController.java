@@ -3,6 +3,9 @@ package edu.ni.uam.proyecto_final_pae.controller;
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.dao.FlotaDAO;
 import edu.ni.uam.proyecto_final_pae.model.RegistroJornada;
+import edu.ni.uam.proyecto_final_pae.model.RolUsuario;
+import edu.ni.uam.proyecto_final_pae.model.Usuario;
+import edu.ni.uam.proyecto_final_pae.security.SesionActual;
 import edu.ni.uam.proyecto_final_pae.service.JornadaService;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -16,6 +19,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.util.Duration;
 
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -51,24 +55,45 @@ public class CabinaController {
     @FXML private Label lblPaso;
     @FXML private Label lblSemaforo;
     @FXML private Label lblMensaje;
+    @FXML private Label lblSiguienteCarga;
+    @FXML private Label lblSiguienteRuta;
+    @FXML private Label lblSiguienteSla;
     @FXML private ListView<String> lstBitacora;
     @FXML private Button btnIniciar;
     @FXML private Button btnPausar;
     @FXML private Button btnReanudar;
     @FXML private Button btnConfirmar;
+    @FXML private Button btnSalir;
 
     /** Viaje que se esta atendiendo en la cabina (null si el operador no tiene viajes activos). */
     private Integer idViaje;
+    private Integer idOperadorSesion;
 
     @FXML
     private void initialize() {
         try {
-            cmbOperador.setItems(FXCollections.observableArrayList(flotaDAO.operadores()));
-            if (!cmbOperador.getItems().isEmpty()) {
-                cmbOperador.getSelectionModel().selectFirst();
+            Usuario usuario = SesionActual.requerir(RolUsuario.OPERADOR);
+            if (usuario.getOperador() == null) {
+                mostrarVacio("El usuario no tiene un operador asociado.");
+                return;
             }
+            idOperadorSesion = usuario.getOperador().getId();
+            List<FlotaDAO.Opcion> opciones = flotaDAO.operadores().stream()
+                    .filter(opcion -> opcion.id() == idOperadorSesion)
+                    .toList();
+            cmbOperador.setItems(FXCollections.observableArrayList(opciones));
+            if (opciones.isEmpty()) {
+                mostrarVacio("El operador de la sesión no existe en la base de datos.");
+                return;
+            }
+            cmbOperador.getSelectionModel().selectFirst();
+            cmbOperador.setDisable(true);
+        } catch (SecurityException e) {
+            mostrarVacio(e.getMessage());
+            return;
         } catch (PersistenciaException e) {
             lblEstado.setText("No se pudieron cargar los operadores: " + e.getMessage());
+            return;
         }
         cmbOperador.valueProperty().addListener((observable, anterior, actual) -> refrescar());
 
@@ -78,10 +103,26 @@ public class CabinaController {
         refrescar();
     }
 
+    @FXML
+    private void salir() {
+        Navegacion.cerrarSesion(Navegacion.stageDe(btnSalir));
+    }
+
     // ------------------------------------------------------------------ acciones
 
     @FXML
     private void refrescar() {
+        if (SesionActual.getUsuario() == null) {
+            idViaje = null;
+            mostrarVacio("Debe iniciar sesión como operador.");
+            return;
+        }
+        if (!SesionActual.activa()) {
+            idViaje = null;
+            mostrarVacio("La sesión expiró por inactividad.");
+            Navegacion.sesionExpirada(Navegacion.stageDe(cmbOperador));
+            return;
+        }
         FlotaDAO.Opcion operador = cmbOperador.getValue();
         if (operador == null) {
             idViaje = null;
@@ -96,7 +137,10 @@ public class CabinaController {
                 return;
             }
             idViaje = viaje.get().idViaje();
-            pintar(servicio.resumen(idViaje));
+            List<RegistroJornada> eventos = servicio.eventos(idViaje);
+            JornadaService.Resumen resumen = JornadaService.calcular(
+                    viaje.get(), eventos, LocalDateTime.now(JornadaService.ZONA));
+            pintar(resumen, eventos);
             lblEstado.setText("Actualizado " + LocalTime.now().format(HORA_CORTA) + ".");
         } catch (PersistenciaException e) {
             idViaje = null;
@@ -121,17 +165,38 @@ public class CabinaController {
 
     @FXML
     private void confirmarEntrega() {
+        if (idViaje == null) {
+            advertencia("No hay un viaje activo para este operador.");
+            return;
+        }
+        Alert confirmacion = new Alert(Alert.AlertType.CONFIRMATION,
+                "¿Confirmar la entrega del viaje #" + idViaje + "?", ButtonType.YES, ButtonType.NO);
+        confirmacion.setHeaderText(null);
+        Optional<ButtonType> respuesta = confirmacion.showAndWait();
+        if (respuesta.isEmpty() || respuesta.get() != ButtonType.YES) {
+            return;
+        }
         ejecutar(servicio::confirmarEntrega);
     }
 
     /** Ejecuta una accion de la cabina y refresca la pantalla; el error se muestra al usuario. */
     private void ejecutar(IntFunction<JornadaService.Resumen> accion) {
+        if (SesionActual.getUsuario() == null) {
+            advertencia("Debe iniciar sesión como operador.");
+            return;
+        }
+        if (!SesionActual.activa()) {
+            Navegacion.sesionExpirada(Navegacion.stageDe(btnIniciar));
+            return;
+        }
+        SesionActual.tocar();
         if (idViaje == null) {
             advertencia("No hay un viaje activo para este operador.");
             return;
         }
         try {
-            pintar(accion.apply(idViaje));
+            accion.apply(idViaje);
+            refrescar();
             lblEstado.setText("Evento registrado " + LocalTime.now().format(HORA_CORTA) + ".");
         } catch (PersistenciaException e) {
             Alert alerta = new Alert(Alert.AlertType.WARNING, e.getMessage(), ButtonType.OK);
@@ -142,7 +207,7 @@ public class CabinaController {
 
     // ------------------------------------------------------------------ pintado
 
-    private void pintar(JornadaService.Resumen resumen) {
+    private void pintar(JornadaService.Resumen resumen, List<RegistroJornada> eventos) {
         FlotaDAO.FilaViaje viaje = resumen.viaje();
 
         lblViaje.setText("Viaje #" + viaje.idViaje() + "   ·   Carga " + texto(viaje.numeroCarga()));
@@ -161,8 +226,17 @@ public class CabinaController {
                 + "-fx-padding: 8 14 8 14; -fx-background-radius: 10; -fx-background-color: "
                 + resumen.semaforo().getColor() + ";");
         lblMensaje.setText(resumen.mensaje());
+        if (resumen.paso() == JornadaService.Paso.EN_PAUSA) {
+            if (resumen.puedeReanudar()) {
+                lblMensaje.setText("Descanso mínimo cumplido. Puede reanudar el manejo.");
+            } else {
+                lblMensaje.setText("Descanso insuficiente: faltan " + resumen.descansoRestanteTexto()
+                        + " (mínimo " + resumen.descansoMinimoTexto() + ") para reanudar.");
+            }
+        }
+        mostrarSiguiente(viaje.idViaje());
 
-        List<String> bitacora = servicio.eventos(viaje.idViaje()).stream()
+        List<String> bitacora = eventos.stream()
                 .map(this::lineaBitacora)
                 .toList();
         lstBitacora.setItems(FXCollections.observableArrayList(bitacora));
@@ -170,7 +244,25 @@ public class CabinaController {
         btnIniciar.setDisable(resumen.paso() != JornadaService.Paso.SIN_INICIAR);
         btnPausar.setDisable(resumen.paso() != JornadaService.Paso.EN_MARCHA);
         btnReanudar.setDisable(!(resumen.paso() == JornadaService.Paso.EN_PAUSA && resumen.puedeReanudar()));
-        btnConfirmar.setDisable(resumen.paso() == JornadaService.Paso.FINALIZADO);
+        btnConfirmar.setDisable(resumen.paso() != JornadaService.Paso.EN_MARCHA);
+    }
+
+    private void mostrarSiguiente(int idViajeActual) {
+        Optional<FlotaDAO.FilaViaje> siguiente = flotaDAO.viajeEncadenado(idViajeActual);
+        if (siguiente.isEmpty()
+                || "FINALIZADO".equals(siguiente.get().estado())
+                || "CANCELADO".equals(siguiente.get().estado())) {
+            lblSiguienteCarga.setText("Sin siguiente asignación");
+            lblSiguienteRuta.setText("—");
+            lblSiguienteSla.setText("—");
+            return;
+        }
+        FlotaDAO.FilaViaje viaje = siguiente.get();
+        lblSiguienteCarga.setText("Carga " + texto(viaje.numeroCarga()));
+        lblSiguienteRuta.setText("Ruta: " + texto(viaje.origen()) + "  →  " + texto(viaje.destino()));
+        lblSiguienteSla.setText("Límite del cliente: "
+                + (viaje.fechaLimite() == null ? "—" : viaje.fechaLimite().format(FECHA))
+                + "        Manejo estimado: " + horas(viaje.tiempoEstimado()));
     }
 
     private void mostrarVacio(String mensaje) {
@@ -183,6 +275,9 @@ public class CabinaController {
         lblSemaforo.setText("Sin datos");
         lblSemaforo.setStyle(ESTILO_NEUTRO);
         lblMensaje.setText(mensaje);
+        lblSiguienteCarga.setText("Sin siguiente asignación");
+        lblSiguienteRuta.setText("—");
+        lblSiguienteSla.setText("—");
         lstBitacora.getItems().clear();
         btnIniciar.setDisable(true);
         btnPausar.setDisable(true);

@@ -1,9 +1,11 @@
 package edu.ni.uam.proyecto_final_pae.service;
 
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
+import edu.ni.uam.proyecto_final_pae.config.Transaccion;
 import edu.ni.uam.proyecto_final_pae.dao.FlotaDAO;
 import edu.ni.uam.proyecto_final_pae.dao.RegistroJornadaDAO;
 import edu.ni.uam.proyecto_final_pae.model.RegistroJornada;
+import org.hibernate.Session;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -100,6 +102,29 @@ public class JornadaService {
 
         public String descansoTexto() {
             return texto(descanso);
+        }
+
+        /** Descanso minimo exigido por el contrato del operador. */
+        public Duration descansoMinimo() {
+            if (viaje.horasMinDescanso() == null || viaje.horasMinDescanso().signum() <= 0) {
+                return Duration.ZERO;
+            }
+            return Duration.ofMinutes(Math.max(0,
+                    Math.round(viaje.horasMinDescanso().doubleValue() * 60)));
+        }
+
+        /** Descanso que falta para poder reanudar; cero si ya se cumplio. */
+        public Duration descansoRestante() {
+            Duration restante = descansoMinimo().minus(descanso);
+            return restante.isNegative() ? Duration.ZERO : restante;
+        }
+
+        public String descansoRestanteTexto() {
+            return texto(descansoRestante());
+        }
+
+        public String descansoMinimoTexto() {
+            return texto(descansoMinimo());
         }
 
         /** Porcentaje de manejo respecto al maximo permitido al operador. */
@@ -251,72 +276,132 @@ public class JornadaService {
 
     // ------------------------------------------------------------------ acciones de la cabina
 
-    /** RF-06: inicia el viaje registrando INICIO_TRAYECTO. */
+    /** RF-06: inicia el primer tramo de un viaje PROGRAMADO o de un encadenado ya activo. */
     public Resumen iniciar(int idViaje) {
-        Paso paso = paso(idViaje);
-        if (paso == Paso.EN_MARCHA) {
-            throw new PersistenciaException(
-                    "Ya hay un tramo abierto: registre PAUSA o CONFIRMAR ENTREGA antes de iniciar otro.", null);
-        }
-        if (paso == Paso.FINALIZADO) {
-            throw new PersistenciaException("El viaje ya fue entregado; no se puede iniciar otro tramo.", null);
-        }
-        registroDAO.registrar(idViaje, INICIO_TRAYECTO, LocalDateTime.now(ZONA),
-                "Inicio de trayecto desde la cabina");
-        flotaDAO.cambiarEstadoViaje(idViaje, "EN_CURSO");
-        return resumen(idViaje);
+        return Transaccion.ejecutar(sesion -> {
+            FlotaDAO.FilaViaje viaje = datosViaje(sesion, idViaje);
+            Paso actual = paso(sesion, idViaje);
+            if (actual == Paso.EN_MARCHA) {
+                throw new PersistenciaException(
+                        "Ya hay un tramo abierto: registre PAUSA o CONFIRMAR ENTREGA antes de iniciar otro.", null);
+            }
+            if (actual == Paso.EN_PAUSA) {
+                throw new PersistenciaException(
+                        "El viaje esta en pausa: use REANUDAR y cumpla el descanso minimo antes de continuar.", null);
+            }
+            if (actual == Paso.FINALIZADO) {
+                throw new PersistenciaException("El viaje ya fue entregado; no se puede iniciar otro tramo.", null);
+            }
+            if (!"PROGRAMADO".equals(viaje.estado()) && !"EN_CURSO".equals(viaje.estado())) {
+                throw new PersistenciaException(
+                        "El viaje esta en estado " + viaje.estado() + "; no se puede iniciar.", null);
+            }
+            registroDAO.registrar(sesion, idViaje, INICIO_TRAYECTO, LocalDateTime.now(ZONA),
+                    "Inicio de trayecto desde la cabina");
+            flotaDAO.cambiarEstadoViaje(sesion, idViaje, "EN_CURSO", true);
+            flotaDAO.cambiarEstadoOperador(sesion, viaje.idOperador(), "EN_RUTA");
+            flotaDAO.cambiarEstadoUnidad(sesion, viaje.idUnidad(), "EN_RUTA");
+            return calcularActual(sesion, idViaje);
+        });
     }
 
-    /** RF-06: registra PAUSA_DESCANSO y deja el viaje en PAUSADO. */
+    /** RF-06: registra PAUSA_DESCANSO y deja el viaje y el operador en descanso. */
     public Resumen pausar(int idViaje) {
-        if (paso(idViaje) != Paso.EN_MARCHA) {
-            throw new PersistenciaException("Solo se puede pausar mientras el tramo esta en marcha.", null);
-        }
-        registroDAO.registrar(idViaje, PAUSA_DESCANSO, LocalDateTime.now(ZONA), "Pausa de descanso");
-        flotaDAO.cambiarEstadoViaje(idViaje, "PAUSADO");
-        return resumen(idViaje);
+        return Transaccion.ejecutar(sesion -> {
+            FlotaDAO.FilaViaje viaje = datosViaje(sesion, idViaje);
+            if (!"EN_CURSO".equals(viaje.estado())) {
+                throw new PersistenciaException(
+                        "Solo se puede pausar un viaje en curso; estado actual: " + viaje.estado() + ".", null);
+            }
+            if (paso(sesion, idViaje) != Paso.EN_MARCHA) {
+                throw new PersistenciaException("Solo se puede pausar mientras el tramo esta en marcha.", null);
+            }
+            registroDAO.registrar(sesion, idViaje, PAUSA_DESCANSO, LocalDateTime.now(ZONA),
+                    "Pausa de descanso");
+            flotaDAO.cambiarEstadoViaje(sesion, idViaje, "PAUSADO");
+            flotaDAO.cambiarEstadoOperador(sesion, viaje.idOperador(), "DESCANSO");
+            return calcularActual(sesion, idViaje);
+        });
     }
 
     /** RF-07: solo reanuda si el descanso acumulado alcanza el minimo del operador. */
     public Resumen reanudar(int idViaje) {
-        if (paso(idViaje) != Paso.EN_PAUSA) {
-            throw new PersistenciaException("Debe registrar una pausa (PAUSA_DESCANSO) antes de reanudar.", null);
-        }
-        Resumen actual = resumen(idViaje);
-        if (!actual.puedeReanudar()) {
-            BigDecimal minimo = actual.viaje().horasMinDescanso();
-            throw new PersistenciaException("Descanso insuficiente (RF-07): lleva " + actual.descansoTexto()
-                    + " acumuladas y el minimo del operador es "
-                    + (minimo == null ? "0" : minimo.stripTrailingZeros().toPlainString()) + " h.", null);
-        }
-        registroDAO.registrar(idViaje, REANUDAR, LocalDateTime.now(ZONA), "Reanudar el manejo");
-        flotaDAO.cambiarEstadoViaje(idViaje, "EN_CURSO");
-        return resumen(idViaje);
+        return Transaccion.ejecutar(sesion -> {
+            FlotaDAO.FilaViaje viaje = datosViaje(sesion, idViaje);
+            if (!"PAUSADO".equals(viaje.estado())) {
+                throw new PersistenciaException(
+                        "El viaje no esta pausado; estado actual: " + viaje.estado() + ".", null);
+            }
+            if (paso(sesion, idViaje) != Paso.EN_PAUSA) {
+                throw new PersistenciaException("Debe registrar una pausa (PAUSA_DESCANSO) antes de reanudar.", null);
+            }
+            Resumen actual = calcular(viaje, registroDAO.listarPorViaje(sesion, idViaje), LocalDateTime.now(ZONA));
+            if (!actual.puedeReanudar()) {
+                BigDecimal minimo = actual.viaje().horasMinDescanso();
+                throw new PersistenciaException("Descanso insuficiente (RF-07): lleva " + actual.descansoTexto()
+                        + " acumuladas, faltan " + actual.descansoRestanteTexto() + " y el minimo del operador es "
+                        + (minimo == null ? "0" : minimo.stripTrailingZeros().toPlainString()) + " h.", null);
+            }
+            registroDAO.registrar(sesion, idViaje, REANUDAR, LocalDateTime.now(ZONA), "Reanudar el manejo");
+            flotaDAO.cambiarEstadoViaje(sesion, idViaje, "EN_CURSO", false);
+            flotaDAO.cambiarEstadoOperador(sesion, viaje.idOperador(), "EN_RUTA");
+            flotaDAO.cambiarEstadoUnidad(sesion, viaje.idUnidad(), "EN_RUTA");
+            return calcularActual(sesion, idViaje);
+        });
     }
 
-    /** RF-06 y RF-09: cierra el viaje y activa el viaje encadenado si existe. */
+    /** RF-06 y RF-09: cierra el viaje en curso y activa el viaje encadenado si existe. */
     public Resumen confirmarEntrega(int idViaje) {
-        Paso paso = paso(idViaje);
-        if (paso == Paso.FINALIZADO) {
-            throw new PersistenciaException("La entrega de este viaje ya fue confirmada.", null);
-        }
-        if (paso == Paso.SIN_INICIAR) {
-            throw new PersistenciaException("El viaje aun no tiene eventos de jornada.", null);
-        }
-        FlotaDAO.FilaViaje viaje = flotaDAO.datosViaje(idViaje)
+        return Transaccion.ejecutar(sesion -> {
+            FlotaDAO.FilaViaje viaje = datosViaje(sesion, idViaje);
+            if (!"EN_CURSO".equals(viaje.estado())) {
+                throw new PersistenciaException(
+                        "Solo se puede confirmar la entrega de un viaje en curso; estado actual: "
+                                + viaje.estado() + ".", null);
+            }
+            if (paso(sesion, idViaje) != Paso.EN_MARCHA) {
+                throw new PersistenciaException(
+                        "El viaje no tiene un tramo en marcha; primero debe iniciar o reanudar.", null);
+            }
+            registroDAO.registrar(sesion, idViaje, CONFIRMAR_ENTREGA, LocalDateTime.now(ZONA),
+                    "Entrega confirmada desde la cabina");
+            flotaDAO.cambiarEstadoViaje(sesion, idViaje, "FINALIZADO", false);
+
+            Optional<FlotaDAO.FilaViaje> encadenado = flotaDAO.viajeEncadenado(sesion, idViaje);
+            boolean activar = encadenado.isPresent() && "PROGRAMADO".equals(encadenado.get().estado());
+            if (activar) {
+                FlotaDAO.FilaViaje siguiente = encadenado.get();
+                flotaDAO.cambiarEstadoViaje(sesion, siguiente.idViaje(), "EN_CURSO", false);
+                flotaDAO.cambiarEstadoOperador(sesion, viaje.idOperador(), "EN_RUTA");
+                flotaDAO.cambiarEstadoUnidad(sesion, viaje.idUnidad(), "EN_RUTA");
+            } else {
+                flotaDAO.liberarRecursos(sesion, viaje.idUnidad(), viaje.idOperador());
+            }
+            return calcularActual(sesion, idViaje);
+        });
+    }
+
+    private FlotaDAO.FilaViaje datosViaje(Session sesion, int idViaje) {
+        return flotaDAO.datosViaje(sesion, idViaje)
                 .orElseThrow(() -> new PersistenciaException("No existe el viaje " + idViaje + ".", null));
+    }
 
-        registroDAO.registrar(idViaje, CONFIRMAR_ENTREGA, LocalDateTime.now(ZONA),
-                "Entrega confirmada desde la cabina");
-        flotaDAO.cambiarEstadoViaje(idViaje, "FINALIZADO");
-
-        Optional<FlotaDAO.FilaViaje> encadenado = flotaDAO.viajeEncadenado(idViaje);
-        if (encadenado.isPresent()) {
-            flotaDAO.cambiarEstadoViaje(encadenado.get().idViaje(), "EN_CURSO");
-        } else {
-            flotaDAO.liberarRecursos(viaje.idUnidad(), viaje.idOperador());
+    private Paso paso(Session sesion, int idViaje) {
+        RegistroJornada ultimo = registroDAO.ultimo(sesion, idViaje);
+        if (ultimo == null) {
+            return Paso.SIN_INICIAR;
         }
-        return resumen(idViaje);
+        return switch (ultimo.getTipoEvento().getNombre()) {
+            case INICIO_TRAYECTO, REANUDAR -> Paso.EN_MARCHA;
+            case PAUSA_DESCANSO -> Paso.EN_PAUSA;
+            case CONFIRMAR_ENTREGA -> Paso.FINALIZADO;
+            default -> Paso.SIN_INICIAR;
+        };
+    }
+
+    private Resumen calcularActual(Session sesion, int idViaje) {
+        FlotaDAO.FilaViaje viaje = datosViaje(sesion, idViaje);
+        return calcular(viaje, registroDAO.listarPorViaje(sesion, idViaje), LocalDateTime.now(ZONA));
     }
 
     // ------------------------------------------------------------------ apoyo

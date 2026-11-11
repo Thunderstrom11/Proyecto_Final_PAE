@@ -57,8 +57,8 @@ final class DatosIniciales {
                     demo = new Operador();
                     demo.setCedula("001-000000-0001A");
                     demo.setNombre("Operador Demo");
-                    demo.setHorasMaxConduccion(new BigDecimal("10.00"));
-                    demo.setHorasMinDescanso(new BigDecimal("1.00"));
+                    demo.setHorasMaxConduccion(new BigDecimal("8.00"));
+                    demo.setHorasMinDescanso(new BigDecimal("8.00"));
                     demo.setFechaIngreso(LocalDate.now());
                     demo.setEstado(porNombre(sesion, EstadoOperador.class, "DISPONIBLE"));
                     sesion.persist(demo);
