@@ -2,12 +2,21 @@ package edu.ni.uam.proyecto_final_pae.controller;
 
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.dao.FlotaDAO;
+import edu.ni.uam.proyecto_final_pae.dao.OperadorDAO;
+import edu.ni.uam.proyecto_final_pae.dao.RegistroJornadaDAO;
+import edu.ni.uam.proyecto_final_pae.dao.UnidadDAO;
+import edu.ni.uam.proyecto_final_pae.model.Operador;
+import edu.ni.uam.proyecto_final_pae.model.RegistroJornada;
+import edu.ni.uam.proyecto_final_pae.model.RolUsuario;
+import edu.ni.uam.proyecto_final_pae.model.Unidad;
+import edu.ni.uam.proyecto_final_pae.security.SesionActual;
 import edu.ni.uam.proyecto_final_pae.service.JornadaService;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
@@ -16,11 +25,14 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.util.Duration;
 
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Monitor de flota del administrador (RF-11 y RF-12): todos los viajes activos con su unidad,
@@ -34,8 +46,10 @@ public class MonitorController {
     private static final DateTimeFormatter FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final DateTimeFormatter HORA_CORTA = DateTimeFormatter.ofPattern("HH:mm:ss");
 
-    private final JornadaService servicio = new JornadaService();
     private final FlotaDAO flotaDAO = new FlotaDAO();
+    private final RegistroJornadaDAO registroDAO = new RegistroJornadaDAO();
+    private final UnidadDAO unidadDAO = new UnidadDAO();
+    private final OperadorDAO operadorDAO = new OperadorDAO();
 
     @FXML private TableView<Fila> tabla;
     @FXML private TableColumn<Fila, String> colViaje;
@@ -47,8 +61,22 @@ public class MonitorController {
     @FXML private TableColumn<Fila, String> colManejo;
     @FXML private TableColumn<Fila, String> colSemaforo;
     @FXML private TableColumn<Fila, String> colEstado;
+    @FXML private TableView<Unidad> tablaUnidades;
+    @FXML private TableColumn<Unidad, String> colUnidadNumero;
+    @FXML private TableColumn<Unidad, String> colUnidadPlacas;
+    @FXML private TableColumn<Unidad, String> colUnidadModelo;
+    @FXML private TableColumn<Unidad, String> colUnidadCapacidad;
+    @FXML private TableColumn<Unidad, String> colUnidadEstado;
+    @FXML private TableView<Operador> tablaOperadores;
+    @FXML private TableColumn<Operador, String> colOperadorNombre;
+    @FXML private TableColumn<Operador, String> colOperadorCedula;
+    @FXML private TableColumn<Operador, String> colOperadorTelefono;
+    @FXML private TableColumn<Operador, String> colOperadorMax;
+    @FXML private TableColumn<Operador, String> colOperadorMin;
+    @FXML private TableColumn<Operador, String> colOperadorEstado;
     @FXML private TextField txtFiltro;
     @FXML private Label lblEstado;
+    @FXML private Button btnSalir;
 
     private List<Fila> todas = List.of();
 
@@ -78,6 +106,12 @@ public class MonitorController {
 
     @FXML
     private void initialize() {
+        try {
+            SesionActual.requerir(RolUsuario.ADMIN);
+        } catch (SecurityException e) {
+            lblEstado.setText(e.getMessage());
+            return;
+        }
         colViaje.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().id()));
         colUnidad.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().unidad()));
         colOperador.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().operador()));
@@ -87,6 +121,23 @@ public class MonitorController {
         colManejo.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().manejo()));
         colSemaforo.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().semaforo()));
         colEstado.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().estado()));
+
+        colUnidadNumero.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getNumeroUnidad()));
+        colUnidadPlacas.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getPlacas()));
+        colUnidadModelo.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getModelo()));
+        colUnidadCapacidad.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().getCapacidadToneladas() == null ? "—" : c.getValue().getCapacidadToneladas().toPlainString()));
+        colUnidadEstado.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getEstado().getNombre()));
+
+        colOperadorNombre.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getNombre()));
+        colOperadorCedula.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getCedula()));
+        colOperadorTelefono.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().getTelefono() == null ? "—" : c.getValue().getTelefono()));
+        colOperadorMax.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().getHorasMaxConduccion().toPlainString()));
+        colOperadorMin.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().getHorasMinDescanso().toPlainString()));
+        colOperadorEstado.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getEstado().getNombre()));
 
         colManejo.setStyle("-fx-alignment: CENTER;");
         colSemaforo.setCellFactory(columna -> new TableCell<>() {
@@ -109,20 +160,56 @@ public class MonitorController {
 
         txtFiltro.textProperty().addListener((observable, anterior, actual) -> aplicarFiltro());
 
-        Timeline reloj = new Timeline(new KeyFrame(Duration.seconds(5), evento -> refrescar()));
+        Timeline reloj = new Timeline(new KeyFrame(Duration.seconds(5), evento -> refrescarAutomatico()));
         reloj.setCycleCount(Timeline.INDEFINITE);
         reloj.play();
-        refrescar();
+        refrescarAutomatico();
+    }
+
+    @FXML
+    private void salir() {
+        Navegacion.cerrarSesion(Navegacion.stageDe(btnSalir));
     }
 
     // ------------------------------------------------------------------ datos
 
     @FXML
     private void refrescar() {
+        if (SesionActual.getUsuario() == null) {
+            lblEstado.setText("Debe iniciar sesión como administrador.");
+            return;
+        }
+        if (!SesionActual.activa()) {
+            Navegacion.sesionExpirada(Navegacion.stageDe(lblEstado));
+            return;
+        }
+        SesionActual.tocar();
+        cargar();
+    }
+
+    private void refrescarAutomatico() {
+        if (SesionActual.getUsuario() == null) {
+            return;
+        }
+        if (!SesionActual.activa()) {
+            Navegacion.sesionExpirada(Navegacion.stageDe(lblEstado));
+            return;
+        }
+        cargar();
+    }
+
+    private void cargar() {
         try {
+            List<FlotaDAO.FilaViaje> viajes = flotaDAO.viajesActivos();
+            List<Integer> idsViaje = viajes.stream().map(FlotaDAO.FilaViaje::idViaje).toList();
+            Map<Integer, List<RegistroJornada>> eventosPorViaje = registroDAO.listarPorViajes(idsViaje)
+                    .stream().collect(Collectors.groupingBy(RegistroJornada::getIdViaje));
+            LocalDateTime ahora = LocalDateTime.now(JornadaService.ZONA);
+
             List<Fila> filas = new ArrayList<>();
-            for (FlotaDAO.FilaViaje viaje : flotaDAO.viajesActivos()) {
-                JornadaService.Resumen resumen = servicio.resumen(viaje.idViaje());
+            for (FlotaDAO.FilaViaje viaje : viajes) {
+                JornadaService.Resumen resumen = JornadaService.calcular(viaje,
+                        eventosPorViaje.getOrDefault(viaje.idViaje(), List.of()), ahora);
                 filas.add(new Fila(
                         "#" + viaje.idViaje(),
                         viaje.numeroUnidad(),
@@ -138,11 +225,15 @@ public class MonitorController {
             }
             todas = filas;
             aplicarFiltro();
+            tablaUnidades.setItems(FXCollections.observableArrayList(unidadDAO.listar()));
+            tablaOperadores.setItems(FXCollections.observableArrayList(operadorDAO.listar()));
             lblEstado.setText("Monitor actualizado " + LocalTime.now().format(HORA_CORTA)
                     + "  ·  " + filas.size() + " viaje(s) activo(s).");
         } catch (PersistenciaException e) {
             todas = List.of();
             tabla.setItems(FXCollections.observableArrayList());
+            tablaUnidades.setItems(FXCollections.observableArrayList());
+            tablaOperadores.setItems(FXCollections.observableArrayList());
             lblEstado.setText("Error de persistencia: " + e.getMessage());
         }
     }

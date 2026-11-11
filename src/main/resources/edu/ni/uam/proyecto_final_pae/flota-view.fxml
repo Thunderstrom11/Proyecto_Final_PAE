@@ -30,6 +30,9 @@
                 <Button fx:id="btnMonitor" text="Monitor" styleClass="btn-secondary" onAction="#abrirMonitor">
                     <graphic><FontIcon iconLiteral="fas-desktop"/></graphic>
                 </Button>
+                <Button fx:id="btnSalir" text="Salir" styleClass="btn-ghost" onAction="#salir">
+                    <graphic><FontIcon iconLiteral="fas-sign-out-alt"/></graphic>
+                </Button>
             </HBox>
             <padding>
                 <Insets bottom="10"/>

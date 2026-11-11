@@ -4,6 +4,10 @@ import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.dao.UbicacionDAO;
 import edu.ni.uam.proyecto_final_pae.dao.ViajeDAO;
 import edu.ni.uam.proyecto_final_pae.model.*;
+import edu.ni.uam.proyecto_final_pae.security.SesionActual;
+import edu.ni.uam.proyecto_final_pae.service.JornadaService;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleStringProperty;
@@ -19,6 +23,7 @@ public class ViajeController {
 
     private final ViajeDAO viajeDAO = new ViajeDAO();
     private final UbicacionDAO ubicacionDAO = new UbicacionDAO();
+    private final JornadaService jornadaService = new JornadaService();
 
     // ------------------- pestaña Viajes
     @FXML private TableView<Viaje> tabla;
@@ -62,6 +67,9 @@ public class ViajeController {
 
     @FXML
     private void initialize() {
+        if (!sesionAdmin()) {
+            return;
+        }
         // columnas viajes
         colId.setCellValueFactory(c -> new SimpleStringProperty(String.valueOf(c.getValue().getId())));
         colUnidad.setCellValueFactory(c -> new SimpleStringProperty(
@@ -118,7 +126,8 @@ public class ViajeController {
         BooleanBinding sinViajeEnCurso = Bindings.createBooleanBinding(() -> {
             Viaje viaje = tabla.getSelectionModel().getSelectedItem();
             return viaje == null || viaje.getEstado() == null
-                    || !"EN_CURSO".equals(viaje.getEstado().getNombre());
+                    || !"EN_CURSO".equals(viaje.getEstado().getNombre())
+                    || viaje.getFechaInicio() == null;
         }, tabla.getSelectionModel().selectedItemProperty());
 
         btnCrear.disableProperty().bind(datosViajeIncompletos);
@@ -132,15 +141,48 @@ public class ViajeController {
         } catch (PersistenciaException e) {
             error("No se pudo conectar con la base de datos", e);
         }
+
+        Timeline reloj = new Timeline(new KeyFrame(javafx.util.Duration.seconds(30), evento -> verificarSesion()));
+        reloj.setCycleCount(Timeline.INDEFINITE);
+        reloj.play();
+    }
+
+    private boolean sesionAdmin() {
+        try {
+            SesionActual.requerir(RolUsuario.ADMIN);
+            return true;
+        } catch (SecurityException e) {
+            lblEstado.setText(e.getMessage());
+            return false;
+        }
+    }
+
+    private void verificarSesion() {
+        if (SesionActual.getUsuario() != null && !SesionActual.activa()) {
+            Navegacion.sesionExpirada(Navegacion.stageDe(lblEstado));
+        }
     }
 
     // ------------------- acciones viajes
 
-    @FXML private void verTodos() { mostrar(() -> viajeDAO.listar(), "Todos los viajes"); }
-    @FXML private void verActivos() { mostrar(() -> viajeDAO.listarActivos(), "Viajes activos"); }
+    @FXML private void verTodos() {
+        if (!sesionAdmin()) {
+            return;
+        }
+        mostrar(() -> viajeDAO.listar(), "Todos los viajes");
+    }
+    @FXML private void verActivos() {
+        if (!sesionAdmin()) {
+            return;
+        }
+        mostrar(() -> viajeDAO.listarActivos(), "Viajes activos");
+    }
 
     @FXML
     private void crear() {
+        if (!sesionAdmin()) {
+            return;
+        }
         try {
             Viaje v = new Viaje();
             v.setUnidad(chkEncadenado.isSelected()
@@ -173,6 +215,9 @@ public class ViajeController {
 
     @FXML
     private void finalizar() {
+        if (!sesionAdmin()) {
+            return;
+        }
         Viaje sel = tabla.getSelectionModel().getSelectedItem();
         if (sel == null) {
             advertencia("Selecciona un viaje de la tabla.");
@@ -184,7 +229,7 @@ public class ViajeController {
         Optional<ButtonType> r = ok.showAndWait();
         if (r.isEmpty() || r.get() != ButtonType.YES) return;
         try {
-            viajeDAO.finalizar(sel.getId());
+            jornadaService.confirmarEntrega(sel.getId());
             verTodos();
             lblEstado.setText("Viaje #" + sel.getId() + " finalizado.");
         } catch (PersistenciaException e) {
@@ -209,6 +254,9 @@ public class ViajeController {
 
     @FXML
     private void calcularReporte() {
+        if (!sesionAdmin()) {
+            return;
+        }
         try {
             List<Object[]> ops = viajeDAO.totalFacturadoPorOperador();
             List<Object[]> unis = viajeDAO.totalFacturadoPorUnidad();
@@ -230,8 +278,12 @@ public class ViajeController {
     }
 
     private void cargarViajesEncadenables() {
-        // viajes activos para usar como viaje previo
-        cmbViajePrevio.setItems(FXCollections.observableArrayList(viajeDAO.listarActivos()));
+        // Solo se puede encadenar sobre un viaje que ya esta en ruta.
+        cmbViajePrevio.setItems(FXCollections.observableArrayList(viajeDAO.listarActivos().stream()
+                .filter(viaje -> viaje.getEstado() != null
+                        && ("EN_CURSO".equals(viaje.getEstado().getNombre())
+                        || "PAUSADO".equals(viaje.getEstado().getNombre())))
+                .toList()));
         cmbCarga.setItems(FXCollections.observableArrayList(viajeDAO.cargasPendientes()));
     }
 

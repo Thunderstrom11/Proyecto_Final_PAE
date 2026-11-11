@@ -58,6 +58,10 @@ public class LoginController {
                 lblMensaje.setText("Usuario o contraseña incorrectos.");
                 return;
             }
+            if (usuario.getRol() == RolUsuario.OPERADOR && usuario.getOperador() == null) {
+                lblMensaje.setText("El usuario operador no tiene un operador asociado.");
+                return;
+            }
 
             SesionActual.iniciar(usuario);
             if (usuario.getRol() == RolUsuario.ADMIN) {

@@ -23,8 +23,12 @@
                 <Button text="Actualizar" styleClass="btn-secondary" onAction="#refrescar">
                     <graphic><FontIcon iconLiteral="fas-sync-alt"/></graphic>
                 </Button>
-                <TextField fx:id="txtFiltro" promptText="Filtrar por unidad, operador o carga" prefWidth="300"/>
+                <TextField fx:id="txtFiltro" promptText="Filtrar viajes por unidad, operador o carga" prefWidth="300"/>
                 <Label fx:id="lblEstado" text="Sin datos." styleClass="status-label"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="btnSalir" text="Salir" styleClass="btn-ghost" onAction="#salir">
+                    <graphic><FontIcon iconLiteral="fas-sign-out-alt"/></graphic>
+                </Button>
             </HBox>
             <padding>
                 <Insets bottom="10"/>
@@ -33,19 +37,46 @@
     </top>
 
     <center>
-        <TableView fx:id="tabla">
-            <columns>
-                <TableColumn fx:id="colViaje" text="Viaje" prefWidth="55"/>
-                <TableColumn fx:id="colUnidad" text="Unidad" prefWidth="75"/>
-                <TableColumn fx:id="colOperador" text="Operador" prefWidth="110"/>
-                <TableColumn fx:id="colCarga" text="Carga" prefWidth="75"/>
-                <TableColumn fx:id="colRuta" text="Origen → destino" prefWidth="150"/>
-                <TableColumn fx:id="colSla" text="Límite del cliente" prefWidth="110"/>
-                <TableColumn fx:id="colManejo" text="Manejo" prefWidth="105"/>
-                <TableColumn fx:id="colSemaforo" text="Semáforo" prefWidth="120"/>
-                <TableColumn fx:id="colEstado" text="Estado" prefWidth="100"/>
-            </columns>
-        </TableView>
+        <TabPane tabClosingPolicy="UNAVAILABLE">
+            <Tab text="Viajes activos">
+                <TableView fx:id="tabla">
+                    <columns>
+                        <TableColumn fx:id="colViaje" text="Viaje" prefWidth="55"/>
+                        <TableColumn fx:id="colUnidad" text="Unidad" prefWidth="75"/>
+                        <TableColumn fx:id="colOperador" text="Operador" prefWidth="110"/>
+                        <TableColumn fx:id="colCarga" text="Carga" prefWidth="75"/>
+                        <TableColumn fx:id="colRuta" text="Origen → destino" prefWidth="150"/>
+                        <TableColumn fx:id="colSla" text="Límite del cliente" prefWidth="110"/>
+                        <TableColumn fx:id="colManejo" text="Manejo" prefWidth="105"/>
+                        <TableColumn fx:id="colSemaforo" text="Semáforo" prefWidth="120"/>
+                        <TableColumn fx:id="colEstado" text="Estado" prefWidth="100"/>
+                    </columns>
+                </TableView>
+            </Tab>
+            <Tab text="Unidades">
+                <TableView fx:id="tablaUnidades">
+                    <columns>
+                        <TableColumn fx:id="colUnidadNumero" text="Unidad" prefWidth="100"/>
+                        <TableColumn fx:id="colUnidadPlacas" text="Placas" prefWidth="110"/>
+                        <TableColumn fx:id="colUnidadModelo" text="Modelo" prefWidth="180"/>
+                        <TableColumn fx:id="colUnidadCapacidad" text="Capacidad (t)" prefWidth="110"/>
+                        <TableColumn fx:id="colUnidadEstado" text="Estado" prefWidth="120"/>
+                    </columns>
+                </TableView>
+            </Tab>
+            <Tab text="Operadores">
+                <TableView fx:id="tablaOperadores">
+                    <columns>
+                        <TableColumn fx:id="colOperadorNombre" text="Nombre" prefWidth="180"/>
+                        <TableColumn fx:id="colOperadorCedula" text="Cédula" prefWidth="130"/>
+                        <TableColumn fx:id="colOperadorTelefono" text="Teléfono" prefWidth="110"/>
+                        <TableColumn fx:id="colOperadorMax" text="Máx. conducción" prefWidth="120"/>
+                        <TableColumn fx:id="colOperadorMin" text="Mín. descanso" prefWidth="110"/>
+                        <TableColumn fx:id="colOperadorEstado" text="Estado" prefWidth="120"/>
+                    </columns>
+                </TableView>
+            </Tab>
+        </TabPane>
     </center>
 
     <bottom>

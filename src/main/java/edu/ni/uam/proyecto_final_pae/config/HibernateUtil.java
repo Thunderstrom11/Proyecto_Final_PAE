@@ -21,7 +21,7 @@ public final class HibernateUtil {
     /** Paquete donde viven las clases @Entity. Se detectan solas: nadie tiene que registrarlas aqui. */
     private static final String PAQUETE_MODELO = "edu.ni.uam.proyecto_final_pae.model";
 
-    private static final SessionFactory FACTORY = crear();
+    private static SessionFactory factory;
 
     private HibernateUtil() {
     }
@@ -103,11 +103,22 @@ public final class HibernateUtil {
         return entidades;
     }
 
-    public static SessionFactory factory() {
-        return FACTORY;
+    public static synchronized SessionFactory factory() {
+        if (factory == null) {
+            try {
+                factory = crear();
+            } catch (RuntimeException e) {
+                throw new PersistenciaException(
+                        "No se pudo iniciar la conexión con PostgreSQL. Revise el archivo .env y el servidor.", e);
+            }
+        }
+        return factory;
     }
 
-    public static void cerrar() {
-        FACTORY.close();
+    public static synchronized void cerrar() {
+        if (factory != null) {
+            factory.close();
+            factory = null;
+        }
     }
 }

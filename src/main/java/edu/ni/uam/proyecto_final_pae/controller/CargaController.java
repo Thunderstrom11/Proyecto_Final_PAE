@@ -7,6 +7,10 @@ import edu.ni.uam.proyecto_final_pae.dao.ClienteDAO;
 import edu.ni.uam.proyecto_final_pae.model.Carga;
 import edu.ni.uam.proyecto_final_pae.model.Cliente;
 import edu.ni.uam.proyecto_final_pae.model.EstadoCarga;
+import edu.ni.uam.proyecto_final_pae.model.RolUsuario;
+import edu.ni.uam.proyecto_final_pae.security.SesionActual;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleStringProperty;
@@ -58,6 +62,9 @@ public class CargaController {
 
     @FXML
     private void initialize() {
+        if (!sesionAdmin()) {
+            return;
+        }
         colNumero.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getNumeroCarga()));
         colDescripcion.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getDescripcion()));
         colPeso.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getPesoToneladas().toPlainString()));
@@ -89,22 +96,51 @@ public class CargaController {
         } catch (PersistenciaException e) {
             error("No se pudo conectar con la base de datos", e);
         }
+
+        Timeline reloj = new Timeline(new KeyFrame(javafx.util.Duration.seconds(30), evento -> verificarSesion()));
+        reloj.setCycleCount(Timeline.INDEFINITE);
+        reloj.play();
+    }
+
+    private boolean sesionAdmin() {
+        try {
+            SesionActual.requerir(RolUsuario.ADMIN);
+            return true;
+        } catch (SecurityException e) {
+            lblEstado.setText(e.getMessage());
+            return false;
+        }
+    }
+
+    private void verificarSesion() {
+        if (SesionActual.getUsuario() != null && !SesionActual.activa()) {
+            Navegacion.sesionExpirada(Navegacion.stageDe(lblEstado));
+        }
     }
 
     // ------------------------------------------------------------------ acciones
 
     @FXML
     private void verTodas() {
+        if (!sesionAdmin()) {
+            return;
+        }
         mostrar(() -> cargaDAO.listar(), "Cargas");
     }
 
     @FXML
     private void verPendientes() {
+        if (!sesionAdmin()) {
+            return;
+        }
         mostrar(() -> cargaDAO.listarPendientes(), "Cargas pendientes (consulta HQL)");
     }
 
     @FXML
     private void guardar() {
+        if (!sesionAdmin()) {
+            return;
+        }
         try {
             Carga carga = construir(new Carga());
             EstadoCarga pendiente = catalogoDAO.porNombre(EstadoCarga.class, "PENDIENTE");
@@ -122,6 +158,9 @@ public class CargaController {
 
     @FXML
     private void actualizar() {
+        if (!sesionAdmin()) {
+            return;
+        }
         Carga seleccionada = tabla.getSelectionModel().getSelectedItem();
         if (seleccionada == null) {
             advertencia("Seleccione una carga de la tabla para actualizarla.");
@@ -142,6 +181,9 @@ public class CargaController {
 
     @FXML
     private void eliminar() {
+        if (!sesionAdmin()) {
+            return;
+        }
         Carga seleccionada = tabla.getSelectionModel().getSelectedItem();
         if (seleccionada == null) {
             advertencia("Seleccione una carga de la tabla para eliminarla.");
@@ -177,6 +219,9 @@ public class CargaController {
 
     @FXML
     private void nuevoCliente() {
+        if (!sesionAdmin()) {
+            return;
+        }
         TextInputDialog dialogo = new TextInputDialog();
         dialogo.setTitle("Nuevo cliente");
         dialogo.setHeaderText(null);

@@ -261,3 +261,19 @@
     -fx-text-fill: #B42318;
     -fx-font-weight: 700;
 }
+
+/* Cabina del operador: controles pensados para uso táctil. */
+.cabina-root .button {
+    -fx-font-size: 16px;
+    -fx-padding: 14 22 14 22;
+    -fx-min-height: 52;
+}
+
+.cabina-root .metric-value {
+    -fx-font-size: 28px;
+}
+
+.cabina-root .combo-box,
+.cabina-root .text-field {
+    -fx-font-size: 15px;
+}

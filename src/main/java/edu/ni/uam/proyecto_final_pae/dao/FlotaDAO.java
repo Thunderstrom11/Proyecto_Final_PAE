@@ -96,12 +96,15 @@ public class FlotaDAO {
 
     /** Datos completos de un viaje (para la cabina y el calculo de jornada). */
     public Optional<FilaViaje> datosViaje(int idViaje) {
-        return Transaccion.consultar(sesion -> {
-            List<Object[]> filas = sesion.createQuery(PROYECCION + " where v.id = :id", Object[].class)
-                    .setParameter("id", idViaje)
-                    .getResultList();
-            return filas.isEmpty() ? Optional.empty() : Optional.of(fila(filas.get(0)));
-        });
+        return Transaccion.consultar(sesion -> datosViaje(sesion, idViaje));
+    }
+
+    /** Variante transaccional: el llamador controla la transaccion. */
+    public Optional<FilaViaje> datosViaje(Session sesion, int idViaje) {
+        List<Object[]> filas = sesion.createQuery(PROYECCION + " where v.id = :id", Object[].class)
+                .setParameter("id", idViaje)
+                .getResultList();
+        return filas.isEmpty() ? Optional.empty() : Optional.of(fila(filas.get(0)));
     }
 
     /**
@@ -123,13 +126,16 @@ public class FlotaDAO {
 
     /** Viaje encadenado: el que declara a este viaje como previo (RF-09). */
     public Optional<FilaViaje> viajeEncadenado(int idViaje) {
-        return Transaccion.consultar(sesion -> {
-            List<Object[]> filas = sesion.createQuery(PROYECCION + " where v.viajePrevio.id = :id", Object[].class)
-                    .setParameter("id", idViaje)
-                    .setMaxResults(1)
-                    .getResultList();
-            return filas.isEmpty() ? Optional.empty() : Optional.of(fila(filas.get(0)));
-        });
+        return Transaccion.consultar(sesion -> viajeEncadenado(sesion, idViaje));
+    }
+
+    /** Variante transaccional: el llamador controla la transaccion. */
+    public Optional<FilaViaje> viajeEncadenado(Session sesion, int idViaje) {
+        List<Object[]> filas = sesion.createQuery(PROYECCION + " where v.viajePrevio.id = :id", Object[].class)
+                .setParameter("id", idViaje)
+                .setMaxResults(1)
+                .getResultList();
+        return filas.isEmpty() ? Optional.empty() : Optional.of(fila(filas.get(0)));
     }
 
     /** Operadores para el selector de la cabina. */
@@ -153,29 +159,83 @@ public class FlotaDAO {
      */
     public void cambiarEstadoViaje(int idViaje, String nombreEstado) {
         Transaccion.ejecutar(sesion -> {
-            EstadoViaje estado = catalogo(sesion, EstadoViaje.class, nombreEstado);
-            LocalDateTime ahora = LocalDateTime.now(ZONA);
-            sesion.createMutationQuery("update Viaje v set v.estado = :estado where v.id = :id")
-                    .setParameter("estado", estado)
-                    .setParameter("id", idViaje)
-                    .executeUpdate();
-            if ("EN_CURSO".equals(nombreEstado)) {
+            cambiarEstadoViaje(sesion, idViaje, nombreEstado, true);
+            return null;
+        });
+    }
+
+    /** Variante transaccional: el llamador controla la transaccion. */
+    public void cambiarEstadoViaje(Session sesion, int idViaje, String nombreEstado) {
+        cambiarEstadoViaje(sesion, idViaje, nombreEstado, true);
+    }
+
+    /**
+     * Cambia el estado del viaje. {@code marcarInicio} solo debe ser true cuando el operador
+     * inicia el tramo; al activar un viaje encadenado no se debe arrancar el cronometro.
+     */
+    public void cambiarEstadoViaje(Session sesion, int idViaje, String nombreEstado, boolean marcarInicio) {
+        EstadoViaje estado = catalogo(sesion, EstadoViaje.class, nombreEstado);
+        LocalDateTime ahora = LocalDateTime.now(ZONA);
+        sesion.createMutationQuery("update Viaje v set v.estado = :estado where v.id = :id")
+                .setParameter("estado", estado)
+                .setParameter("id", idViaje)
+                .executeUpdate();
+        if ("EN_CURSO".equals(nombreEstado)) {
+            if (marcarInicio) {
                 sesion.createMutationQuery("update Viaje v set v.fechaInicio = :ahora "
                                 + "where v.id = :id and v.fechaInicio is null")
                         .setParameter("ahora", ahora)
                         .setParameter("id", idViaje)
                         .executeUpdate();
-                cambiarEstadoCarga(sesion, idViaje, "EN_TRANSITO");
-            } else if ("FINALIZADO".equals(nombreEstado)) {
-                sesion.createMutationQuery("update Viaje v set v.fechaInicio = coalesce(v.fechaInicio, :ahora), "
-                                + "v.fechaFin = :ahora where v.id = :id")
-                        .setParameter("ahora", ahora)
-                        .setParameter("id", idViaje)
-                        .executeUpdate();
-                cambiarEstadoCarga(sesion, idViaje, "ENTREGADA");
             }
-            return null;
-        });
+            cambiarEstadoCarga(sesion, idViaje, "EN_TRANSITO");
+        } else if ("FINALIZADO".equals(nombreEstado)) {
+            sesion.createMutationQuery("update Viaje v set v.fechaInicio = coalesce(v.fechaInicio, :ahora), "
+                            + "v.fechaFin = :ahora where v.id = :id")
+                    .setParameter("ahora", ahora)
+                    .setParameter("id", idViaje)
+                    .executeUpdate();
+            cambiarEstadoCarga(sesion, idViaje, "ENTREGADA");
+        }
+    }
+
+    /** Cambia el estado del operador dentro de la transaccion del llamador. */
+    public void cambiarEstadoOperador(Session sesion, int idOperador, String nombreEstado) {
+        EstadoOperador estado = catalogo(sesion, EstadoOperador.class, nombreEstado);
+        sesion.createMutationQuery("update Operador o set o.estado = :estado where o.id = :id")
+                .setParameter("estado", estado)
+                .setParameter("id", idOperador)
+                .executeUpdate();
+    }
+
+    /** Cambia el estado de la unidad dentro de la transaccion del llamador. */
+    public void cambiarEstadoUnidad(Session sesion, int idUnidad, String nombreEstado) {
+        EstadoUnidad estado = catalogo(sesion, EstadoUnidad.class, nombreEstado);
+        sesion.createMutationQuery("update Unidad u set u.estado = :estado where u.id = :id")
+                .setParameter("estado", estado)
+                .setParameter("id", idUnidad)
+                .executeUpdate();
+    }
+
+    /** Indica si la unidad tiene algún viaje activo (excluyendo opcionalmente uno). */
+    public boolean unidadTieneViajeActivo(int idUnidad) {
+        return Transaccion.consultar(sesion -> hayViajeActivo(sesion, "unidad", idUnidad, null));
+    }
+
+    /** Indica si el operador tiene algún viaje activo (excluyendo opcionalmente uno). */
+    public boolean operadorTieneViajeActivo(int idOperador) {
+        return Transaccion.consultar(sesion -> hayViajeActivo(sesion, "operador", idOperador, null));
+    }
+
+    private static boolean hayViajeActivo(Session sesion, String campo, int id, Integer excluirIdViaje) {
+        String hql = "select count(v) from Viaje v join v.estado e "
+                + "where v." + campo + ".id = :id and e.nombre in " + ESTADOS_ACTIVOS
+                + (excluirIdViaje == null ? "" : " and v.id <> :excluir");
+        var query = sesion.createQuery(hql, Long.class).setParameter("id", id);
+        if (excluirIdViaje != null) {
+            query.setParameter("excluir", excluirIdViaje);
+        }
+        return query.getSingleResult() > 0;
     }
 
     private static void cambiarEstadoCarga(Session sesion, int idViaje, String nombreEstado) {
@@ -194,17 +254,19 @@ public class FlotaDAO {
     /** RF-04: al cerrar el ultimo viaje de la cadena, la unidad y el operador vuelven a DISPONIBLE. */
     public void liberarRecursos(int idUnidad, int idOperador) {
         Transaccion.ejecutar(sesion -> {
-            EstadoUnidad estadoUnidad = catalogo(sesion, EstadoUnidad.class, "DISPONIBLE");
-            EstadoOperador estadoOperador = catalogo(sesion, EstadoOperador.class, "DISPONIBLE");
-            sesion.createMutationQuery("update Unidad u set u.estado = :estado where u.id = :id")
-                    .setParameter("estado", estadoUnidad)
-                    .setParameter("id", idUnidad)
-                    .executeUpdate();
-            return sesion.createMutationQuery("update Operador o set o.estado = :estado where o.id = :id")
-                    .setParameter("estado", estadoOperador)
-                    .setParameter("id", idOperador)
-                    .executeUpdate();
+            liberarRecursos(sesion, idUnidad, idOperador);
+            return null;
         });
+    }
+
+    /** Variante transaccional: no libera un recurso que todavia tenga otro viaje activo. */
+    public void liberarRecursos(Session sesion, int idUnidad, int idOperador) {
+        if (!hayViajeActivo(sesion, "unidad", idUnidad, null)) {
+            cambiarEstadoUnidad(sesion, idUnidad, "DISPONIBLE");
+        }
+        if (!hayViajeActivo(sesion, "operador", idOperador, null)) {
+            cambiarEstadoOperador(sesion, idOperador, "DISPONIBLE");
+        }
     }
 
     // ------------------------------------------------------------------ apoyo
