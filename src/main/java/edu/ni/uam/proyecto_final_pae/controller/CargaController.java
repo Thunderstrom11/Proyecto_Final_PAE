@@ -56,11 +56,23 @@ public class CargaController {
 
     @FXML private Button btnVerTodas;
     @FXML private Button btnVerPendientes;
+    @FXML private Button btnEntregadas;
+    @FXML private Button btnEnTransito;
     @FXML private Button btnGuardar;
     @FXML private Button btnActualizar;
     @FXML private Button btnEliminar;
     @FXML private Button btnLimpiar;
     @FXML private Button btnNuevoCliente;
+    @FXML private Button btnLimpiarFiltros;
+
+    @FXML private TextField txtBuscarCarga;
+    @FXML private DatePicker dpFiltroDesde;
+    @FXML private DatePicker dpFiltroHasta;
+    @FXML private TextField txtPesoMin;
+    @FXML private TextField txtPesoMax;
+
+    private List<Carga> todas = List.of();
+    private String filtroEstado;
 
     @FXML
     private void initialize() {
@@ -91,6 +103,12 @@ public class CargaController {
         btnGuardar.disableProperty().bind(datosIncompletos);
         btnActualizar.disableProperty().bind(sinSeleccion.or(datosIncompletos));
         btnEliminar.disableProperty().bind(sinSeleccion);
+
+        txtBuscarCarga.textProperty().addListener((o, a, b) -> aplicarFiltros("Filtro de cargas"));
+        dpFiltroDesde.valueProperty().addListener((o, a, b) -> aplicarFiltros("Filtro de cargas"));
+        dpFiltroHasta.valueProperty().addListener((o, a, b) -> aplicarFiltros("Filtro de cargas"));
+        txtPesoMin.textProperty().addListener((o, a, b) -> aplicarFiltros("Filtro de cargas"));
+        txtPesoMax.textProperty().addListener((o, a, b) -> aplicarFiltros("Filtro de cargas"));
 
         try {
             recargarClientes();
@@ -133,7 +151,8 @@ public class CargaController {
         if (!sesionAdmin()) {
             return;
         }
-        mostrar(() -> cargaDAO.listar(), "Cargas");
+        filtroEstado = null;
+        cargarTodas("Todas las cargas");
     }
 
     @FXML
@@ -141,7 +160,37 @@ public class CargaController {
         if (!sesionAdmin()) {
             return;
         }
-        mostrar(() -> cargaDAO.listarPendientes(), "Cargas pendientes (consulta HQL)");
+        filtroEstado = "PENDIENTE";
+        cargarTodas("Cargas pendientes");
+    }
+
+    @FXML
+    private void verEntregadas() {
+        if (!sesionAdmin()) {
+            return;
+        }
+        filtroEstado = "ENTREGADA";
+        cargarTodas("Cargas entregadas");
+    }
+
+    @FXML
+    private void verEnTransito() {
+        if (!sesionAdmin()) {
+            return;
+        }
+        filtroEstado = "EN_TRANSITO";
+        cargarTodas("Cargas en tránsito");
+    }
+
+    @FXML
+    private void limpiarFiltros() {
+        txtBuscarCarga.clear();
+        dpFiltroDesde.setValue(null);
+        dpFiltroHasta.setValue(null);
+        txtPesoMin.clear();
+        txtPesoMax.clear();
+        filtroEstado = null;
+        aplicarFiltros("Filtro de cargas limpio");
     }
 
     @FXML
@@ -321,6 +370,57 @@ public class CargaController {
             lblEstado.setText(titulo + ": " + cargas.size() + " registro(s).");
         } catch (PersistenciaException e) {
             error("No se pudo consultar las cargas", e);
+        }
+    }
+
+    private void cargarTodas(String titulo) {
+        try {
+            todas = cargaDAO.listar();
+            aplicarFiltros(titulo);
+        } catch (PersistenciaException e) {
+            error("No se pudo consultar las cargas", e);
+        }
+    }
+
+    private void aplicarFiltros(String titulo) {
+        String texto = txtBuscarCarga.getText() == null ? "" : txtBuscarCarga.getText().trim().toLowerCase();
+        LocalDate desde = dpFiltroDesde.getValue();
+        LocalDate hasta = dpFiltroHasta.getValue();
+        BigDecimal pesoMin = pesoFiltro(txtPesoMin.getText());
+        BigDecimal pesoMax = pesoFiltro(txtPesoMax.getText());
+
+        List<Carga> visibles = todas.stream()
+                .filter(c -> filtroEstado == null || filtroEstado.equals(c.getEstado().getNombre()))
+                .filter(c -> texto.isEmpty() || coincide(c, texto))
+                .filter(c -> desde == null || !c.getFechaLimiteCliente().toLocalDate().isBefore(desde))
+                .filter(c -> hasta == null || !c.getFechaLimiteCliente().toLocalDate().isAfter(hasta))
+                .filter(c -> pesoMin == null || c.getPesoToneladas().compareTo(pesoMin) >= 0)
+                .filter(c -> pesoMax == null || c.getPesoToneladas().compareTo(pesoMax) <= 0)
+                .toList();
+        tabla.setItems(FXCollections.observableArrayList(visibles));
+        tabla.refresh();
+        lblEstado.setText(titulo + ": " + visibles.size() + " registro(s).");
+    }
+
+    private boolean coincide(Carga carga, String texto) {
+        String cliente = carga.getCliente() == null ? "" : carga.getCliente().getNombreEmpresa();
+        return contiene(carga.getNumeroCarga(), texto)
+                || contiene(carga.getDescripcion(), texto)
+                || contiene(cliente, texto);
+    }
+
+    private boolean contiene(String valor, String texto) {
+        return valor != null && valor.toLowerCase().contains(texto);
+    }
+
+    private BigDecimal pesoFiltro(String texto) {
+        if (texto == null || texto.isBlank()) {
+            return null;
+        }
+        try {
+            return new BigDecimal(texto.trim().replace(',', '.'));
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
 

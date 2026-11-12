@@ -12,15 +12,30 @@
     <stylesheets>
         <URL value="@styles/fleetroute.css"/>
     </stylesheets>
+    <fx:define>
+        <ToggleGroup fx:id="grupoUnidad"/>
+        <ToggleGroup fx:id="grupoOperador"/>
+        <ToggleGroup fx:id="grupoCliente"/>
+    </fx:define>
     <padding>
         <Insets top="14" right="14" bottom="14" left="14"/>
     </padding>
 
     <top>
         <VBox spacing="4">
-            <Label text="Gestión de flota" styleClass="page-title"/>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="Gestión de flota" styleClass="page-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="btnReporte" styleClass="icon-button" onAction="#abrirReporte">
+                    <graphic><FontIcon iconLiteral="fas-chart-pie" iconSize="18"/></graphic>
+                    <tooltip><Tooltip text="Reporte financiero"/></tooltip>
+                </Button>
+                <Button fx:id="btnPanelAdmin" styleClass="icon-button" onAction="#abrirPanelAdmin">
+                    <graphic><FontIcon iconLiteral="fas-user-cog" iconSize="18"/></graphic>
+                    <tooltip><Tooltip text="Panel administrativo"/></tooltip>
+                </Button>
+            </HBox>
             <Label fx:id="lblEmpresa" styleClass="status-label"/>
-            <Label fx:id="lblEstado" text="Listo." styleClass="status-label"/>
             <HBox spacing="8" styleClass="actions-bar">
                 <Button fx:id="btnCargas" text="Cargas" styleClass="btn-secondary" onAction="#abrirCargas">
                     <graphic><FontIcon iconLiteral="fas-box-open"/></graphic>
@@ -47,17 +62,40 @@
             <Tab text="Unidades">
                 <BorderPane>
                     <center>
-                        <VBox spacing="8">
-                            <HBox spacing="8" styleClass="actions-bar">
-                                <Button fx:id="btnVerUnidades" text="Ver todas"
-                                        styleClass="btn-secondary" onAction="#verUnidades">
-                                    <graphic><FontIcon iconLiteral="fas-list"/></graphic>
-                                </Button>
-                                <Button fx:id="btnVerUnidadesDisponibles" text="Disponibles"
-                                        styleClass="btn-secondary" onAction="#verUnidadesDisponibles">
-                                    <graphic><FontIcon iconLiteral="fas-check-circle"/></graphic>
+                        <VBox spacing="6">
+                            <HBox spacing="6" alignment="CENTER_LEFT">
+                                <TextField fx:id="txtFiltroUnidad" prefWidth="320" promptText="buscador">
+                                    <tooltip>
+                                        <Tooltip text="Busca por número de unidad, placas, modelo o capacidad."/>
+                                    </tooltip>
+                                </TextField>
+                                <Button fx:id="btnLimpiarBusquedaUnidad" styleClass="btn-ghost"
+                                        onAction="#limpiarBusquedaUnidad">
+                                    <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
+                                    <tooltip><Tooltip text="Limpiar búsqueda"/></tooltip>
                                 </Button>
                             </HBox>
+                            <HBox spacing="8" alignment="CENTER_LEFT" styleClass="actions-bar">
+                                <Label text="Filtrar por" styleClass="field-label"/>
+                                <ToggleButton fx:id="btnUnidadTodos" text="Todas" selected="true"
+                                              toggleGroup="$grupoUnidad" styleClass="filter-toggle">
+                                    <graphic><FontIcon iconLiteral="fas-list"/></graphic>
+                                </ToggleButton>
+                                <ToggleButton fx:id="btnUnidadDisponible" text="Disponibles"
+                                              toggleGroup="$grupoUnidad" styleClass="filter-toggle">
+                                    <graphic><FontIcon iconLiteral="fas-check-circle"/></graphic>
+                                </ToggleButton>
+                                <ToggleButton fx:id="btnUnidadRuta" text="En ruta"
+                                              toggleGroup="$grupoUnidad" styleClass="filter-toggle">
+                                    <graphic><FontIcon iconLiteral="fas-truck-moving"/></graphic>
+                                </ToggleButton>
+                                <ToggleButton fx:id="btnUnidadMantenimiento" text="Mantenimiento"
+                                              toggleGroup="$grupoUnidad" styleClass="filter-toggle">
+                                    <graphic><FontIcon iconLiteral="fas-tools"/></graphic>
+                                </ToggleButton>
+                            </HBox>
+                            <Label fx:id="lblEstadoUnidades" text="Mostrando las unidades registradas."
+                                   styleClass="status-label"/>
                             <TableView fx:id="tablaUnidades" VBox.vgrow="ALWAYS">
                                 <columns>
                                     <TableColumn fx:id="colNumeroUnidad" text="N.º unidad" prefWidth="110"/>
@@ -109,17 +147,44 @@
             <Tab text="Operadores">
                 <BorderPane>
                     <center>
-                        <VBox spacing="8">
-                            <HBox spacing="8" styleClass="actions-bar">
-                                <Button fx:id="btnVerOperadores" text="Ver todos"
-                                        styleClass="btn-secondary" onAction="#verOperadores">
-                                    <graphic><FontIcon iconLiteral="fas-list"/></graphic>
-                                </Button>
-                                <Button fx:id="btnVerOperadoresDisponibles" text="Disponibles"
-                                        styleClass="btn-secondary" onAction="#verOperadoresDisponibles">
-                                    <graphic><FontIcon iconLiteral="fas-check-circle"/></graphic>
+                        <VBox spacing="6">
+                            <HBox spacing="6" alignment="CENTER_LEFT">
+                                <TextField fx:id="txtFiltroOperador" prefWidth="320" promptText="buscador">
+                                    <tooltip>
+                                        <Tooltip text="Busca por nombre, cédula o teléfono del operador."/>
+                                    </tooltip>
+                                </TextField>
+                                <Button fx:id="btnLimpiarBusquedaOperador" styleClass="btn-ghost"
+                                        onAction="#limpiarBusquedaOperador">
+                                    <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
+                                    <tooltip><Tooltip text="Limpiar búsqueda"/></tooltip>
                                 </Button>
                             </HBox>
+                            <HBox spacing="8" alignment="CENTER_LEFT" styleClass="actions-bar">
+                                <Label text="Filtrar por" styleClass="field-label"/>
+                                <ToggleButton fx:id="btnOperadorTodos" text="Todos" selected="true"
+                                              toggleGroup="$grupoOperador" styleClass="filter-toggle">
+                                    <graphic><FontIcon iconLiteral="fas-list"/></graphic>
+                                </ToggleButton>
+                                <ToggleButton fx:id="btnOperadorDisponible" text="Disponibles"
+                                              toggleGroup="$grupoOperador" styleClass="filter-toggle">
+                                    <graphic><FontIcon iconLiteral="fas-check-circle"/></graphic>
+                                </ToggleButton>
+                                <ToggleButton fx:id="btnOperadorRuta" text="En ruta"
+                                              toggleGroup="$grupoOperador" styleClass="filter-toggle">
+                                    <graphic><FontIcon iconLiteral="fas-truck-moving"/></graphic>
+                                </ToggleButton>
+                                <ToggleButton fx:id="btnOperadorDescanso" text="Descanso"
+                                              toggleGroup="$grupoOperador" styleClass="filter-toggle">
+                                    <graphic><FontIcon iconLiteral="fas-bed"/></graphic>
+                                </ToggleButton>
+                                <ToggleButton fx:id="btnOperadorInactivo" text="Inactivos"
+                                              toggleGroup="$grupoOperador" styleClass="filter-toggle">
+                                    <graphic><FontIcon iconLiteral="fas-user-slash"/></graphic>
+                                </ToggleButton>
+                            </HBox>
+                            <Label fx:id="lblEstadoOperadores" text="Mostrando los operadores registrados."
+                                   styleClass="status-label"/>
                             <TableView fx:id="tablaOperadores" VBox.vgrow="ALWAYS">
                                 <columns>
                                     <TableColumn fx:id="colCedula" text="Cédula" prefWidth="130"/>
@@ -174,17 +239,36 @@
             <Tab text="Clientes">
                 <BorderPane>
                     <center>
-                        <VBox spacing="8">
-                            <HBox spacing="8" styleClass="actions-bar">
-                                <Button fx:id="btnVerClientes" text="Ver todos"
-                                        styleClass="btn-secondary" onAction="#verClientes">
-                                    <graphic><FontIcon iconLiteral="fas-list"/></graphic>
-                                </Button>
-                                <Button fx:id="btnVerClientesActivos" text="Activos"
-                                        styleClass="btn-secondary" onAction="#verClientesActivos">
-                                    <graphic><FontIcon iconLiteral="fas-check-circle"/></graphic>
+                        <VBox spacing="6">
+                            <HBox spacing="6" alignment="CENTER_LEFT">
+                                <TextField fx:id="txtFiltroCliente" prefWidth="320" promptText="buscador">
+                                    <tooltip>
+                                        <Tooltip text="Busca por empresa, contacto, teléfono o email."/>
+                                    </tooltip>
+                                </TextField>
+                                <Button fx:id="btnLimpiarBusquedaCliente" styleClass="btn-ghost"
+                                        onAction="#limpiarBusquedaCliente">
+                                    <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
+                                    <tooltip><Tooltip text="Limpiar búsqueda"/></tooltip>
                                 </Button>
                             </HBox>
+                            <HBox spacing="8" alignment="CENTER_LEFT" styleClass="actions-bar">
+                                <Label text="Filtrar por" styleClass="field-label"/>
+                                <ToggleButton fx:id="btnClienteTodos" text="Todos" selected="true"
+                                              toggleGroup="$grupoCliente" styleClass="filter-toggle">
+                                    <graphic><FontIcon iconLiteral="fas-list"/></graphic>
+                                </ToggleButton>
+                                <ToggleButton fx:id="btnClienteActivos" text="Activos"
+                                              toggleGroup="$grupoCliente" styleClass="filter-toggle">
+                                    <graphic><FontIcon iconLiteral="fas-check-circle"/></graphic>
+                                </ToggleButton>
+                                <ToggleButton fx:id="btnClienteInactivos" text="Inactivos"
+                                              toggleGroup="$grupoCliente" styleClass="filter-toggle">
+                                    <graphic><FontIcon iconLiteral="fas-user-slash"/></graphic>
+                                </ToggleButton>
+                            </HBox>
+                            <Label fx:id="lblEstadoClientes" text="Mostrando los clientes registrados."
+                                   styleClass="status-label"/>
                             <TableView fx:id="tablaClientes" VBox.vgrow="ALWAYS">
                                 <columns>
                                     <TableColumn fx:id="colNombreCliente" text="Empresa" prefWidth="150"/>

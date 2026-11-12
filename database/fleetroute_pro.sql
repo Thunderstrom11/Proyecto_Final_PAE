@@ -37,6 +37,7 @@ DROP TABLE IF EXISTS cargas                  CASCADE;
 DROP TABLE IF EXISTS usuarios                CASCADE;
 DROP TABLE IF EXISTS operadores              CASCADE;
 DROP TABLE IF EXISTS unidades                CASCADE;
+DROP TABLE IF EXISTS rutas                   CASCADE;
 DROP TABLE IF EXISTS ubicaciones             CASCADE;
 DROP TABLE IF EXISTS clientes                CASCADE;
 DROP TABLE IF EXISTS empresa                 CASCADE;
@@ -112,8 +113,27 @@ CREATE TABLE ubicaciones (
     nombre       VARCHAR(120) NOT NULL,
     departamento VARCHAR(80)  NOT NULL,
     pais         VARCHAR(80)  NOT NULL DEFAULT 'Nicaragua',
+    latitud      DOUBLE PRECISION,
+    longitud     DOUBLE PRECISION,
 
     CONSTRAINT uq_ubicacion UNIQUE (nombre, departamento)
+);
+
+CREATE TABLE rutas (
+    id_ruta               SERIAL PRIMARY KEY,
+    id_origen             INT NOT NULL,
+    id_destino            INT NOT NULL,
+    tiempo_estimado_horas NUMERIC(6,2) NOT NULL,
+
+    CONSTRAINT fk_ruta_origen
+        FOREIGN KEY (id_origen) REFERENCES ubicaciones (id_ubicacion)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_ruta_destino
+        FOREIGN KEY (id_destino) REFERENCES ubicaciones (id_ubicacion)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT uq_ruta_origen_destino UNIQUE (id_origen, id_destino),
+    CONSTRAINT ck_ruta_tiempo CHECK (tiempo_estimado_horas > 0),
+    CONSTRAINT ck_ruta_distinta CHECK (id_origen <> id_destino)
 );
 
 CREATE TABLE unidades (
@@ -158,6 +178,8 @@ CREATE TABLE usuarios (
     rol            VARCHAR(20)  NOT NULL,
     id_operador    INT          UNIQUE,
     activo         BOOLEAN      NOT NULL DEFAULT TRUE,
+    es_principal   BOOLEAN      NOT NULL DEFAULT FALSE,
+    puede_ver_reportes BOOLEAN  NOT NULL DEFAULT FALSE,
     fecha_creacion TIMESTAMP    NOT NULL DEFAULT NOW(),
 
     CONSTRAINT fk_usuario_operador

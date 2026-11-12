@@ -108,6 +108,8 @@ public class SetupController {
         admin.setUsername(username);
         admin.setPasswordHash(BCrypt.hashpw(password, BCrypt.gensalt()));
         admin.setRol(RolUsuario.ADMIN);
+        admin.setEsPrincipal(true);
+        admin.setPuedeVerReportes(true);
         return admin;
     }
 

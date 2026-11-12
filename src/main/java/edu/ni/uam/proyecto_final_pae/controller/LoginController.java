@@ -108,8 +108,10 @@ public class LoginController {
             Stage stage = (Stage) txtUsuario.getScene().getWindow();
             stage.setScene(new Scene(root, 980, 700));
             stage.setTitle(titulo);
-            stage.centerOnScreen();
+            stage.setFullScreen(false);
+            stage.setMaximized(true);
         } catch (IOException e) {
+            e.printStackTrace();
             lblMensaje.setText("No se pudo abrir la pantalla " + archivo + ".");
         }
     }

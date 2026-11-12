@@ -24,12 +24,25 @@ public class Ubicacion {
     @Column(name = "pais", nullable = false, length = 80)
     private String pais = "Nicaragua";
 
+    @Column(name = "latitud")
+    private Double latitud;
+
+    @Column(name = "longitud")
+    private Double longitud;
+
     public Ubicacion() {
     }
 
     public Ubicacion(String nombre, String departamento) {
+        this(nombre, departamento, "Nicaragua", null, null);
+    }
+
+    public Ubicacion(String nombre, String departamento, String pais, Double latitud, Double longitud) {
         this.nombre = nombre;
         this.departamento = departamento;
+        this.pais = pais;
+        this.latitud = latitud;
+        this.longitud = longitud;
     }
 
     public Integer getId() {
@@ -64,6 +77,22 @@ public class Ubicacion {
         this.pais = pais;
     }
 
+    public Double getLatitud() {
+        return latitud;
+    }
+
+    public void setLatitud(Double latitud) {
+        this.latitud = latitud;
+    }
+
+    public Double getLongitud() {
+        return longitud;
+    }
+
+    public void setLongitud(Double longitud) {
+        this.longitud = longitud;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -78,6 +107,6 @@ public class Ubicacion {
 
     @Override
     public String toString() {
-        return nombre;
+        return nombre + (pais == null || pais.isBlank() ? "" : " · " + pais);
     }
 }

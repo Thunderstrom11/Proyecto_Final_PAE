@@ -1,6 +1,8 @@
 package edu.ni.uam.proyecto_final_pae.controller;
 
+import edu.ni.uam.proyecto_final_pae.config.GeoUtil;
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
+import edu.ni.uam.proyecto_final_pae.dao.RutaDAO;
 import edu.ni.uam.proyecto_final_pae.dao.UbicacionDAO;
 import edu.ni.uam.proyecto_final_pae.dao.ViajeDAO;
 import edu.ni.uam.proyecto_final_pae.model.*;
@@ -23,9 +25,21 @@ public class ViajeController {
 
     private final ViajeDAO viajeDAO = new ViajeDAO();
     private final UbicacionDAO ubicacionDAO = new UbicacionDAO();
+    private final RutaDAO rutaDAO = new RutaDAO();
     private final JornadaService jornadaService = new JornadaService();
 
     private Timeline reloj;
+
+    @FXML private TextField txtBuscarViaje;
+    @FXML private TextField txtCobroMin;
+    @FXML private TextField txtCobroMax;
+    @FXML private TextField txtBuscarRuta;
+    @FXML private RadioButton rbOrigen;
+    @FXML private RadioButton rbDestino;
+    @FXML private Button btnLimpiarBusquedaViaje;
+
+    private List<Viaje> todos = List.of();
+    private String filtroEstado;
 
     // ------------------- pestaña Viajes
     @FXML private TableView<Viaje> tabla;
@@ -51,21 +65,10 @@ public class ViajeController {
 
     @FXML private Button btnVerTodos;
     @FXML private Button btnVerActivos;
+    @FXML private Button btnVerFinalizados;
     @FXML private Button btnFinalizar;
     @FXML private Button btnCrear;
     @FXML private Button btnLimpiar;
-    @FXML private Button btnCalcularReporte;
-
-    // ------------------- pestaña Reporte
-    @FXML private TableView<Object[]> tablaOperadores;
-    @FXML private TableColumn<Object[], String> colOpNombre;
-    @FXML private TableColumn<Object[], String> colOpViajes;
-    @FXML private TableColumn<Object[], String> colOpTotal;
-
-    @FXML private TableView<Object[]> tablaUnidades;
-    @FXML private TableColumn<Object[], String> colUniNumero;
-    @FXML private TableColumn<Object[], String> colUniViajes;
-    @FXML private TableColumn<Object[], String> colUniTotal;
 
     @FXML
     private void initialize() {
@@ -85,16 +88,6 @@ public class ViajeController {
         colCobro.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getCobroViaje().toPlainString()));
         colEstado.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getEstado().getNombre()));
 
-        // columnas reporte operadores
-        colOpNombre.setCellValueFactory(c -> new SimpleStringProperty(String.valueOf(c.getValue()[0])));
-        colOpViajes.setCellValueFactory(c -> new SimpleStringProperty(String.valueOf(c.getValue()[1])));
-        colOpTotal.setCellValueFactory(c -> new SimpleStringProperty(String.valueOf(c.getValue()[2])));
-
-        // columnas reporte unidades
-        colUniNumero.setCellValueFactory(c -> new SimpleStringProperty(String.valueOf(c.getValue()[0])));
-        colUniViajes.setCellValueFactory(c -> new SimpleStringProperty(String.valueOf(c.getValue()[1])));
-        colUniTotal.setCellValueFactory(c -> new SimpleStringProperty(String.valueOf(c.getValue()[2])));
-
         // toggle encadenamiento
         chkEncadenado.selectedProperty().addListener((o, a, b) -> {
             cmbUnidad.setDisable(b);
@@ -107,6 +100,19 @@ public class ViajeController {
                 recargarDisponibles();
             }
         });
+
+        ToggleGroup rutas = new ToggleGroup();
+        rbOrigen.setToggleGroup(rutas);
+        rbDestino.setToggleGroup(rutas);
+        rbOrigen.setSelected(true);
+
+        cmbOrigen.valueProperty().addListener((o, a, b) -> actualizarTiempo());
+        cmbDestino.valueProperty().addListener((o, a, b) -> actualizarTiempo());
+        txtBuscarViaje.textProperty().addListener((o, a, b) -> aplicarFiltros("Filtro de viajes"));
+        txtCobroMin.textProperty().addListener((o, a, b) -> aplicarFiltros("Filtro de viajes"));
+        txtCobroMax.textProperty().addListener((o, a, b) -> aplicarFiltros("Filtro de viajes"));
+        txtBuscarRuta.textProperty().addListener((o, a, b) -> aplicarFiltros("Filtro de viajes"));
+        rutas.selectedToggleProperty().addListener((o, a, b) -> aplicarFiltros("Filtro de viajes"));
 
         BooleanBinding datosViajeIncompletos = Bindings.createBooleanBinding(() -> {
             boolean encadenado = chkEncadenado.isSelected();
@@ -177,13 +183,34 @@ public class ViajeController {
         if (!sesionAdmin()) {
             return;
         }
-        mostrar(() -> viajeDAO.listar(), "Todos los viajes");
+        filtroEstado = null;
+        cargarTodos("Todos los viajes");
     }
+
     @FXML private void verActivos() {
         if (!sesionAdmin()) {
             return;
         }
-        mostrar(() -> viajeDAO.listarActivos(), "Viajes activos");
+        filtroEstado = "ACTIVO";
+        cargarTodos("Viajes activos");
+    }
+
+    @FXML private void verFinalizados() {
+        if (!sesionAdmin()) {
+            return;
+        }
+        filtroEstado = "FINALIZADO";
+        cargarTodos("Viajes finalizados");
+    }
+
+    @FXML
+    private void limpiarBusquedaViaje() {
+        txtBuscarViaje.clear();
+        txtCobroMin.clear();
+        txtCobroMax.clear();
+        txtBuscarRuta.clear();
+        rbOrigen.setSelected(true);
+        aplicarFiltros("Filtro de viajes");
     }
 
     @FXML
@@ -259,25 +286,6 @@ public class ViajeController {
         txtCobro.clear();
     }
 
-    // ------------------- acciones reporte
-
-    @FXML
-    private void calcularReporte() {
-        if (!sesionAdmin()) {
-            return;
-        }
-        try {
-            List<Object[]> ops = viajeDAO.totalFacturadoPorOperador();
-            List<Object[]> unis = viajeDAO.totalFacturadoPorUnidad();
-            tablaOperadores.setItems(FXCollections.observableArrayList(ops));
-            tablaUnidades.setItems(FXCollections.observableArrayList(unis));
-            lblEstado.setText("Reporte financiero calculado: " + ops.size()
-                    + " operador(es), " + unis.size() + " unidad(es).");
-        } catch (PersistenciaException e) {
-            error("No se pudo calcular el reporte", e);
-        }
-    }
-
     // ------------------- apoyo
 
     private void recargarDisponibles() {
@@ -304,6 +312,129 @@ public class ViajeController {
             lblEstado.setText(titulo + ": " + lista.size() + " registro(s).");
         } catch (PersistenciaException e) {
             error("No se pudo consultar los viajes", e);
+        }
+    }
+
+    private void cargarTodos(String titulo) {
+        try {
+            todos = viajeDAO.listar();
+            aplicarFiltros(titulo);
+        } catch (PersistenciaException e) {
+            todos = List.of();
+            tabla.setItems(FXCollections.observableArrayList());
+            error("No se pudo consultar los viajes", e);
+        }
+    }
+
+    private void aplicarFiltros(String titulo) {
+        if (txtBuscarViaje == null) {
+            return;
+        }
+        String busqueda = txtBuscarViaje.getText();
+        String ruta = txtBuscarRuta.getText();
+        BigDecimal cobroMin = numeroFiltro(txtCobroMin.getText());
+        BigDecimal cobroMax = numeroFiltro(txtCobroMax.getText());
+        boolean porOrigen = rbOrigen == null || rbOrigen.isSelected();
+
+        List<Viaje> visibles = todos.stream()
+                .filter(this::coincideEstado)
+                .filter(viaje -> coincideTexto(viaje, busqueda))
+                .filter(viaje -> coincideRuta(viaje, ruta, porOrigen))
+                .filter(viaje -> cobroEnRango(viaje, cobroMin, cobroMax))
+                .toList();
+
+        tabla.setItems(FXCollections.observableArrayList(visibles));
+        tabla.refresh();
+        lblEstado.setText(titulo + ": " + visibles.size() + " de " + todos.size() + " viaje(s).");
+    }
+
+    private boolean coincideEstado(Viaje viaje) {
+        if (filtroEstado == null) {
+            return true;
+        }
+        String estado = viaje.getEstado() == null ? "" : viaje.getEstado().getNombre();
+        if ("ACTIVO".equals(filtroEstado)) {
+            return "PROGRAMADO".equals(estado) || "EN_CURSO".equals(estado) || "PAUSADO".equals(estado);
+        }
+        return filtroEstado.equals(estado);
+    }
+
+    private boolean coincideTexto(Viaje viaje, String texto) {
+        if (texto == null || texto.isBlank()) {
+            return true;
+        }
+        String buscado = texto.trim().toLowerCase();
+        String unidad = viaje.getUnidad() == null ? "" : viaje.getUnidad().getNumeroUnidad();
+        String operador = viaje.getOperador() == null ? "" : viaje.getOperador().getNombre();
+        String carga = viaje.getCarga() == null ? "" : viaje.getCarga().getNumeroCarga();
+        String descripcion = viaje.getCarga() == null || viaje.getCarga().getDescripcion() == null
+                ? "" : viaje.getCarga().getDescripcion();
+        return unidad.toLowerCase().contains(buscado)
+                || operador.toLowerCase().contains(buscado)
+                || carga.toLowerCase().contains(buscado)
+                || descripcion.toLowerCase().contains(buscado);
+    }
+
+    private boolean coincideRuta(Viaje viaje, String texto, boolean porOrigen) {
+        if (texto == null || texto.isBlank()) {
+            return true;
+        }
+        Ubicacion ubicacion = porOrigen ? viaje.getOrigen() : viaje.getDestino();
+        return ubicacion != null && ubicacion.getNombre() != null
+                && ubicacion.getNombre().toLowerCase().contains(texto.trim().toLowerCase());
+    }
+
+    private boolean cobroEnRango(Viaje viaje, BigDecimal minimo, BigDecimal maximo) {
+        BigDecimal cobro = viaje.getCobroViaje();
+        if (cobro == null) {
+            return minimo == null && maximo == null;
+        }
+        if (minimo != null && cobro.compareTo(minimo) < 0) {
+            return false;
+        }
+        return maximo == null || cobro.compareTo(maximo) <= 0;
+    }
+
+    private BigDecimal numeroFiltro(String texto) {
+        if (texto == null || texto.isBlank()) {
+            return null;
+        }
+        try {
+            return new BigDecimal(texto.trim().replace(',', '.'));
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** RF de rutas: usa las horas configuradas o las estima por coordenadas. */
+    private void actualizarTiempo() {
+        Ubicacion origen = cmbOrigen.getValue();
+        Ubicacion destino = cmbDestino.getValue();
+        if (origen == null || destino == null) {
+            txtTiempo.clear();
+            txtTiempo.setPromptText("Se calcula con origen y destino");
+            return;
+        }
+        if (origen.getId() != null && origen.getId().equals(destino.getId())) {
+            txtTiempo.clear();
+            txtTiempo.setPromptText("Origen y destino deben ser distintos");
+            return;
+        }
+        try {
+            Optional<Ruta> ruta = rutaDAO.buscar(origen, destino);
+            if (ruta.isPresent() && ruta.get().getTiempoEstimadoHoras() != null) {
+                txtTiempo.setText(ruta.get().getTiempoEstimadoHoras().stripTrailingZeros().toPlainString());
+                return;
+            }
+            if (GeoUtil.tieneCoordenadas(origen) && GeoUtil.tieneCoordenadas(destino)) {
+                txtTiempo.setText(GeoUtil.horasEstimadas(origen, destino).stripTrailingZeros().toPlainString());
+                return;
+            }
+            txtTiempo.clear();
+            txtTiempo.setPromptText("Sin ruta configurada ni coordenadas");
+        } catch (PersistenciaException e) {
+            txtTiempo.clear();
+            txtTiempo.setPromptText("No se pudo calcular el tiempo");
         }
     }
 

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.URL?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="edu.ni.uam.proyecto_final_pae.controller.ReporteController"
+            prefWidth="900" prefHeight="680">
+    <stylesheets>
+        <URL value="@styles/fleetroute.css"/>
+    </stylesheets>
+    <padding>
+        <Insets top="14" right="14" bottom="14" left="14"/>
+    </padding>
+
+    <top>
+        <VBox spacing="6">
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="Reporte financiero" styleClass="page-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button text="Cerrar" styleClass="btn-ghost" onAction="#cerrar">
+                    <graphic><FontIcon iconLiteral="fas-times"/></graphic>
+                </Button>
+            </HBox>
+            <HBox spacing="8" alignment="CENTER_LEFT" styleClass="actions-bar">
+                <Button text="Actualizar reporte" styleClass="btn-primary" onAction="#calcular">
+                    <graphic><FontIcon iconLiteral="fas-chart-bar"/></graphic>
+                </Button>
+                <Label fx:id="lblTotales" style="-fx-font-weight: bold;"/>
+            </HBox>
+            <Label fx:id="lblEstado" text="Solo viajes finalizados." styleClass="status-label"/>
+            <padding><Insets bottom="10"/></padding>
+        </VBox>
+    </top>
+
+    <center>
+        <VBox spacing="10">
+            <Label text="Total facturado por operador" style="-fx-font-weight: bold;"/>
+            <TableView fx:id="tablaOperadores" prefHeight="250">
+                <columns>
+                    <TableColumn fx:id="colOpNombre" text="Operador" prefWidth="320"/>
+                    <TableColumn fx:id="colOpViajes" text="# Viajes" prefWidth="110"/>
+                    <TableColumn fx:id="colOpTotal" text="Total facturado" prefWidth="180"/>
+                </columns>
+            </TableView>
+
+            <Label text="Total facturado por unidad" style="-fx-font-weight: bold;"/>
+            <TableView fx:id="tablaUnidades" prefHeight="250">
+                <columns>
+                    <TableColumn fx:id="colUniNumero" text="Unidad" prefWidth="320"/>
+                    <TableColumn fx:id="colUniViajes" text="# Viajes" prefWidth="110"/>
+                    <TableColumn fx:id="colUniTotal" text="Total facturado" prefWidth="180"/>
+                </columns>
+            </TableView>
+        </VBox>
+    </center>
+</BorderPane>

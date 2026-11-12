@@ -55,7 +55,7 @@
                             <Label fx:id="lblManejo" text="0 h 00 min" styleClass="metric-value"/>
                         </VBox>
                         <VBox spacing="2" GridPane.columnIndex="1" GridPane.rowIndex="0">
-                            <Label text="Descanso acumulado" styleClass="metric-label"/>
+                            <Label text="Descanso restante" styleClass="metric-label"/>
                             <Label fx:id="lblDescanso" text="0 h 00 min" styleClass="metric-value"/>
                         </VBox>
                         <VBox spacing="2" GridPane.columnIndex="2" GridPane.rowIndex="0">

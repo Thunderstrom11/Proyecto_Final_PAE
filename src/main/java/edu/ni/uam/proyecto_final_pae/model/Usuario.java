@@ -31,6 +31,12 @@ public class Usuario {
     @Column(name = "activo", nullable = false)
     private Boolean activo = Boolean.TRUE;
 
+    @Column(name = "es_principal", nullable = false)
+    private Boolean esPrincipal = Boolean.FALSE;
+
+    @Column(name = "puede_ver_reportes", nullable = false)
+    private Boolean puedeVerReportes = Boolean.FALSE;
+
     @Column(name = "fecha_creacion", insertable = false, updatable = false)
     private LocalDateTime fechaCreacion;
 
@@ -83,6 +89,22 @@ public class Usuario {
 
     public void setActivo(Boolean activo) {
         this.activo = activo;
+    }
+
+    public Boolean getEsPrincipal() {
+        return esPrincipal;
+    }
+
+    public void setEsPrincipal(Boolean esPrincipal) {
+        this.esPrincipal = esPrincipal;
+    }
+
+    public Boolean getPuedeVerReportes() {
+        return puedeVerReportes;
+    }
+
+    public void setPuedeVerReportes(Boolean puedeVerReportes) {
+        this.puedeVerReportes = puedeVerReportes;
     }
 
     public LocalDateTime getFechaCreacion() {

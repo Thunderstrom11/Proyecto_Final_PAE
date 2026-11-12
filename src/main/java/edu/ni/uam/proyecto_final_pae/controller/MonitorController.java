@@ -15,8 +15,10 @@ import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
@@ -75,10 +77,18 @@ public class MonitorController {
     @FXML private TableColumn<Operador, String> colOperadorMin;
     @FXML private TableColumn<Operador, String> colOperadorEstado;
     @FXML private TextField txtFiltro;
+    @FXML private TextField txtFiltroUnidades;
+    @FXML private ComboBox<String> cmbEstadoUnidades;
+    @FXML private TextField txtFiltroOperadores;
+    @FXML private ComboBox<String> cmbEstadoOperadores;
+    @FXML private Button btnLimpiarFiltroViaje;
+    @FXML private Button btnLimpiarFiltroUnidades;
+    @FXML private Button btnLimpiarFiltroOperadores;
     @FXML private Label lblEstado;
-    @FXML private Button btnSalir;
 
     private List<Fila> todas = List.of();
+    private List<Unidad> todasUnidades = List.of();
+    private List<Operador> todosOperadores = List.of();
     private Timeline reloj;
 
     /** Fila ya calculada del monitor. */
@@ -161,8 +171,18 @@ public class MonitorController {
 
         txtFiltro.textProperty().addListener((observable, anterior, actual) -> aplicarFiltro());
 
+        cmbEstadoUnidades.getItems().setAll("Todos", "En ruta", "Disponible");
+        cmbEstadoUnidades.setValue("Todos");
+        cmbEstadoUnidades.valueProperty().addListener((o, a, b) -> aplicarFiltroUnidades());
+        txtFiltroUnidades.textProperty().addListener((o, a, b) -> aplicarFiltroUnidades());
+
+        cmbEstadoOperadores.getItems().setAll("Todos", "Descanso", "Disponible");
+        cmbEstadoOperadores.setValue("Todos");
+        cmbEstadoOperadores.valueProperty().addListener((o, a, b) -> aplicarFiltroOperadores());
+        txtFiltroOperadores.textProperty().addListener((o, a, b) -> aplicarFiltroOperadores());
+
         reloj = new Timeline(new KeyFrame(Duration.seconds(5), evento -> {
-            if (!Navegacion.vistaVisible(btnSalir)) {
+            if (!Navegacion.vistaVisible(lblEstado)) {
                 reloj.stop();
                 return;
             }
@@ -174,25 +194,23 @@ public class MonitorController {
     }
 
     @FXML
-    private void salir() {
-        Navegacion.cerrarSesion(Navegacion.stageDe(btnSalir));
+    private void limpiarFiltroViajes() {
+        txtFiltro.clear();
+    }
+
+    @FXML
+    private void limpiarFiltroUnidades() {
+        txtFiltroUnidades.clear();
+        cmbEstadoUnidades.setValue("Todos");
+    }
+
+    @FXML
+    private void limpiarFiltroOperadores() {
+        txtFiltroOperadores.clear();
+        cmbEstadoOperadores.setValue("Todos");
     }
 
     // ------------------------------------------------------------------ datos
-
-    @FXML
-    private void refrescar() {
-        if (SesionActual.getUsuario() == null) {
-            lblEstado.setText("Debe iniciar sesión como administrador.");
-            return;
-        }
-        if (!SesionActual.activa()) {
-            Navegacion.sesionExpirada(Navegacion.stageDe(lblEstado));
-            return;
-        }
-        SesionActual.tocar();
-        cargar();
-    }
 
     private void refrescarAutomatico() {
         if (SesionActual.getUsuario() == null) {
@@ -232,14 +250,16 @@ public class MonitorController {
             }
             todas = filas;
             aplicarFiltro();
-            tablaUnidades.setItems(FXCollections.observableArrayList(unidadDAO.listar()));
-            tablaUnidades.refresh();
-            tablaOperadores.setItems(FXCollections.observableArrayList(operadorDAO.listar()));
-            tablaOperadores.refresh();
+            todasUnidades = unidadDAO.listar();
+            todosOperadores = operadorDAO.listar();
+            aplicarFiltroUnidades();
+            aplicarFiltroOperadores();
             lblEstado.setText("Monitor actualizado " + LocalTime.now().format(HORA_CORTA)
                     + "  ·  " + filas.size() + " viaje(s) activo(s).");
         } catch (PersistenciaException e) {
             todas = List.of();
+            todasUnidades = List.of();
+            todosOperadores = List.of();
             tabla.setItems(FXCollections.observableArrayList());
             tablaUnidades.setItems(FXCollections.observableArrayList());
             tablaOperadores.setItems(FXCollections.observableArrayList());
@@ -252,6 +272,85 @@ public class MonitorController {
         List<Fila> visibles = todas.stream().filter(fila -> fila.coincide(filtro)).toList();
         tabla.setItems(FXCollections.observableArrayList(visibles));
         tabla.refresh();
+    }
+
+    private void aplicarFiltroUnidades() {
+        if (txtFiltroUnidades == null || cmbEstadoUnidades == null) {
+            return;
+        }
+        String texto = txtFiltroUnidades.getText();
+        String estado = cmbEstadoUnidades.getValue();
+        List<Unidad> visibles = todasUnidades.stream()
+                .filter(unidad -> coincideUnidad(unidad, texto))
+                .filter(unidad -> estadoUnidad(unidad, estado))
+                .toList();
+        ObservableList<Unidad> items = FXCollections.observableArrayList(visibles);
+        tablaUnidades.setItems(items);
+        tablaUnidades.refresh();
+    }
+
+    private void aplicarFiltroOperadores() {
+        if (txtFiltroOperadores == null || cmbEstadoOperadores == null) {
+            return;
+        }
+        String texto = txtFiltroOperadores.getText();
+        String estado = cmbEstadoOperadores.getValue();
+        List<Operador> visibles = todosOperadores.stream()
+                .filter(operador -> coincideOperador(operador, texto))
+                .filter(operador -> estadoOperador(operador, estado))
+                .toList();
+        ObservableList<Operador> items = FXCollections.observableArrayList(visibles);
+        tablaOperadores.setItems(items);
+        tablaOperadores.refresh();
+    }
+
+    private boolean coincideUnidad(Unidad unidad, String texto) {
+        if (texto == null || texto.isBlank()) {
+            return true;
+        }
+        String buscado = texto.trim().toLowerCase(Locale.ROOT);
+        String capacidad = unidad.getCapacidadToneladas() == null
+                ? "" : unidad.getCapacidadToneladas().toPlainString();
+        return contiene(unidad.getNumeroUnidad(), buscado)
+                || contiene(unidad.getPlacas(), buscado)
+                || contiene(unidad.getModelo(), buscado)
+                || capacidad.toLowerCase(Locale.ROOT).contains(buscado);
+    }
+
+    private boolean estadoUnidad(Unidad unidad, String filtro) {
+        if (filtro == null || "Todos".equals(filtro)) {
+            return true;
+        }
+        String estado = unidad.getEstado() == null ? "" : unidad.getEstado().getNombre();
+        if ("En ruta".equals(filtro)) {
+            return "EN_RUTA".equals(estado);
+        }
+        return "DISPONIBLE".equals(estado);
+    }
+
+    private boolean coincideOperador(Operador operador, String texto) {
+        if (texto == null || texto.isBlank()) {
+            return true;
+        }
+        String buscado = texto.trim().toLowerCase(Locale.ROOT);
+        return contiene(operador.getNombre(), buscado)
+                || contiene(operador.getCedula(), buscado)
+                || contiene(operador.getTelefono(), buscado);
+    }
+
+    private boolean estadoOperador(Operador operador, String filtro) {
+        if (filtro == null || "Todos".equals(filtro)) {
+            return true;
+        }
+        String estado = operador.getEstado() == null ? "" : operador.getEstado().getNombre();
+        if ("Descanso".equals(filtro)) {
+            return "DESCANSO".equals(estado);
+        }
+        return "DISPONIBLE".equals(estado);
+    }
+
+    private static boolean contiene(String valor, String buscado) {
+        return valor != null && valor.toLowerCase(Locale.ROOT).contains(buscado);
     }
 
     private static String texto(String valor) {
