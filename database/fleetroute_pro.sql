@@ -39,6 +39,7 @@ DROP TABLE IF EXISTS operadores              CASCADE;
 DROP TABLE IF EXISTS unidades                CASCADE;
 DROP TABLE IF EXISTS ubicaciones             CASCADE;
 DROP TABLE IF EXISTS clientes                CASCADE;
+DROP TABLE IF EXISTS empresa                 CASCADE;
 DROP TABLE IF EXISTS cat_tipo_evento         CASCADE;
 DROP TABLE IF EXISTS cat_estado_viaje        CASCADE;
 DROP TABLE IF EXISTS cat_estado_carga        CASCADE;
@@ -82,6 +83,18 @@ CREATE TABLE cat_tipo_evento (
 -- =====================================================================
 -- 2. MAESTROS Y ACCESO
 -- =====================================================================
+
+-- Perfil de la empresa transportista. La aplicación exige una sola fila,
+-- creada por el asistente de primera configuración; no se siembra aquí.
+CREATE TABLE empresa (
+    id_empresa          SERIAL PRIMARY KEY,
+    nombre              VARCHAR(150) NOT NULL,
+    ruc                 VARCHAR(20),
+    telefono            VARCHAR(30),
+    email               VARCHAR(120),
+    direccion           VARCHAR(200),
+    fecha_configuracion TIMESTAMP    NOT NULL DEFAULT NOW()
+);
 
 CREATE TABLE clientes (
     id_cliente     SERIAL PRIMARY KEY,
@@ -452,6 +465,7 @@ VALUES (
 -- 10. COMENTARIOS DE DOCUMENTACIÓN
 -- =====================================================================
 
+COMMENT ON TABLE  empresa          IS 'Perfil de la empresa transportista; una fila creada en el primer arranque.';
 COMMENT ON TABLE  clientes         IS 'Empresas clientes que contratan fletes (tabla de apoyo opcional).';
 COMMENT ON TABLE  ubicaciones      IS 'Catálogo maestro de puntos geográficos para origen y destino.';
 COMMENT ON TABLE  unidades         IS 'Camiones / tractocamiones de la flota.';

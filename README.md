@@ -14,7 +14,7 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 ## Información importante del entorno
 
 - **JDK:** el proyecto compila con **Java 17 o superior** (probado con JDK 21 y 25).
-- **Base de datos:** se utiliza **PostgreSQL 14+** como sistema gestor de base de datos; el esquema tiene **13 tablas**.
+- **Base de datos:** se utiliza **PostgreSQL 14+** como sistema gestor de base de datos; el esquema tiene **14 tablas**.
 - **Script de base de datos:** el repositorio incluye [`database/fleetroute_pro.sql`](database/fleetroute_pro.sql), con la creación de tablas, restricciones, triggers, índices, catálogos y datos de ejemplo.
 - **Extensión:** el script crea `pgcrypto` para generar los hashes BCrypt de los usuarios de demostración.
 - **Conexión a la base de datos:** se realiza mediante un archivo **`.env`**. Cada integrante mantiene su propio archivo `.env` en su equipo con sus credenciales locales de PostgreSQL (usuario, contraseña, puerto, etc.). Este archivo **no se sube al repositorio**.
@@ -91,6 +91,8 @@ Ambos roles inician sesión con credenciales almacenadas en la base de datos; la
 - **Monitor de flota en vivo:** tablero semaforizado con el estado de unidades, operadores y viajes activos.
 - **Control financiero:** registro y consulta de la tarifa cobrada por cada flete, por operador y por unidad.
 - **Gestión de unidades, operadores y cargas:** alta, consulta, actualización y baja.
+- **Gestión de clientes:** pestaña con todos los campos de `clientes` (empresa, contacto, teléfono, email, dirección y activo), con validaciones y bajas protegidas por integridad referencial.
+- **Asistente de primera configuración:** en el primer arranque se capturan los datos de la empresa y se crea la cuenta de administrador, sin editar archivos ni buscar en la base de datos.
 
 ### Módulo Operador (Cabina)
 
@@ -209,12 +211,13 @@ Proyecto_Final_PAE/
 
 ## Modelo de datos
 
-La base de datos `fleetroute_pro` tiene **13 tablas**: 5 catálogos, 4 maestros, 1 de acceso, 2 operativas y 1 bitácora. El esquema completo, las restricciones, los índices, los triggers y los datos de ejemplo están en [`database/fleetroute_pro.sql`](database/fleetroute_pro.sql).
+La base de datos `fleetroute_pro` tiene **14 tablas**: 5 catálogos, 4 maestros, 1 de configuración, 1 de acceso, 2 operativas y 1 bitácora. El esquema completo, las restricciones, los índices, los triggers y los datos de ejemplo están en [`database/fleetroute_pro.sql`](database/fleetroute_pro.sql).
 
 | Grupo | Tablas |
 |-------|--------|
 | Catálogos | `cat_estado_unidad`, `cat_estado_operador`, `cat_estado_carga`, `cat_estado_viaje`, `cat_tipo_evento` |
 | Maestros | `clientes`, `ubicaciones`, `unidades`, `operadores` |
+| Configuración | `empresa` |
 | Acceso | `usuarios` |
 | Operativas | `cargas`, `viajes` |
 | Bitácora | `registro_jornada` |
@@ -223,7 +226,8 @@ La base de datos `fleetroute_pro` tiene **13 tablas**: 5 catálogos, 4 maestros,
 
 | Tabla | Campos principales | Función |
 |-------|--------------------|---------|
-| `clientes` | `id_cliente`, `nombre_empresa`, `contacto`, `telefono`, `email`, `direccion`, `activo`, `fecha_registro` | Catálogo opcional de clientes para asociar cargas. |
+| `empresa` | `id_empresa`, `nombre`, `ruc`, `telefono`, `email`, `direccion`, `fecha_configuracion` | Perfil de la empresa transportista; una fila creada por el asistente de primer arranque. |
+| `clientes` | `id_cliente`, `nombre_empresa`, `contacto`, `telefono`, `email`, `direccion`, `activo`, `fecha_registro` | Catálogo de clientes para asociar cargas; se gestiona desde la pestaña Clientes. |
 | `ubicaciones` | `id_ubicacion`, `nombre`, `departamento`, `pais` | Catálogo maestro de orígenes y destinos. |
 | `unidades` | `id_unidad`, `numero_unidad`, `placas`, `modelo`, `capacidad_toneladas`, `id_estado_unidad`, `fecha_registro` | Camiones y estado operativo; capacidad opcional. |
 | `operadores` | `id_operador`, `cedula`, `nombre`, `telefono`, `horas_max_conduccion`, `horas_min_descanso`, `id_estado_operador`, `fecha_ingreso` | Choferes y reglas de descanso. |
@@ -352,6 +356,17 @@ DB_PASSWORD=tu_contrasena
 mvn clean javafx:run
 ```
 
+### 5. Primera ejecución (asistente de configuración)
+
+Si la tabla `empresa` aún no tiene datos, la aplicación abre un **asistente de configuración inicial** antes del login:
+
+1. **Datos de la empresa:** nombre (obligatorio), RUC, teléfono, correo y dirección. Se guardan en la tabla `empresa` y el nombre aparece en el login y en la pantalla de administración.
+2. **Usuario administrador:** solo si no existe ningún administrador activo. Pide usuario y contraseña (mínimo 8 caracteres, con confirmación) y la guarda con hash BCrypt. Si la base ya tiene un administrador (por ejemplo, el `admin` del script), este paso se omite.
+
+Al guardar, el asistente entrega el control al login. En ejecuciones posteriores la aplicación va directo al login.
+
+> El login pide elegir **Administrador** u **Operador** y valida que el rol elegido coincida con el de la cuenta en la base de datos. Las contraseñas nunca se muestran ni se guardan en texto plano.
+
 Para verificar únicamente la compilación:
 
 ```bash
@@ -386,7 +401,7 @@ El script inserta los catálogos y un conjunto mínimo de datos para probar el s
 | Usuario administrador | `admin` / `Admin123!` |
 | Usuario operador | `operador` / `Operador123!` |
 
-> Las contraseñas de ejemplo se almacenan con hash BCrypt. **Cámbialas antes de usar el sistema fuera del entorno académico.** Si quieres un esquema vacío, elimina la sección 9 del script, pero conserva al menos un usuario `ADMIN` (o vuelve a insertarlo) para poder iniciar sesión.
+> Las contraseñas de ejemplo se almacenan con hash BCrypt. **Cámbialas antes de usar el sistema fuera del entorno académico.** Si quieres un esquema vacío, elimina la sección 9 del script: en el primer arranque el asistente de configuración crea la cuenta de administrador.
 >
 > El script no crea viajes de prueba: crea la unidad y el operador para que el administrador registre el primer viaje desde la aplicación.
 >
@@ -421,8 +436,8 @@ DB_PASSWORD=tu_contrasena
 
 ### Administrador
 
-1. Iniciar sesión con credenciales de administrador (demo: `admin` / `Admin123!`).
-2. Registrar o actualizar unidades, operadores y cargas.
+1. En el primer arranque, completar el asistente de configuración (empresa y administrador). Luego iniciar sesión eligiendo la opción **Administrador** (demo: `admin` / `Admin123!`).
+2. Registrar o actualizar unidades, operadores, cargas y clientes.
 3. Crear un viaje asignando una unidad disponible, un operador y una carga.
 4. Pre-asignar el siguiente viaje validando que el origen coincida con el destino actual.
 5. Supervisar el monitor de flota en vivo y las alertas de fatiga/SLA.
@@ -430,12 +445,12 @@ DB_PASSWORD=tu_contrasena
 
 ### Operador
 
-1. Iniciar sesión con credenciales de operador (demo: `operador` / `Operador123!`). La cabina muestra **solo el operador vinculado a ese usuario**; no hay selector libre de operadores.
+1. Iniciar sesión eligiendo la opción **Operador** (demo: `operador` / `Operador123!`). La cabina muestra **solo el operador vinculado a ese usuario**; no hay selector libre de operadores.
 2. Presionar `INICIAR TRAYECTO` para comenzar el registro de la jornada.
 3. Registrar pausas de descanso y reanudar el manejo; el sistema acumula los tiempos y muestra cuánto descanso falta.
 4. Presionar `CONFIRMAR ENTREGA` al finalizar el viaje; el botón solo se habilita con un tramo en marcha.
 5. Si existe un viaje encadenado, se activa automáticamente en la cabina; si no, la unidad y el operador vuelven a estado **Disponible**.
-6. La sesión expira tras **15 minutos de inactividad**; también se puede cerrar con el botón **Salir**.
+6. La sesión expira tras **15 minutos de inactividad**; también se puede cerrar con el botón **Cerrar sesión**.
 
 > Si un operador no puede entrar, verifique que exista un registro en `usuarios` con `rol = 'OPERADOR'` y su `id_operador` asociado. El usuario demo `operador` está vinculado a **Operador Demo**.
 
@@ -565,7 +580,7 @@ WHERE c2.numero_carga = 'C-DEMO-2' AND c1.numero_carga = 'C-DEMO-1'
 
 - **Documento de Requerimientos — FleetRoute Pro v1.0:** objetivo general, requerimientos funcionales y no funcionales, reglas de negocio y modelo relacional.
 - **README.md:** guía de instalación, configuración y uso del sistema.
-- **`database/fleetroute_pro.sql`:** 13 tablas, catálogos, restricciones, índices, triggers y datos de ejemplo.
+- **`database/fleetroute_pro.sql`:** 14 tablas, catálogos, restricciones, índices, triggers y datos de ejemplo.
 
 ---
 

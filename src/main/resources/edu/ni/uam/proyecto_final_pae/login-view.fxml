@@ -8,7 +8,7 @@
 
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="edu.ni.uam.proyecto_final_pae.controller.LoginController"
-      alignment="CENTER" spacing="12" prefWidth="420" prefHeight="340">
+      alignment="CENTER" spacing="12" prefWidth="460" prefHeight="620">
     <stylesheets>
         <URL value="@styles/fleetroute.css"/>
     </stylesheets>
@@ -17,13 +17,23 @@
     </padding>
 
     <Label text="FleetRoute Pro" styleClass="page-title"/>
-    <Label text="Sistema de despacho de cargas" styleClass="status-label"/>
+    <Label fx:id="lblEmpresa" text="Sistema de despacho de cargas" styleClass="status-label"/>
     <Separator/>
 
-    <Label text="Usuario"/>
-    <TextField fx:id="txtUsuario" promptText="admin"/>
-    <Label text="Contraseña"/>
-    <PasswordField fx:id="txtPassword" promptText="Admin123!" onAction="#ingresar"/>
+    <Label text="Ingrese como" styleClass="field-label" maxWidth="Infinity"/>
+    <HBox spacing="10" alignment="CENTER">
+        <ToggleButton fx:id="tglAdmin" text="Administrador" styleClass="role-card" contentDisplay="TOP">
+            <graphic><FontIcon iconLiteral="fas-user-shield"/></graphic>
+        </ToggleButton>
+        <ToggleButton fx:id="tglOperador" text="Operador" styleClass="role-card" contentDisplay="TOP">
+            <graphic><FontIcon iconLiteral="fas-id-badge"/></graphic>
+        </ToggleButton>
+    </HBox>
+
+    <Label text="Usuario" maxWidth="Infinity"/>
+    <TextField fx:id="txtUsuario" promptText="su usuario"/>
+    <Label text="Contraseña" maxWidth="Infinity"/>
+    <PasswordField fx:id="txtPassword" onAction="#ingresar"/>
 
     <Button fx:id="btnIngresar" text="Ingresar" maxWidth="Infinity"
             styleClass="btn-primary" onAction="#ingresar" defaultButton="true">
@@ -32,7 +42,4 @@
         </graphic>
     </Button>
     <Label fx:id="lblMensaje" textFill="#B42318" wrapText="true"/>
-
-    <Label text="Demo: admin / Admin123! · operador / Operador123!"
-           styleClass="status-label"/>
 </VBox>

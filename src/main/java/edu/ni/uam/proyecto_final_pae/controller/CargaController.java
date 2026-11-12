@@ -36,6 +36,8 @@ public class CargaController {
     private final ClienteDAO clienteDAO = new ClienteDAO();
     private final CatalogoDAO catalogoDAO = new CatalogoDAO();
 
+    private Timeline reloj;
+
     @FXML private TableView<Carga> tabla;
     @FXML private TableColumn<Carga, String> colNumero;
     @FXML private TableColumn<Carga, String> colDescripcion;
@@ -97,7 +99,13 @@ public class CargaController {
             error("No se pudo conectar con la base de datos", e);
         }
 
-        Timeline reloj = new Timeline(new KeyFrame(javafx.util.Duration.seconds(30), evento -> verificarSesion()));
+        reloj = new Timeline(new KeyFrame(javafx.util.Duration.seconds(30), evento -> {
+            if (!Navegacion.vistaVisible(lblEstado)) {
+                reloj.stop();
+                return;
+            }
+            verificarSesion();
+        }));
         reloj.setCycleCount(Timeline.INDEFINITE);
         reloj.play();
     }
@@ -167,7 +175,8 @@ public class CargaController {
             return;
         }
         try {
-            Carga carga = construir(seleccionada);
+            Carga carga = construir(new Carga());
+            carga.setId(seleccionada.getId());
             cargaDAO.actualizar(carga);
             limpiar();
             verTodas();
@@ -308,6 +317,7 @@ public class CargaController {
         try {
             List<Carga> cargas = consulta.get();
             tabla.setItems(FXCollections.observableArrayList(cargas));
+            tabla.refresh();
             lblEstado.setText(titulo + ": " + cargas.size() + " registro(s).");
         } catch (PersistenciaException e) {
             error("No se pudo consultar las cargas", e);

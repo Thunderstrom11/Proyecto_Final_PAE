@@ -4,16 +4,16 @@ import edu.ni.uam.proyecto_final_pae.model.*;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
-import org.mindrot.jbcrypt.BCrypt;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.function.Function;
 
 /**
- * Inserta los catalogos y los datos de ejemplo cuando las tablas estan vacias.
+ * Inserta los catalogos y los maestros de ejemplo cuando las tablas estan vacias.
  * Reemplaza la seccion de datos de database/fleetroute_pro.sql para quien deja que Hibernate cree el esquema.
  * Es idempotente: solo agrega lo que falta.
+ * Los usuarios NO se siembran aqui: los crea el asistente de primera configuracion o el script SQL.
  */
 final class DatosIniciales {
 
@@ -52,9 +52,8 @@ final class DatosIniciales {
                     sesion.persist(unidad);
                 }
 
-                Operador demo = null;
                 if (total(sesion, Operador.class) == 0) {
-                    demo = new Operador();
+                    Operador demo = new Operador();
                     demo.setCedula("001-000000-0001A");
                     demo.setNombre("Operador Demo");
                     demo.setHorasMaxConduccion(new BigDecimal("8.00"));
@@ -62,17 +61,6 @@ final class DatosIniciales {
                     demo.setFechaIngreso(LocalDate.now());
                     demo.setEstado(porNombre(sesion, EstadoOperador.class, "DISPONIBLE"));
                     sesion.persist(demo);
-                }
-
-                if (total(sesion, Usuario.class) == 0) {
-                    sesion.persist(usuario("admin", "Admin123!", RolUsuario.ADMIN, null));
-                    if (demo == null) {
-                        demo = sesion.createQuery("from Operador o order by o.id", Operador.class)
-                                .setMaxResults(1).getSingleResultOrNull();
-                    }
-                    if (demo != null) {
-                        sesion.persist(usuario("operador", "Operador123!", RolUsuario.OPERADOR, demo));
-                    }
                 }
                 tx.commit();
             } catch (RuntimeException e) {
@@ -82,15 +70,6 @@ final class DatosIniciales {
                 throw e;
             }
         }
-    }
-
-    private static Usuario usuario(String nombre, String clave, RolUsuario rol, Operador operador) {
-        Usuario usuario = new Usuario();
-        usuario.setUsername(nombre);
-        usuario.setPasswordHash(BCrypt.hashpw(clave, BCrypt.gensalt()));
-        usuario.setRol(rol);
-        usuario.setOperador(operador);
-        return usuario;
     }
 
     private static <T> void asegurar(Session sesion, Class<T> clase, Function<String, T> nuevo, String... nombres) {

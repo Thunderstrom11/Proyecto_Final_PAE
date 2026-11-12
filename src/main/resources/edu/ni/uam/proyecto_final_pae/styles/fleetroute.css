@@ -277,3 +277,44 @@
 .cabina-root .text-field {
     -fx-font-size: 15px;
 }
+
+/* Login: tarjetas de selección de rol. */
+.role-card {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #C9D5E8;
+    -fx-border-width: 1;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-padding: 14 18 14 18;
+    -fx-min-width: 150;
+    -fx-min-height: 86;
+    -fx-font-weight: 600;
+    -fx-text-fill: #223A5E;
+    -fx-cursor: hand;
+    -fx-graphic-text-gap: 8;
+}
+
+.role-card .ikonli-font-icon {
+    -fx-icon-color: #223A5E;
+    -fx-icon-size: 22px;
+}
+
+.role-card:hover {
+    -fx-border-color: #C2712C;
+}
+
+.role-card:selected {
+    -fx-background-color: #223A5E;
+    -fx-border-color: #223A5E;
+    -fx-text-fill: #FFFFFF;
+}
+
+.role-card:selected .ikonli-font-icon {
+    -fx-icon-color: #FFFFFF;
+}
+
+/* Iconos dentro de títulos de sección (asistente y formularios). */
+.section-title .ikonli-font-icon {
+    -fx-icon-color: #C2712C;
+    -fx-icon-size: 16px;
+}

@@ -1,6 +1,7 @@
 package edu.ni.uam.proyecto_final_pae.controller;
 
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
+import edu.ni.uam.proyecto_final_pae.dao.EmpresaDAO;
 import edu.ni.uam.proyecto_final_pae.dao.UsuarioDAO;
 import edu.ni.uam.proyecto_final_pae.model.RolUsuario;
 import edu.ni.uam.proyecto_final_pae.model.Usuario;
@@ -14,32 +15,50 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 import java.io.IOException;
 
-/** Login con BCrypt y control de acceso por rol (RF-11). */
+/** Login con BCrypt, selección de rol y control de acceso (RF-11). */
 public class LoginController {
 
     private final UsuarioDAO usuarioDAO = new UsuarioDAO();
+    private final EmpresaDAO empresaDAO = new EmpresaDAO();
 
+    @FXML private ToggleButton tglAdmin;
+    @FXML private ToggleButton tglOperador;
     @FXML private TextField txtUsuario;
     @FXML private PasswordField txtPassword;
     @FXML private Button btnIngresar;
     @FXML private Label lblMensaje;
+    @FXML private Label lblEmpresa;
 
     @FXML
     private void initialize() {
+        ToggleGroup grupo = new ToggleGroup();
+        tglAdmin.setToggleGroup(grupo);
+        tglOperador.setToggleGroup(grupo);
+        tglAdmin.setSelected(true);
+
         btnIngresar.disableProperty().bind(Bindings.createBooleanBinding(
                 () -> txtUsuario.getText() == null || txtUsuario.getText().isBlank()
                         || txtPassword.getText() == null || txtPassword.getText().isEmpty(),
                 txtUsuario.textProperty(), txtPassword.textProperty()));
 
         try {
-            usuarioDAO.asegurarAdminDemo();
+            empresaDAO.obtener().ifPresent(empresa -> lblEmpresa.setText(empresa.getNombre()));
         } catch (PersistenciaException e) {
             lblMensaje.setText("Sin conexión a la base de datos: " + e.getMessage());
         }
+    }
+
+    /** Mensaje informativo (por ejemplo, al llegar desde el asistente de configuración). */
+    public void mostrarMensaje(String mensaje) {
+        lblMensaje.setTextFill(Color.web("#0E7490"));
+        lblMensaje.setText(mensaje);
     }
 
     @FXML
@@ -56,6 +75,13 @@ public class LoginController {
             Usuario usuario = usuarioDAO.autenticar(username, password);
             if (usuario == null) {
                 lblMensaje.setText("Usuario o contraseña incorrectos.");
+                return;
+            }
+            RolUsuario rolSeleccionado = tglOperador.isSelected() ? RolUsuario.OPERADOR : RolUsuario.ADMIN;
+            if (usuario.getRol() != rolSeleccionado) {
+                lblMensaje.setText("Ese usuario es "
+                        + (usuario.getRol() == RolUsuario.ADMIN ? "administrador" : "operador")
+                        + "; seleccione la opción correspondiente.");
                 return;
             }
             if (usuario.getRol() == RolUsuario.OPERADOR && usuario.getOperador() == null) {
@@ -82,6 +108,7 @@ public class LoginController {
             Stage stage = (Stage) txtUsuario.getScene().getWindow();
             stage.setScene(new Scene(root, 980, 700));
             stage.setTitle(titulo);
+            stage.centerOnScreen();
         } catch (IOException e) {
             lblMensaje.setText("No se pudo abrir la pantalla " + archivo + ".");
         }

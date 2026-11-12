@@ -2,9 +2,12 @@ package edu.ni.uam.proyecto_final_pae.controller;
 
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.dao.CatalogoDAO;
+import edu.ni.uam.proyecto_final_pae.dao.ClienteDAO;
+import edu.ni.uam.proyecto_final_pae.dao.EmpresaDAO;
 import edu.ni.uam.proyecto_final_pae.dao.FlotaDAO;
 import edu.ni.uam.proyecto_final_pae.dao.OperadorDAO;
 import edu.ni.uam.proyecto_final_pae.dao.UnidadDAO;
+import edu.ni.uam.proyecto_final_pae.model.Cliente;
 import edu.ni.uam.proyecto_final_pae.model.EstadoOperador;
 import edu.ni.uam.proyecto_final_pae.model.EstadoUnidad;
 import edu.ni.uam.proyecto_final_pae.model.Operador;
@@ -26,19 +29,24 @@ import javafx.stage.Stage;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-
-import java.math.BigDecimal;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-/** CRUD de unidades y operadores conectado a Hibernate (RF-01, RF-02 y login). */
+/** CRUD de unidades, operadores y clientes conectado a Hibernate (RF-01, RF-02 y login). */
 public class FlotaController {
+
+    private static final DateTimeFormatter FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     private final UnidadDAO unidadDAO = new UnidadDAO();
     private final OperadorDAO operadorDAO = new OperadorDAO();
+    private final ClienteDAO clienteDAO = new ClienteDAO();
+    private final EmpresaDAO empresaDAO = new EmpresaDAO();
     private final CatalogoDAO catalogoDAO = new CatalogoDAO();
     private final FlotaDAO flotaDAO = new FlotaDAO();
+
+    private Timeline reloj;
 
     @FXML private TableView<Unidad> tablaUnidades;
     @FXML private TableColumn<Unidad, String> colNumeroUnidad;
@@ -68,7 +76,24 @@ public class FlotaController {
     @FXML private TextField txtHorasMin;
     @FXML private ComboBox<EstadoOperador> cmbEstadoOperador;
 
+    @FXML private TableView<Cliente> tablaClientes;
+    @FXML private TableColumn<Cliente, String> colNombreCliente;
+    @FXML private TableColumn<Cliente, String> colContactoCliente;
+    @FXML private TableColumn<Cliente, String> colTelefonoCliente;
+    @FXML private TableColumn<Cliente, String> colEmailCliente;
+    @FXML private TableColumn<Cliente, String> colDireccionCliente;
+    @FXML private TableColumn<Cliente, String> colActivoCliente;
+    @FXML private TableColumn<Cliente, String> colRegistroCliente;
+
+    @FXML private TextField txtNombreCliente;
+    @FXML private TextField txtContactoCliente;
+    @FXML private TextField txtTelefonoCliente;
+    @FXML private TextField txtEmailCliente;
+    @FXML private TextField txtDireccionCliente;
+    @FXML private CheckBox chkActivoCliente;
+
     @FXML private Label lblEstado;
+    @FXML private Label lblEmpresa;
 
     @FXML private Button btnVerUnidades;
     @FXML private Button btnVerUnidadesDisponibles;
@@ -88,6 +113,13 @@ public class FlotaController {
     @FXML private Button btnActualizarOperador;
     @FXML private Button btnEliminarOperador;
     @FXML private Button btnLimpiarOperador;
+
+    @FXML private Button btnVerClientes;
+    @FXML private Button btnVerClientesActivos;
+    @FXML private Button btnGuardarCliente;
+    @FXML private Button btnActualizarCliente;
+    @FXML private Button btnEliminarCliente;
+    @FXML private Button btnLimpiarCliente;
 
     @FXML
     private void initialize() {
@@ -109,6 +141,16 @@ public class FlotaController {
         colHorasMin.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getHorasMinDescanso().toPlainString()));
         colEstadoOperador.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getEstado().getNombre()));
 
+        colNombreCliente.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getNombreEmpresa()));
+        colContactoCliente.setCellValueFactory(c -> new SimpleStringProperty(texto(c.getValue().getContacto())));
+        colTelefonoCliente.setCellValueFactory(c -> new SimpleStringProperty(texto(c.getValue().getTelefono())));
+        colEmailCliente.setCellValueFactory(c -> new SimpleStringProperty(texto(c.getValue().getEmail())));
+        colDireccionCliente.setCellValueFactory(c -> new SimpleStringProperty(texto(c.getValue().getDireccion())));
+        colActivoCliente.setCellValueFactory(c -> new SimpleStringProperty(
+                Boolean.TRUE.equals(c.getValue().getActivo()) ? "Sí" : "No"));
+        colRegistroCliente.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().getFechaRegistro() == null ? "—" : c.getValue().getFechaRegistro().format(FECHA)));
+
         tablaUnidades.getSelectionModel().selectedItemProperty().addListener((obs, anterior, actual) -> {
             if (actual != null) {
                 llenarUnidad(actual);
@@ -117,6 +159,11 @@ public class FlotaController {
         tablaOperadores.getSelectionModel().selectedItemProperty().addListener((obs, anterior, actual) -> {
             if (actual != null) {
                 llenarOperador(actual);
+            }
+        });
+        tablaClientes.getSelectionModel().selectedItemProperty().addListener((obs, anterior, actual) -> {
+            if (actual != null) {
+                llenarCliente(actual);
             }
         });
 
@@ -135,6 +182,9 @@ public class FlotaController {
 
         BooleanBinding sinUnidadSeleccionada = tablaUnidades.getSelectionModel().selectedItemProperty().isNull();
         BooleanBinding sinOperadorSeleccionado = tablaOperadores.getSelectionModel().selectedItemProperty().isNull();
+        BooleanBinding clienteIncompleto = Bindings.createBooleanBinding(
+                () -> vacio(txtNombreCliente), txtNombreCliente.textProperty());
+        BooleanBinding sinClienteSeleccionado = tablaClientes.getSelectionModel().selectedItemProperty().isNull();
 
         btnGuardarUnidad.disableProperty().bind(unidadIncompleta);
         btnActualizarUnidad.disableProperty().bind(sinUnidadSeleccionada.or(unidadIncompleta));
@@ -144,16 +194,28 @@ public class FlotaController {
         btnActualizarOperador.disableProperty().bind(sinOperadorSeleccionado.or(operadorIncompleto));
         btnEliminarOperador.disableProperty().bind(sinOperadorSeleccionado);
 
+        btnGuardarCliente.disableProperty().bind(clienteIncompleto);
+        btnActualizarCliente.disableProperty().bind(sinClienteSeleccionado.or(clienteIncompleto));
+        btnEliminarCliente.disableProperty().bind(sinClienteSeleccionado);
+
         try {
+            empresaDAO.obtener().ifPresent(empresa -> lblEmpresa.setText(empresa.getNombre()));
             cmbEstadoUnidad.setItems(FXCollections.observableArrayList(catalogoDAO.listar(EstadoUnidad.class)));
             cmbEstadoOperador.setItems(FXCollections.observableArrayList(catalogoDAO.listar(EstadoOperador.class)));
             verUnidades();
             verOperadores();
+            verClientes();
         } catch (PersistenciaException e) {
             error("No se pudo conectar con la base de datos", e);
         }
 
-        Timeline reloj = new Timeline(new KeyFrame(javafx.util.Duration.seconds(30), evento -> verificarSesion()));
+        reloj = new Timeline(new KeyFrame(javafx.util.Duration.seconds(30), evento -> {
+            if (!Navegacion.vistaVisible(lblEstado)) {
+                reloj.stop();
+                return;
+            }
+            verificarSesion();
+        }));
         reloj.setCycleCount(Timeline.INDEFINITE);
         reloj.play();
     }
@@ -227,7 +289,8 @@ public class FlotaController {
         }
         try {
             String estadoAnterior = seleccionada.getEstado().getNombre();
-            Unidad unidad = construirUnidad(seleccionada);
+            Unidad unidad = construirUnidad(new Unidad());
+            unidad.setId(seleccionada.getId());
             if (flotaDAO.unidadTieneViajeActivo(unidad.getId())
                     && !estadoAnterior.equals(unidad.getEstado().getNombre())) {
                 throw new IllegalArgumentException(
@@ -359,7 +422,8 @@ public class FlotaController {
         }
         try {
             String estadoAnterior = seleccionado.getEstado().getNombre();
-            Operador operador = construirOperador(seleccionado);
+            Operador operador = construirOperador(new Operador());
+            operador.setId(seleccionado.getId());
             if (flotaDAO.operadorTieneViajeActivo(operador.getId())
                     && !estadoAnterior.equals(operador.getEstado().getNombre())) {
                 throw new IllegalArgumentException(
@@ -446,6 +510,134 @@ public class FlotaController {
         cmbEstadoOperador.setValue(operador.getEstado());
     }
 
+    // ------------------------------------------------------------------ clientes
+
+    @FXML
+    private void verClientes() {
+        if (!sesionAdmin()) {
+            return;
+        }
+        mostrarClientes(clienteDAO::listar, "Todos los clientes");
+    }
+
+    @FXML
+    private void verClientesActivos() {
+        if (!sesionAdmin()) {
+            return;
+        }
+        mostrarClientes(clienteDAO::listarActivos, "Clientes activos (consulta HQL)");
+    }
+
+    @FXML
+    private void guardarCliente() {
+        if (!sesionAdmin()) {
+            return;
+        }
+        try {
+            Cliente cliente = construirCliente(new Cliente());
+            clienteDAO.guardar(cliente);
+            limpiarCliente();
+            verClientes();
+            lblEstado.setText("Cliente " + cliente.getNombreEmpresa() + " guardado.");
+        } catch (IllegalArgumentException e) {
+            advertencia(e.getMessage());
+        } catch (PersistenciaException e) {
+            error("No se pudo guardar el cliente (¿nombre repetido?)", e);
+        }
+    }
+
+    @FXML
+    private void actualizarCliente() {
+        if (!sesionAdmin()) {
+            return;
+        }
+        Cliente seleccionado = tablaClientes.getSelectionModel().getSelectedItem();
+        if (seleccionado == null) {
+            advertencia("Seleccione un cliente de la tabla para actualizarlo.");
+            return;
+        }
+        try {
+            Cliente cliente = construirCliente(new Cliente());
+            cliente.setId(seleccionado.getId());
+            clienteDAO.actualizar(cliente);
+            limpiarCliente();
+            verClientes();
+            lblEstado.setText("Cliente " + cliente.getNombreEmpresa() + " actualizado.");
+        } catch (IllegalArgumentException e) {
+            advertencia(e.getMessage());
+        } catch (PersistenciaException e) {
+            error("No se pudo actualizar el cliente", e);
+        }
+    }
+
+    @FXML
+    private void eliminarCliente() {
+        if (!sesionAdmin()) {
+            return;
+        }
+        Cliente seleccionado = tablaClientes.getSelectionModel().getSelectedItem();
+        if (seleccionado == null) {
+            advertencia("Seleccione un cliente de la tabla para eliminarlo.");
+            return;
+        }
+        if (!confirmar("¿Eliminar al cliente " + seleccionado.getNombreEmpresa() + "?")) {
+            return;
+        }
+        try {
+            clienteDAO.eliminar(seleccionado.getId());
+            limpiarCliente();
+            verClientes();
+            lblEstado.setText("Cliente eliminado.");
+        } catch (PersistenciaException e) {
+            error("No se pudo eliminar el cliente (puede tener cargas asociadas)", e);
+        }
+    }
+
+    @FXML
+    private void limpiarCliente() {
+        tablaClientes.getSelectionModel().clearSelection();
+        txtNombreCliente.clear();
+        txtContactoCliente.clear();
+        txtTelefonoCliente.clear();
+        txtEmailCliente.clear();
+        txtDireccionCliente.clear();
+        chkActivoCliente.setSelected(true);
+    }
+
+    private Cliente construirCliente(Cliente cliente) {
+        cliente.setNombreEmpresa(requerido(txtNombreCliente, "El nombre de la empresa", 150));
+        cliente.setContacto(opcional(txtContactoCliente, "El contacto", 120));
+        cliente.setTelefono(opcional(txtTelefonoCliente, "El teléfono", 30));
+        String email = opcional(txtEmailCliente, "El email", 120);
+        if (email != null && !email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
+            throw new IllegalArgumentException("El email no tiene un formato válido.");
+        }
+        cliente.setEmail(email);
+        cliente.setDireccion(opcional(txtDireccionCliente, "La dirección", 200));
+        cliente.setActivo(chkActivoCliente.isSelected());
+        return cliente;
+    }
+
+    private void llenarCliente(Cliente cliente) {
+        txtNombreCliente.setText(cliente.getNombreEmpresa());
+        txtContactoCliente.setText(cliente.getContacto() == null ? "" : cliente.getContacto());
+        txtTelefonoCliente.setText(cliente.getTelefono() == null ? "" : cliente.getTelefono());
+        txtEmailCliente.setText(cliente.getEmail() == null ? "" : cliente.getEmail());
+        txtDireccionCliente.setText(cliente.getDireccion() == null ? "" : cliente.getDireccion());
+        chkActivoCliente.setSelected(Boolean.TRUE.equals(cliente.getActivo()));
+    }
+
+    private void mostrarClientes(Supplier<List<Cliente>> consulta, String titulo) {
+        try {
+            List<Cliente> clientes = consulta.get();
+            tablaClientes.setItems(FXCollections.observableArrayList(clientes));
+            tablaClientes.refresh();
+            lblEstado.setText(titulo + ": " + clientes.size() + " registro(s).");
+        } catch (PersistenciaException e) {
+            error("No se pudieron consultar los clientes", e);
+        }
+    }
+
     // ------------------------------------------------------------------ apoyo
 
     @FXML
@@ -501,6 +693,18 @@ public class FlotaController {
         return campo.getText() == null || campo.getText().isBlank();
     }
 
+    private String opcional(TextField campo, String nombre, int maximo) {
+        String valor = campo.getText() == null ? "" : campo.getText().trim();
+        if (valor.length() > maximo) {
+            throw new IllegalArgumentException(nombre + " no puede pasar de " + maximo + " caracteres.");
+        }
+        return valor.isEmpty() ? null : valor;
+    }
+
+    private static String texto(String valor) {
+        return valor == null || valor.isBlank() ? "—" : valor;
+    }
+
     private BigDecimal decimal(String valor, String nombre) {
         try {
             return new BigDecimal(valor.replace(',', '.'));
@@ -520,6 +724,7 @@ public class FlotaController {
         try {
             List<Unidad> unidades = consulta.get();
             tablaUnidades.setItems(FXCollections.observableArrayList(unidades));
+            tablaUnidades.refresh();
             lblEstado.setText(titulo + ": " + unidades.size() + " registro(s).");
         } catch (PersistenciaException e) {
             error("No se pudieron consultar las unidades", e);
@@ -530,6 +735,7 @@ public class FlotaController {
         try {
             List<Operador> operadores = consulta.get();
             tablaOperadores.setItems(FXCollections.observableArrayList(operadores));
+            tablaOperadores.refresh();
             lblEstado.setText(titulo + ": " + operadores.size() + " registro(s).");
         } catch (PersistenciaException e) {
             error("No se pudieron consultar los operadores", e);
