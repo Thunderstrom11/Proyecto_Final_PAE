@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.URL?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.canvas.Canvas?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="edu.ni.uam.proyecto_final_pae.controller.AdminPanelController"
+            prefWidth="1040" prefHeight="740">
+    <stylesheets>
+        <URL value="@styles/fleetroute.css"/>
+    </stylesheets>
+    <fx:define>
+        <ToggleGroup fx:id="grupoCuentaRol"/>
+        <ToggleGroup fx:id="grupoCuentaEstado"/>
+    </fx:define>
+    <padding>
+        <Insets top="14" right="14" bottom="14" left="14"/>
+    </padding>
+
+    <top>
+        <VBox spacing="4">
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="Panel administrativo" styleClass="page-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="lblAdministrador" styleClass="status-label"/>
+            </HBox>
+            <Label fx:id="lblEstado" text="Solo el administrador principal puede modificar cuentas, ubicaciones y rutas." styleClass="status-label"/>
+            <padding><Insets bottom="10"/></padding>
+        </VBox>
+    </top>
+
+    <center>
+        <TabPane tabClosingPolicy="UNAVAILABLE">
+
+            <Tab text="Cuentas de acceso">
+                <BorderPane>
+                    <center>
+                        <VBox spacing="6">
+                            <HBox spacing="6" alignment="CENTER_LEFT">
+                                <TextField fx:id="txtBuscarCuenta" prefWidth="260" promptText="buscador">
+                                    <tooltip>
+                                        <Tooltip text="Busca por usuario o por el operador asociado."/>
+                                    </tooltip>
+                                </TextField>
+                                <Button fx:id="btnLimpiarBusquedaCuenta" styleClass="btn-ghost"
+                                        onAction="#limpiarBusquedaCuenta">
+                                    <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
+                                    <tooltip><Tooltip text="Limpiar búsqueda"/></tooltip>
+                                </Button>
+                            </HBox>
+                            <HBox spacing="6" alignment="CENTER_LEFT" styleClass="actions-bar">
+                                <Label text="Filtrar por" styleClass="field-label"/>
+                                <ToggleButton fx:id="btnCuentaTodos" text="Todos" selected="true"
+                                              toggleGroup="$grupoCuentaRol" styleClass="filter-toggle">
+                                    <graphic><FontIcon iconLiteral="fas-list"/></graphic>
+                                </ToggleButton>
+                                <ToggleButton fx:id="btnCuentaAdmins" text="Admins"
+                                              toggleGroup="$grupoCuentaRol" styleClass="filter-toggle">
+                                    <graphic><FontIcon iconLiteral="fas-user-shield"/></graphic>
+                                </ToggleButton>
+                                <ToggleButton fx:id="btnCuentaOperadores" text="Operadores"
+                                              toggleGroup="$grupoCuentaRol" styleClass="filter-toggle">
+                                    <graphic><FontIcon iconLiteral="fas-user"/></graphic>
+                                </ToggleButton>
+                                <Label text="Estado" styleClass="field-label"/>
+                                <ToggleButton fx:id="btnCuentaEstadoTodos" text="Todos" selected="true"
+                                              toggleGroup="$grupoCuentaEstado" styleClass="filter-toggle"/>
+                                <ToggleButton fx:id="btnCuentaActivos" text="Activos"
+                                              toggleGroup="$grupoCuentaEstado" styleClass="filter-toggle"/>
+                                <ToggleButton fx:id="btnCuentaInactivos" text="Inactivos"
+                                              toggleGroup="$grupoCuentaEstado" styleClass="filter-toggle"/>
+                            </HBox>
+                            <TableView fx:id="tablaCuentas" VBox.vgrow="ALWAYS">
+                                <columns>
+                                    <TableColumn fx:id="colCuentaUsuario" text="Usuario" prefWidth="120"/>
+                                    <TableColumn fx:id="colCuentaRol" text="Rol" prefWidth="100"/>
+                                    <TableColumn fx:id="colCuentaOperador" text="Operador asociado" prefWidth="150"/>
+                                    <TableColumn fx:id="colCuentaActivo" text="Activa" prefWidth="60"/>
+                                    <TableColumn fx:id="colCuentaReportes" text="Reportes" prefWidth="80"/>
+                                    <TableColumn fx:id="colCuentaPrincipal" text="Tipo" prefWidth="90"/>
+                                </columns>
+                            </TableView>
+                        </VBox>
+                    </center>
+                    <right>
+                        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                                    prefWidth="300" styleClass="form-scroll">
+                            <content>
+                                <VBox spacing="8" prefWidth="284" styleClass="form-pane">
+                                    <padding><Insets top="12" right="12" bottom="12" left="14"/></padding>
+                                    <Label text="Nombre de usuario *"/>
+                                    <TextField fx:id="txtUsername" promptText="usuario o cédula"/>
+                                    <Label text="Contraseña * (o nueva al restablecer)"/>
+                                    <PasswordField fx:id="txtPassword" promptText="Mínimo 8 caracteres"/>
+                                    <Label text="Rol *"/>
+                                    <ComboBox fx:id="cmbRol" maxWidth="Infinity"/>
+                                    <VBox fx:id="panelOperadorAsociado" spacing="6">
+                                        <Label text="Operador asociado"/>
+                                        <ComboBox fx:id="cmbOperadorCuenta" maxWidth="Infinity"/>
+                                    </VBox>
+                                    <CheckBox fx:id="chkCuentaActiva" text="Cuenta activa" selected="true"/>
+                                    <CheckBox fx:id="chkCuentaReportes" text="Puede ver reportes financieros"/>
+                                    <Separator/>
+                                    <Button fx:id="btnGuardarCuenta" text="Crear cuenta" maxWidth="Infinity"
+                                            styleClass="btn-primary" onAction="#guardarCuenta">
+                                        <graphic><FontIcon iconLiteral="fas-user-plus"/></graphic>
+                                    </Button>
+                                    <Button fx:id="btnActualizarCuenta" text="Actualizar seleccionada" maxWidth="Infinity"
+                                            styleClass="btn-secondary" onAction="#actualizarCuenta">
+                                        <graphic><FontIcon iconLiteral="fas-user-edit"/></graphic>
+                                    </Button>
+                                    <Button fx:id="btnRestablecerCuenta" text="Restablecer contraseña" maxWidth="Infinity"
+                                            styleClass="btn-secondary" onAction="#restablecerCuenta">
+                                        <graphic><FontIcon iconLiteral="fas-key"/></graphic>
+                                    </Button>
+                                    <Button text="Limpiar formulario" maxWidth="Infinity"
+                                            styleClass="btn-ghost" onAction="#limpiarCuenta">
+                                        <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
+                                    </Button>
+                                </VBox>
+                            </content>
+                        </ScrollPane>
+                    </right>
+                </BorderPane>
+            </Tab>
+
+            <Tab text="Ubicaciones">
+                <BorderPane>
+                    <center>
+                        <VBox spacing="8">
+                            <TableView fx:id="tablaUbicaciones" VBox.vgrow="ALWAYS">
+                                <columns>
+                                    <TableColumn fx:id="colUbicacionNombre" text="Ubicación" prefWidth="200"/>
+                                    <TableColumn fx:id="colUbicacionDepartamento" text="Departamento" prefWidth="160"/>
+                                    <TableColumn fx:id="colUbicacionPais" text="País" prefWidth="130"/>
+                                    <TableColumn fx:id="colUbicacionLatitud" text="Latitud" prefWidth="100"/>
+                                    <TableColumn fx:id="colUbicacionLongitud" text="Longitud" prefWidth="100"/>
+                                </columns>
+                            </TableView>
+                            <Label text="Mapa de referencia con ubicaciones registradas"
+                                   style="-fx-font-weight: bold;"/>
+                            <Canvas fx:id="mapa" width="660" height="280" onMouseClicked="#clicMapa"
+                                    styleClass="map-canvas"/>
+                        </VBox>
+                    </center>
+                    <right>
+                        <VBox spacing="8" prefWidth="300" styleClass="form-pane">
+                            <padding><Insets top="12" right="12" bottom="12" left="14"/></padding>
+                            <Label text="Nombre de la ubicación *"/>
+                            <TextField fx:id="txtNombreUbicacion" promptText="Managua"/>
+                            <Label text="Departamento *"/>
+                            <TextField fx:id="txtDepartamentoUbicacion" promptText="Managua"/>
+                            <Label text="País *"/>
+                            <ComboBox fx:id="cmbPaisUbicacion" maxWidth="Infinity"/>
+                            <Label text="Latitud (opcional)"/>
+                            <TextField fx:id="txtLatitud" promptText="12.1364"/>
+                            <Label text="Longitud (opcional)"/>
+                            <TextField fx:id="txtLongitud" promptText="-86.2514"/>
+                            <Separator/>
+                            <Button fx:id="btnGuardarUbicacion" text="Guardar ubicación" maxWidth="Infinity"
+                                    styleClass="btn-primary" onAction="#guardarUbicacion">
+                                <graphic><FontIcon iconLiteral="fas-map-marker-alt"/></graphic>
+                            </Button>
+                            <Button fx:id="btnActualizarUbicacion" text="Actualizar seleccionada" maxWidth="Infinity"
+                                    styleClass="btn-secondary" onAction="#actualizarUbicacion">
+                                <graphic><FontIcon iconLiteral="fas-edit"/></graphic>
+                            </Button>
+                            <Button fx:id="btnEliminarUbicacion" text="Eliminar seleccionada" maxWidth="Infinity"
+                                    styleClass="btn-danger" onAction="#eliminarUbicacion">
+                                <graphic><FontIcon iconLiteral="fas-trash-alt"/></graphic>
+                            </Button>
+                            <Button text="Limpiar formulario" maxWidth="Infinity"
+                                    styleClass="btn-ghost" onAction="#limpiarUbicacion">
+                                <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
+                            </Button>
+                        </VBox>
+                    </right>
+                </BorderPane>
+            </Tab>
+
+            <Tab text="Rutas y tiempos">
+                <BorderPane>
+                    <center>
+                        <VBox spacing="8">
+                            <Label text="Tiempo estimado configurado entre origen y destino"
+                                   style="-fx-font-weight: bold;"/>
+                            <TableView fx:id="tablaRutas" VBox.vgrow="ALWAYS">
+                                <columns>
+                                    <TableColumn fx:id="colRutaOrigen" text="Origen" prefWidth="220"/>
+                                    <TableColumn fx:id="colRutaDestino" text="Destino" prefWidth="220"/>
+                                    <TableColumn fx:id="colRutaHoras" text="Tiempo estimado" prefWidth="140"/>
+                                </columns>
+                            </TableView>
+                        </VBox>
+                    </center>
+                    <right>
+                        <VBox spacing="8" prefWidth="300" styleClass="form-pane">
+                            <padding><Insets top="12" right="12" bottom="12" left="14"/></padding>
+                            <Label text="Origen *"/>
+                            <ComboBox fx:id="cmbOrigenRuta" maxWidth="Infinity"/>
+                            <Label text="Destino *"/>
+                            <ComboBox fx:id="cmbDestinoRuta" maxWidth="Infinity"/>
+                            <Label text="Tiempo estimado en horas *"/>
+                            <TextField fx:id="txtHorasRuta" promptText="6.50"/>
+                            <Separator/>
+                            <Button fx:id="btnGuardarRuta" text="Guardar ruta" maxWidth="Infinity"
+                                    styleClass="btn-primary" onAction="#guardarRuta">
+                                <graphic><FontIcon iconLiteral="fas-route"/></graphic>
+                            </Button>
+                            <Button fx:id="btnActualizarRuta" text="Actualizar seleccionada" maxWidth="Infinity"
+                                    styleClass="btn-secondary" onAction="#actualizarRuta">
+                                <graphic><FontIcon iconLiteral="fas-edit"/></graphic>
+                            </Button>
+                            <Button fx:id="btnEliminarRuta" text="Eliminar seleccionada" maxWidth="Infinity"
+                                    styleClass="btn-danger" onAction="#eliminarRuta">
+                                <graphic><FontIcon iconLiteral="fas-trash-alt"/></graphic>
+                            </Button>
+                            <Button text="Limpiar formulario" maxWidth="Infinity"
+                                    styleClass="btn-ghost" onAction="#limpiarRuta">
+                                <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
+                            </Button>
+                        </VBox>
+                    </right>
+                </BorderPane>
+            </Tab>
+
+        </TabPane>
+    </center>
+</BorderPane>

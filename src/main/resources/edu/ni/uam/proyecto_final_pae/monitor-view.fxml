@@ -19,17 +19,7 @@
     <top>
         <VBox spacing="6">
             <Label text="Monitor de flota" styleClass="page-title"/>
-            <HBox spacing="10" alignment="CENTER_LEFT" styleClass="actions-bar">
-                <Button text="Actualizar" styleClass="btn-secondary" onAction="#refrescar">
-                    <graphic><FontIcon iconLiteral="fas-sync-alt"/></graphic>
-                </Button>
-                <TextField fx:id="txtFiltro" promptText="Filtrar viajes por unidad, operador o carga" prefWidth="300"/>
-                <Label fx:id="lblEstado" text="Sin datos." styleClass="status-label"/>
-                <Region HBox.hgrow="ALWAYS"/>
-                <Button fx:id="btnSalir" text="Cerrar sesión" styleClass="btn-ghost" onAction="#salir">
-                    <graphic><FontIcon iconLiteral="fas-sign-out-alt"/></graphic>
-                </Button>
-            </HBox>
+            <Label fx:id="lblEstado" text="Sin datos." styleClass="status-label"/>
             <padding>
                 <Insets bottom="10"/>
             </padding>
@@ -39,42 +29,88 @@
     <center>
         <TabPane tabClosingPolicy="UNAVAILABLE">
             <Tab text="Viajes activos">
-                <TableView fx:id="tabla">
-                    <columns>
-                        <TableColumn fx:id="colViaje" text="Viaje" prefWidth="55"/>
-                        <TableColumn fx:id="colUnidad" text="Unidad" prefWidth="75"/>
-                        <TableColumn fx:id="colOperador" text="Operador" prefWidth="110"/>
-                        <TableColumn fx:id="colCarga" text="Carga" prefWidth="75"/>
-                        <TableColumn fx:id="colRuta" text="Origen → destino" prefWidth="150"/>
-                        <TableColumn fx:id="colSla" text="Límite del cliente" prefWidth="110"/>
-                        <TableColumn fx:id="colManejo" text="Manejo" prefWidth="105"/>
-                        <TableColumn fx:id="colSemaforo" text="Semáforo" prefWidth="120"/>
-                        <TableColumn fx:id="colEstado" text="Estado" prefWidth="100"/>
-                    </columns>
-                </TableView>
+                <VBox spacing="8">
+                    <HBox spacing="6" alignment="CENTER_LEFT">
+                        <TextField fx:id="txtFiltro" prefWidth="320" promptText="buscador">
+                            <tooltip>
+                                <Tooltip text="Busca por unidad, operador, carga, ruta o estado."/>
+                            </tooltip>
+                        </TextField>
+                        <Button fx:id="btnLimpiarFiltroViaje" styleClass="btn-ghost"
+                                onAction="#limpiarFiltroViajes">
+                            <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
+                            <tooltip><Tooltip text="Limpiar búsqueda"/></tooltip>
+                        </Button>
+                    </HBox>
+                    <TableView fx:id="tabla" VBox.vgrow="ALWAYS">
+                        <columns>
+                            <TableColumn fx:id="colViaje" text="Viaje" prefWidth="55"/>
+                            <TableColumn fx:id="colUnidad" text="Unidad" prefWidth="75"/>
+                            <TableColumn fx:id="colOperador" text="Operador" prefWidth="110"/>
+                            <TableColumn fx:id="colCarga" text="Carga" prefWidth="75"/>
+                            <TableColumn fx:id="colRuta" text="Origen → destino" prefWidth="150"/>
+                            <TableColumn fx:id="colSla" text="Límite del cliente" prefWidth="110"/>
+                            <TableColumn fx:id="colManejo" text="Manejo" prefWidth="105"/>
+                            <TableColumn fx:id="colSemaforo" text="Semáforo" prefWidth="120"/>
+                            <TableColumn fx:id="colEstado" text="Estado" prefWidth="100"/>
+                        </columns>
+                    </TableView>
+                </VBox>
             </Tab>
             <Tab text="Unidades">
-                <TableView fx:id="tablaUnidades">
-                    <columns>
-                        <TableColumn fx:id="colUnidadNumero" text="Unidad" prefWidth="100"/>
-                        <TableColumn fx:id="colUnidadPlacas" text="Placas" prefWidth="110"/>
-                        <TableColumn fx:id="colUnidadModelo" text="Modelo" prefWidth="180"/>
-                        <TableColumn fx:id="colUnidadCapacidad" text="Capacidad (t)" prefWidth="110"/>
-                        <TableColumn fx:id="colUnidadEstado" text="Estado" prefWidth="120"/>
-                    </columns>
-                </TableView>
+                <VBox spacing="8">
+                    <HBox spacing="6" alignment="CENTER_LEFT">
+                        <TextField fx:id="txtFiltroUnidades" prefWidth="300" promptText="buscador">
+                            <tooltip>
+                                <Tooltip text="Busca por unidad, placas, modelo o capacidad."/>
+                            </tooltip>
+                        </TextField>
+                        <Label text="Filtrar por" styleClass="field-label"/>
+                        <ComboBox fx:id="cmbEstadoUnidades" prefWidth="140"/>
+                        <Button fx:id="btnLimpiarFiltroUnidades" styleClass="btn-ghost"
+                                onAction="#limpiarFiltroUnidades">
+                            <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
+                            <tooltip><Tooltip text="Limpiar búsqueda y filtro"/></tooltip>
+                        </Button>
+                    </HBox>
+                    <TableView fx:id="tablaUnidades" VBox.vgrow="ALWAYS">
+                        <columns>
+                            <TableColumn fx:id="colUnidadNumero" text="Unidad" prefWidth="100"/>
+                            <TableColumn fx:id="colUnidadPlacas" text="Placas" prefWidth="110"/>
+                            <TableColumn fx:id="colUnidadModelo" text="Modelo" prefWidth="180"/>
+                            <TableColumn fx:id="colUnidadCapacidad" text="Capacidad (t)" prefWidth="110"/>
+                            <TableColumn fx:id="colUnidadEstado" text="Estado" prefWidth="120"/>
+                        </columns>
+                    </TableView>
+                </VBox>
             </Tab>
             <Tab text="Operadores">
-                <TableView fx:id="tablaOperadores">
-                    <columns>
-                        <TableColumn fx:id="colOperadorNombre" text="Nombre" prefWidth="180"/>
-                        <TableColumn fx:id="colOperadorCedula" text="Cédula" prefWidth="130"/>
-                        <TableColumn fx:id="colOperadorTelefono" text="Teléfono" prefWidth="110"/>
-                        <TableColumn fx:id="colOperadorMax" text="Máx. conducción" prefWidth="120"/>
-                        <TableColumn fx:id="colOperadorMin" text="Mín. descanso" prefWidth="110"/>
-                        <TableColumn fx:id="colOperadorEstado" text="Estado" prefWidth="120"/>
-                    </columns>
-                </TableView>
+                <VBox spacing="8">
+                    <HBox spacing="6" alignment="CENTER_LEFT">
+                        <TextField fx:id="txtFiltroOperadores" prefWidth="300" promptText="buscador">
+                            <tooltip>
+                                <Tooltip text="Busca por nombre, cédula o teléfono del operador."/>
+                            </tooltip>
+                        </TextField>
+                        <Label text="Filtrar por" styleClass="field-label"/>
+                        <ComboBox fx:id="cmbEstadoOperadores" prefWidth="140"/>
+                        <Button fx:id="btnLimpiarFiltroOperadores" styleClass="btn-ghost"
+                                onAction="#limpiarFiltroOperadores">
+                            <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
+                            <tooltip><Tooltip text="Limpiar búsqueda y filtro"/></tooltip>
+                        </Button>
+                    </HBox>
+                    <TableView fx:id="tablaOperadores" VBox.vgrow="ALWAYS">
+                        <columns>
+                            <TableColumn fx:id="colOperadorNombre" text="Nombre" prefWidth="180"/>
+                            <TableColumn fx:id="colOperadorCedula" text="Cédula" prefWidth="130"/>
+                            <TableColumn fx:id="colOperadorTelefono" text="Teléfono" prefWidth="110"/>
+                            <TableColumn fx:id="colOperadorMax" text="Máx. conducción" prefWidth="120"/>
+                            <TableColumn fx:id="colOperadorMin" text="Mín. descanso" prefWidth="110"/>
+                            <TableColumn fx:id="colOperadorEstado" text="Estado" prefWidth="120"/>
+                        </columns>
+                    </TableView>
+                </VBox>
             </Tab>
         </TabPane>
     </center>
@@ -88,7 +124,6 @@
             <Label text="● A tiempo" styleClass="legend-ok"/>
             <Label text="● Descanso pendiente" styleClass="legend-warn"/>
             <Label text="● Retraso (SLA)" styleClass="legend-danger"/>
-            <Label text="Se actualiza cada 5 segundos." styleClass="status-label"/>
         </HBox>
     </bottom>
 </BorderPane>

@@ -18,53 +18,76 @@
 
     <top>
         <VBox spacing="4">
-            <Label text="Despacho de viajes y control financiero" styleClass="page-title"/>
+            <Label text="Gestión de viajes" styleClass="page-title"/>
             <Label fx:id="lblEstado" text="Listo." styleClass="status-label"/>
             <padding><Insets bottom="10"/></padding>
         </VBox>
     </top>
 
     <center>
-        <TabPane tabClosingPolicy="UNAVAILABLE">
+        <BorderPane>
+            <center>
+                <VBox spacing="8">
+                    <HBox spacing="6" alignment="CENTER_LEFT">
+                        <TextField fx:id="txtBuscarViaje" promptText="buscador" prefWidth="145">
+                            <tooltip>
+                                <Tooltip text="Busca por unidad, operador, número de carga o descripción."/>
+                            </tooltip>
+                        </TextField>
+                        <Button fx:id="btnLimpiarBusquedaViaje" styleClass="btn-ghost"
+                                onAction="#limpiarBusquedaViaje">
+                            <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
+                            <tooltip><Tooltip text="Limpiar búsqueda"/></tooltip>
+                        </Button>
+                        <TextField fx:id="txtCobroMin" promptText="Cobro mín." prefWidth="90"/>
+                        <TextField fx:id="txtCobroMax" promptText="Cobro máx." prefWidth="90"/>
+                        <TextField fx:id="txtBuscarRuta" promptText="buscador" prefWidth="120">
+                            <tooltip>
+                                <Tooltip text="Busca por el origen o el destino del viaje según el radio seleccionado."/>
+                            </tooltip>
+                        </TextField>
+                        <RadioButton fx:id="rbOrigen" text="Origen" selected="true"/>
+                        <RadioButton fx:id="rbDestino" text="Destino"/>
+                    </HBox>
+                    <HBox spacing="8" alignment="CENTER_LEFT" styleClass="actions-bar">
+                        <Label text="Filtrar por" styleClass="field-label"/>
+                        <Button fx:id="btnVerTodos" text="Todos"
+                                styleClass="btn-secondary" onAction="#verTodos">
+                            <graphic><FontIcon iconLiteral="fas-list"/></graphic>
+                        </Button>
+                        <Button fx:id="btnVerActivos" text="Activos"
+                                styleClass="btn-secondary" onAction="#verActivos">
+                            <graphic><FontIcon iconLiteral="fas-truck-moving"/></graphic>
+                        </Button>
+                        <Button fx:id="btnVerFinalizados" text="Finalizados"
+                                styleClass="btn-secondary" onAction="#verFinalizados">
+                            <graphic><FontIcon iconLiteral="fas-check-double"/></graphic>
+                        </Button>
+                        <Button fx:id="btnFinalizar" text="Finalizar entrega"
+                                styleClass="btn-success" onAction="#finalizar">
+                            <graphic><FontIcon iconLiteral="fas-check-circle"/></graphic>
+                        </Button>
+                    </HBox>
+                    <TableView fx:id="tabla" VBox.vgrow="ALWAYS">
+                        <columns>
+                            <TableColumn fx:id="colId" text="ID" prefWidth="40"/>
+                            <TableColumn fx:id="colUnidad" text="Unidad" prefWidth="75"/>
+                            <TableColumn fx:id="colOperador" text="Operador" prefWidth="110"/>
+                            <TableColumn fx:id="colCarga" text="Carga" prefWidth="75"/>
+                            <TableColumn fx:id="colOrigen" text="Origen" prefWidth="85"/>
+                            <TableColumn fx:id="colDestino" text="Destino" prefWidth="85"/>
+                            <TableColumn fx:id="colCobro" text="Cobro" prefWidth="75"/>
+                            <TableColumn fx:id="colEstado" text="Estado" prefWidth="85"/>
+                        </columns>
+                    </TableView>
+                </VBox>
+            </center>
 
-            <Tab text="Viajes">
-                <BorderPane>
-                    <center>
-                        <VBox spacing="8">
-                            <HBox spacing="8" styleClass="actions-bar">
-                                <Button fx:id="btnVerTodos" text="Ver todos"
-                                        styleClass="btn-secondary" onAction="#verTodos">
-                                    <graphic><FontIcon iconLiteral="fas-list"/></graphic>
-                                </Button>
-                                <Button fx:id="btnVerActivos" text="Ver activos"
-                                        styleClass="btn-secondary" onAction="#verActivos">
-                                    <graphic><FontIcon iconLiteral="fas-truck-moving"/></graphic>
-                                </Button>
-                                <Button fx:id="btnFinalizar" text="Finalizar entrega"
-                                        styleClass="btn-success" onAction="#finalizar">
-                                    <graphic><FontIcon iconLiteral="fas-check-circle"/></graphic>
-                                </Button>
-                            </HBox>
-                            <TableView fx:id="tabla" VBox.vgrow="ALWAYS">
-                                <columns>
-                                    <TableColumn fx:id="colId" text="ID" prefWidth="40"/>
-                                    <TableColumn fx:id="colUnidad" text="Unidad" prefWidth="75"/>
-                                    <TableColumn fx:id="colOperador" text="Operador" prefWidth="110"/>
-                                    <TableColumn fx:id="colCarga" text="Carga" prefWidth="75"/>
-                                    <TableColumn fx:id="colOrigen" text="Origen" prefWidth="85"/>
-                                    <TableColumn fx:id="colDestino" text="Destino" prefWidth="85"/>
-                                    <TableColumn fx:id="colCobro" text="Cobro" prefWidth="75"/>
-                                    <TableColumn fx:id="colEstado" text="Estado" prefWidth="85"/>
-                                </columns>
-                            </TableView>
-                        </VBox>
-                    </center>
-
-                    <right>
-                        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
-                                    prefWidth="296" styleClass="form-scroll">
-                            <content>
-                                <VBox spacing="6" prefWidth="280" styleClass="form-pane">
+            <right>
+                <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                            prefWidth="296" styleClass="form-scroll">
+                    <content>
+                        <VBox spacing="6" prefWidth="280" styleClass="form-pane">
                             <padding>
                                 <Insets top="12" right="12" bottom="12" left="14"/>
                             </padding>
@@ -88,8 +111,9 @@
                             <Label text="Destino *"/>
                             <ComboBox fx:id="cmbDestino" maxWidth="Infinity"/>
 
-                            <Label text="Tiempo estimado (horas) *"/>
-                            <TextField fx:id="txtTiempo" promptText="8.50"/>
+                            <Label text="Tiempo estimado *"/>
+                            <TextField fx:id="txtTiempo" promptText="Se calcula al elegir origen y destino"
+                                       editable="false"/>
 
                             <Label text="Cobro del viaje *"/>
                             <TextField fx:id="txtCobro" promptText="1500.00"/>
@@ -103,42 +127,10 @@
                                     styleClass="btn-ghost" onAction="#limpiar">
                                 <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
                             </Button>
-                                </VBox>
-                            </content>
-                        </ScrollPane>
-                    </right>
-                </BorderPane>
-            </Tab>
-
-            <Tab text="Reporte financiero">
-                <VBox spacing="10">
-                    <padding><Insets top="10"/></padding>
-                    <HBox spacing="8" styleClass="actions-bar">
-                        <Button fx:id="btnCalcularReporte" text="Calcular totales"
-                                styleClass="btn-primary" onAction="#calcularReporte">
-                            <graphic><FontIcon iconLiteral="fas-chart-bar"/></graphic>
-                        </Button>
-                    </HBox>
-                    <Label text="Total facturado por operador" style="-fx-font-weight: bold;"/>
-                    <TableView fx:id="tablaOperadores" prefHeight="220">
-                        <columns>
-                            <TableColumn fx:id="colOpNombre" text="Operador" prefWidth="260"/>
-                            <TableColumn fx:id="colOpViajes" text="# Viajes" prefWidth="100"/>
-                            <TableColumn fx:id="colOpTotal" text="Total facturado" prefWidth="160"/>
-                        </columns>
-                    </TableView>
-
-                    <Label text="Total facturado por unidad" style="-fx-font-weight: bold;"/>
-                    <TableView fx:id="tablaUnidades" prefHeight="220">
-                        <columns>
-                            <TableColumn fx:id="colUniNumero" text="Unidad" prefWidth="260"/>
-                            <TableColumn fx:id="colUniViajes" text="# Viajes" prefWidth="100"/>
-                            <TableColumn fx:id="colUniTotal" text="Total facturado" prefWidth="160"/>
-                        </columns>
-                    </TableView>
-                </VBox>
-            </Tab>
-
-        </TabPane>
+                        </VBox>
+                    </content>
+                </ScrollPane>
+            </right>
+        </BorderPane>
     </center>
 </BorderPane>

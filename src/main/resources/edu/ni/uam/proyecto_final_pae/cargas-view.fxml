@@ -28,7 +28,23 @@
 
     <center>
         <VBox spacing="8">
+            <FlowPane hgap="6" vgap="4" alignment="CENTER_LEFT">
+                <TextField fx:id="txtBuscarCarga" promptText="buscador" prefWidth="190" prefHeight="34">
+                    <tooltip>
+                        <Tooltip text="Busca por número de carga, descripción o cliente."/>
+                    </tooltip>
+                </TextField>
+                <DatePicker fx:id="dpFiltroDesde" promptText="Desde" prefWidth="120" prefHeight="34"/>
+                <DatePicker fx:id="dpFiltroHasta" promptText="Hasta" prefWidth="120" prefHeight="34"/>
+                <TextField fx:id="txtPesoMin" promptText="Peso mín." prefWidth="90" prefHeight="34"/>
+                <TextField fx:id="txtPesoMax" promptText="Peso máx." prefWidth="90" prefHeight="34"/>
+                <Button fx:id="btnLimpiarFiltros" styleClass="btn-ghost" onAction="#limpiarFiltros">
+                    <tooltip><Tooltip text="Limpiar filtros"/></tooltip>
+                    <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
+                </Button>
+            </FlowPane>
             <HBox spacing="8" styleClass="actions-bar">
+                <Label text="Filtrar por" styleClass="field-label"/>
                 <Button fx:id="btnVerTodas" text="Ver todas"
                         styleClass="btn-secondary" onAction="#verTodas">
                     <graphic><FontIcon iconLiteral="fas-list"/></graphic>
@@ -36,6 +52,14 @@
                 <Button fx:id="btnVerPendientes" text="Pendientes"
                         styleClass="btn-secondary" onAction="#verPendientes">
                     <graphic><FontIcon iconLiteral="fas-clock"/></graphic>
+                </Button>
+                <Button fx:id="btnEntregadas" text="Entregadas"
+                        styleClass="btn-secondary" onAction="#verEntregadas">
+                    <graphic><FontIcon iconLiteral="fas-check-circle"/></graphic>
+                </Button>
+                <Button fx:id="btnEnTransito" text="En tránsito"
+                        styleClass="btn-secondary" onAction="#verEnTransito">
+                    <graphic><FontIcon iconLiteral="fas-truck-moving"/></graphic>
                 </Button>
             </HBox>
             <TableView fx:id="tabla" VBox.vgrow="ALWAYS">

@@ -14,7 +14,7 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 ## Información importante del entorno
 
 - **JDK:** el proyecto compila con **Java 17 o superior** (probado con JDK 21 y 25).
-- **Base de datos:** se utiliza **PostgreSQL 14+** como sistema gestor de base de datos; el esquema tiene **14 tablas**.
+- **Base de datos:** se utiliza **PostgreSQL 14+** como sistema gestor de base de datos; el esquema tiene **15 tablas**.
 - **Script de base de datos:** el repositorio incluye [`database/fleetroute_pro.sql`](database/fleetroute_pro.sql), con la creación de tablas, restricciones, triggers, índices, catálogos y datos de ejemplo.
 - **Extensión:** el script crea `pgcrypto` para generar los hashes BCrypt de los usuarios de demostración.
 - **Conexión a la base de datos:** se realiza mediante un archivo **`.env`**. Cada integrante mantiene su propio archivo `.env` en su equipo con sus credenciales locales de PostgreSQL (usuario, contraseña, puerto, etc.). Este archivo **no se sube al repositorio**.
@@ -92,7 +92,10 @@ Ambos roles inician sesión con credenciales almacenadas en la base de datos; la
 - **Control financiero:** registro y consulta de la tarifa cobrada por cada flete, por operador y por unidad.
 - **Gestión de unidades, operadores y cargas:** alta, consulta, actualización y baja.
 - **Gestión de clientes:** pestaña con todos los campos de `clientes` (empresa, contacto, teléfono, email, dirección y activo), con validaciones y bajas protegidas por integridad referencial.
+- **Panel administrativo:** cuentas de administradores y operadores, permisos de reportes, restablecimiento de contraseñas, catálogo mundial de países, ubicaciones editables con imagen de referencia y rutas con tiempo estimado.
 - **Asistente de primera configuración:** en el primer arranque se capturan los datos de la empresa y se crea la cuenta de administrador, sin editar archivos ni buscar en la base de datos.
+
+> La pestaña Ubicaciones incluye una imagen de referencia de Centroamérica basada en Natural Earth, con los puntos de las ubicaciones registradas. Al hacer clic sobre la imagen se llenan las coordenadas del formulario.
 
 ### Módulo Operador (Cabina)
 
@@ -152,7 +155,7 @@ Además:
 - Solo se asignan unidades y operadores en estado **Disponible**.
 - Al crear un viaje, la unidad y el operador pasan automáticamente a estado **En Ruta**.
 - La fecha límite del cliente no puede ser anterior a la fecha actual; se valida con el trigger `trg_carga_fecha_limite`.
-- La alerta de descanso se activa al superar el **80 %** de las horas máximas de conducción; esta regla y el bloqueo de reanudación se implementan en la capa de servicios.
+- La alerta de descanso se activa al superar el **80 %** de las horas máximas de conducción; al llegar al **100 %** la cabina registra una pausa automática y empieza a acumular descanso. Una pausa manual puede reanudarse sin esperar el total de horas.
 - La alerta de SLA se activa cuando la proyección de llegada supera la fecha límite del cliente.
 
 ### Restricciones aplicadas en PostgreSQL
@@ -163,7 +166,7 @@ Además:
 - `viajes.origen` y `viajes.destino` deben ser distintos y referencian `ubicaciones`.
 - `viajes.fecha_fin` requiere `fecha_inicio`; `id_viaje_previo` no puede apuntar al mismo viaje.
 - `registro_jornada` tiene `UNIQUE (id_viaje, num_evento)` y el trigger `trg_rj_num_evento` asigna el consecutivo.
-- `usuarios` solo admite roles `ADMIN` u `OPERADOR`; un operador debe tener `id_operador` y su contraseña se guarda con hash BCrypt.
+- `usuarios` solo admite roles `ADMIN` u `OPERADOR`; un operador debe tener `id_operador` y su contraseña se guarda con hash BCrypt. La contraseña no se muestra en la interfaz; el administrador principal solo puede restablecerla.
 - La asignación de unidad y operador se valida por estado en los servicios de despacho; no hay una tabla de autorización previa.
 
 ---
@@ -186,7 +189,8 @@ El código sigue una arquitectura en capas con el patrón **DAO**, separando la 
 ```text
 Proyecto_Final_PAE/
 ├── database/
-│   └── fleetroute_pro.sql      # Esquema, catálogos, triggers y datos de ejemplo
+│   ├── fleetroute_pro.sql      # Esquema, catálogos, triggers y datos de ejemplo
+│   └── migracion_panel_admin.sql  # Columnas y tabla nuevas para bases ya existentes
 ├── src/
 │   ├── main/
 │   │   ├── java/edu/ni/uam/proyecto_final_pae/
@@ -211,7 +215,7 @@ Proyecto_Final_PAE/
 
 ## Modelo de datos
 
-La base de datos `fleetroute_pro` tiene **14 tablas**: 5 catálogos, 4 maestros, 1 de configuración, 1 de acceso, 2 operativas y 1 bitácora. El esquema completo, las restricciones, los índices, los triggers y los datos de ejemplo están en [`database/fleetroute_pro.sql`](database/fleetroute_pro.sql).
+La base de datos `fleetroute_pro` tiene **15 tablas**: 5 catálogos, 4 maestros, 1 de configuración, 1 de acceso, 3 operativas y 1 bitácora. El esquema completo, las restricciones, los índices, los triggers y los datos de ejemplo están en [`database/fleetroute_pro.sql`](database/fleetroute_pro.sql).
 
 | Grupo | Tablas |
 |-------|--------|
@@ -219,7 +223,7 @@ La base de datos `fleetroute_pro` tiene **14 tablas**: 5 catálogos, 4 maestros,
 | Maestros | `clientes`, `ubicaciones`, `unidades`, `operadores` |
 | Configuración | `empresa` |
 | Acceso | `usuarios` |
-| Operativas | `cargas`, `viajes` |
+| Operativas | `cargas`, `viajes`, `rutas` |
 | Bitácora | `registro_jornada` |
 
 ### Tablas principales
@@ -228,12 +232,13 @@ La base de datos `fleetroute_pro` tiene **14 tablas**: 5 catálogos, 4 maestros,
 |-------|--------------------|---------|
 | `empresa` | `id_empresa`, `nombre`, `ruc`, `telefono`, `email`, `direccion`, `fecha_configuracion` | Perfil de la empresa transportista; una fila creada por el asistente de primer arranque. |
 | `clientes` | `id_cliente`, `nombre_empresa`, `contacto`, `telefono`, `email`, `direccion`, `activo`, `fecha_registro` | Catálogo de clientes para asociar cargas; se gestiona desde la pestaña Clientes. |
-| `ubicaciones` | `id_ubicacion`, `nombre`, `departamento`, `pais` | Catálogo maestro de orígenes y destinos. |
+| `ubicaciones` | `id_ubicacion`, `nombre`, `departamento`, `pais`, `latitud`, `longitud` | Catálogo maestro de orígenes y destinos; las coordenadas permiten estimar el tiempo con la fórmula de Haversine. |
 | `unidades` | `id_unidad`, `numero_unidad`, `placas`, `modelo`, `capacidad_toneladas`, `id_estado_unidad`, `fecha_registro` | Camiones y estado operativo; capacidad opcional. |
 | `operadores` | `id_operador`, `cedula`, `nombre`, `telefono`, `horas_max_conduccion`, `horas_min_descanso`, `id_estado_operador`, `fecha_ingreso` | Choferes y reglas de descanso. |
-| `usuarios` | `id_usuario`, `username`, `password_hash`, `rol`, `id_operador`, `activo`, `fecha_creacion` | Acceso al sistema con rol `ADMIN` u `OPERADOR`. |
+| `usuarios` | `id_usuario`, `username`, `password_hash`, `rol`, `id_operador`, `activo`, `es_principal`, `puede_ver_reportes`, `fecha_creacion` | Acceso al sistema con rol `ADMIN` u `OPERADOR`; el administrador principal gestiona cuentas, permisos y contraseñas. |
 | `cargas` | `id_carga`, `numero_carga`, `descripcion`, `peso_toneladas`, `id_cliente`, `fecha_limite_cliente`, `id_estado_carga`, `fecha_creacion` | Envíos y SLA con el cliente. |
 | `viajes` | `id_viaje`, `id_unidad`, `id_operador`, `id_carga`, `origen`, `destino`, `id_viaje_previo`, `tiempo_estimado`, `cobro_viaje`, `fecha_inicio`, `fecha_fin`, `id_estado_viaje`, `fecha_creacion` | Ruta, cobro y encadenamiento. |
+| `rutas` | `id_ruta`, `id_origen`, `id_destino`, `tiempo_estimado_horas` | Tiempo configurado entre dos ubicaciones; se usa al crear viajes y es editable desde el panel administrativo. |
 | `registro_jornada` | `id_registro`, `id_viaje`, `num_evento`, `id_tipo_evento`, `fecha_hora`, `observacion` | Bitácora de eventos de la jornada. |
 
 ### Catálogos de estado
@@ -258,6 +263,7 @@ La base de datos `fleetroute_pro` tiene **14 tablas**: 5 catálogos, 4 maestros,
 - `viajes.id_carga` → `cargas.id_carga`.
 - `viajes.origen` y `viajes.destino` → `ubicaciones.id_ubicacion`.
 - `viajes.id_viaje_previo` → `viajes.id_viaje` (auto-referencia para el encadenamiento).
+- `rutas.id_origen` y `rutas.id_destino` → `ubicaciones.id_ubicacion` (par único origen/destino).
 - `registro_jornada.id_viaje` → `viajes.id_viaje`.
 - `registro_jornada.id_tipo_evento` → `cat_tipo_evento.id_tipo_evento`.
 - `usuarios.id_operador` → `operadores.id_operador` (único y obligatorio para el rol `OPERADOR`).
@@ -319,6 +325,8 @@ psql -U postgres -d fleetroute_pro -v ON_ERROR_STOP=1 -f database/fleetroute_pro
 
 1. Crear una base de datos llamada `fleetroute_pro`.
 2. Abrir la base de datos y ejecutar el contenido de `database/fleetroute_pro.sql` desde el Query Tool.
+
+**Si la base ya existía antes del panel administrativo**, no ejecutes el script completo (borra las tablas). Ejecuta `database/migracion_panel_admin.sql`, que agrega las columnas `es_principal`, `puede_ver_reportes`, las coordenadas de `ubicaciones` y la tabla `rutas`.
 
 > El script no crea la base de datos; solo el esquema y los datos. En Windows, si `psql` no se reconoce, agrega la carpeta `bin` de PostgreSQL al `PATH` o ejecuta los comandos desde la ruta de instalación.
 >
@@ -399,7 +407,7 @@ El script inserta los catálogos y un conjunto mínimo de datos para probar el s
 | Unidad | `U-001` (`M 000001`), estado `DISPONIBLE` |
 | Operador | `Operador Demo`, cédula `001-000000-0001A`, estado `DISPONIBLE` |
 | Usuario administrador | `admin` / `Admin123!` |
-| Usuario operador | `operador` / `Operador123!` |
+| Usuario operador | `operador` / `operador123!` |
 
 > Las contraseñas de ejemplo se almacenan con hash BCrypt. **Cámbialas antes de usar el sistema fuera del entorno académico.** Si quieres un esquema vacío, elimina la sección 9 del script: en el primer arranque el asistente de configuración crea la cuenta de administrador.
 >
@@ -445,7 +453,7 @@ DB_PASSWORD=tu_contrasena
 
 ### Operador
 
-1. Iniciar sesión eligiendo la opción **Operador** (demo: `operador` / `Operador123!`). La cabina muestra **solo el operador vinculado a ese usuario**; no hay selector libre de operadores.
+1. Iniciar sesión eligiendo la opción **Operador** (demo: `operador` / `operador123!`). La cabina muestra **solo el operador vinculado a ese usuario**; no hay selector libre de operadores.
 2. Presionar `INICIAR TRAYECTO` para comenzar el registro de la jornada.
 3. Registrar pausas de descanso y reanudar el manejo; el sistema acumula los tiempos y muestra cuánto descanso falta.
 4. Presionar `CONFIRMAR ENTREGA` al finalizar el viaje; el botón solo se habilita con un tramo en marcha.
@@ -580,7 +588,8 @@ WHERE c2.numero_carga = 'C-DEMO-2' AND c1.numero_carga = 'C-DEMO-1'
 
 - **Documento de Requerimientos — FleetRoute Pro v1.0:** objetivo general, requerimientos funcionales y no funcionales, reglas de negocio y modelo relacional.
 - **README.md:** guía de instalación, configuración y uso del sistema.
-- **`database/fleetroute_pro.sql`:** 14 tablas, catálogos, restricciones, índices, triggers y datos de ejemplo.
+- **`database/fleetroute_pro.sql`:** 15 tablas, catálogos, restricciones, índices, triggers y datos de ejemplo.
+- **`database/migracion_panel_admin.sql`:** migración incremental para bases creadas antes del panel administrativo.
 
 ---
 

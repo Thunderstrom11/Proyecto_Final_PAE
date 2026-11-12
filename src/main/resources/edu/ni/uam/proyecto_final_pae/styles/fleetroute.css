@@ -318,3 +318,60 @@
     -fx-icon-color: #C2712C;
     -fx-icon-size: 16px;
 }
+
+/* Botones de icono de la barra superior (panel administrativo y reportes). */
+.icon-button {
+    -fx-background-color: transparent;
+    -fx-background-radius: 20;
+    -fx-min-width: 38;
+    -fx-min-height: 38;
+    -fx-padding: 8;
+    -fx-cursor: hand;
+}
+
+.icon-button:hover {
+    -fx-background-color: #E8EEF6;
+}
+
+.icon-button .ikonli-font-icon {
+    -fx-icon-color: #223A5E;
+    -fx-icon-size: 18px;
+}
+
+/* Mapa de ubicaciones del panel administrativo. */
+.map-canvas {
+    -fx-effect: dropshadow(gaussian, rgba(34, 58, 94, 0.18), 8, 0, 0, 2);
+}
+
+/* Botones de filtro (ToggleButton) con estado activo azul. */
+.filter-toggle {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #C9D5E8;
+    -fx-border-width: 1;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-padding: 6 10 6 10;
+    -fx-font-weight: 600;
+    -fx-text-fill: #223A5E;
+    -fx-cursor: hand;
+    -fx-graphic-text-gap: 6;
+}
+
+.filter-toggle:hover {
+    -fx-background-color: #E8EEF6;
+}
+
+.filter-toggle:selected {
+    -fx-background-color: #223A5E;
+    -fx-border-color: #223A5E;
+    -fx-text-fill: #FFFFFF;
+}
+
+.filter-toggle .ikonli-font-icon {
+    -fx-icon-color: #223A5E;
+    -fx-icon-size: 13px;
+}
+
+.filter-toggle:selected .ikonli-font-icon {
+    -fx-icon-color: #FFFFFF;
+}

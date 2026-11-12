@@ -21,7 +21,7 @@ import java.util.Optional;
  * <ul>
  *   <li>RF-06: la cabina solo permite iniciar un tramo si no hay otro abierto y confirmar la
  *       entrega si el viaje esta en curso.</li>
- *   <li>RF-07: no se puede REANUDAR hasta acumular el descanso minimo del operador.</li>
+ *   <li>RF-07: el descanso se acumula; una pausa puede reanudarse sin esperar el total.</li>
  *   <li>RF-08: se avisa cuando el manejo acumulado llega al 80 % del maximo permitido.</li>
  * </ul>
  *
@@ -222,8 +222,6 @@ public class JornadaService {
         };
 
         BigDecimal maximo = viaje.horasMaxConduccion() == null ? BigDecimal.ZERO : viaje.horasMaxConduccion();
-        BigDecimal minimoDescanso = viaje.horasMinDescanso() == null ? BigDecimal.ZERO : viaje.horasMinDescanso();
-        Duration minimo = Duration.ofMinutes(Math.max(0, Math.round(minimoDescanso.doubleValue() * 60)));
 
         // Proyeccion de llegada: las horas de manejo que faltan se suman al momento actual.
         double horasManejo = manejo.toMinutes() / 60.0;
@@ -251,7 +249,9 @@ public class JornadaService {
                             + ", limite del cliente " + HORA.format(viaje.fechaLimite()) + ".";
         }
 
-        boolean puedeReanudar = paso == Paso.EN_PAUSA && descanso.compareTo(minimo) >= 0;
+        // El descanso se acumula libremente: se puede reanudar sin esperar
+        // a completar todas las horas de descanso de una sola vez.
+        boolean puedeReanudar = paso == Paso.EN_PAUSA;
         return new Resumen(viaje, manejo, descanso, descansoEnPausa, paso, semaforo, mensaje, puedeReanudar);
     }
 
@@ -287,7 +287,7 @@ public class JornadaService {
             }
             if (actual == Paso.EN_PAUSA) {
                 throw new PersistenciaException(
-                        "El viaje esta en pausa: use REANUDAR y cumpla el descanso minimo antes de continuar.", null);
+                        "El viaje esta en pausa: use REANUDAR para continuar.", null);
             }
             if (actual == Paso.FINALIZADO) {
                 throw new PersistenciaException("El viaje ya fue entregado; no se puede iniciar otro tramo.", null);
@@ -324,7 +324,22 @@ public class JornadaService {
         });
     }
 
-    /** RF-07: solo reanuda si el descanso acumulado alcanza el minimo del operador. */
+    /** RF-07: al completar las horas de la jornada, el descanso empieza a contar automaticamente. */
+    public Resumen pausarPorFinJornada(int idViaje) {
+        return Transaccion.ejecutar(sesion -> {
+            FlotaDAO.FilaViaje viaje = datosViaje(sesion, idViaje);
+            if (!"EN_CURSO".equals(viaje.estado()) || paso(sesion, idViaje) != Paso.EN_MARCHA) {
+                return calcularActual(sesion, idViaje);
+            }
+            registroDAO.registrar(sesion, idViaje, PAUSA_DESCANSO, LocalDateTime.now(ZONA),
+                    "Pausa automatica: jornada maxima de conduccion completada");
+            flotaDAO.cambiarEstadoViaje(sesion, idViaje, "PAUSADO");
+            flotaDAO.cambiarEstadoOperador(sesion, viaje.idOperador(), "DESCANSO");
+            return calcularActual(sesion, idViaje);
+        });
+    }
+
+    /** RF-07: el descanso se acumula, pero una pausa puede reanudarse sin esperar el total. */
     public Resumen reanudar(int idViaje) {
         return Transaccion.ejecutar(sesion -> {
             FlotaDAO.FilaViaje viaje = datosViaje(sesion, idViaje);
@@ -334,13 +349,6 @@ public class JornadaService {
             }
             if (paso(sesion, idViaje) != Paso.EN_PAUSA) {
                 throw new PersistenciaException("Debe registrar una pausa (PAUSA_DESCANSO) antes de reanudar.", null);
-            }
-            Resumen actual = calcular(viaje, registroDAO.listarPorViaje(sesion, idViaje), LocalDateTime.now(ZONA));
-            if (!actual.puedeReanudar()) {
-                BigDecimal minimo = actual.viaje().horasMinDescanso();
-                throw new PersistenciaException("Descanso insuficiente (RF-07): lleva " + actual.descansoTexto()
-                        + " acumuladas, faltan " + actual.descansoRestanteTexto() + " y el minimo del operador es "
-                        + (minimo == null ? "0" : minimo.stripTrailingZeros().toPlainString()) + " h.", null);
             }
             registroDAO.registrar(sesion, idViaje, REANUDAR, LocalDateTime.now(ZONA), "Reanudar el manejo");
             flotaDAO.cambiarEstadoViaje(sesion, idViaje, "EN_CURSO", false);

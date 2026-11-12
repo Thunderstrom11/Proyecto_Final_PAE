@@ -26,4 +26,17 @@ public class OperadorDAO extends GenericDAO<Operador, Integer> {
                         + "where e.nombre = :estado order by o.nombre",
                 Operador.class).setParameter("estado", "DISPONIBLE").getResultList());
     }
+
+    /** La cédula es única: se valida antes de guardar para dar un mensaje claro. */
+    public boolean existeCedula(String cedula, Integer idExcluir) {
+        return Transaccion.consultar(sesion -> {
+            String hql = "select count(o) from Operador o where lower(o.cedula) = lower(:cedula)"
+                    + (idExcluir == null ? "" : " and o.id <> :id");
+            var query = sesion.createQuery(hql, Long.class).setParameter("cedula", cedula);
+            if (idExcluir != null) {
+                query.setParameter("id", idExcluir);
+            }
+            return query.getSingleResult() > 0;
+        });
+    }
 }

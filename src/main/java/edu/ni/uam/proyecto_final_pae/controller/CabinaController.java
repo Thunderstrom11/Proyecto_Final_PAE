@@ -147,8 +147,16 @@ public class CabinaController {
             List<RegistroJornada> eventos = servicio.eventos(idViaje);
             JornadaService.Resumen resumen = JornadaService.calcular(
                     viaje.get(), eventos, LocalDateTime.now(JornadaService.ZONA));
+            boolean finJornada = resumen.paso() == JornadaService.Paso.EN_MARCHA
+                    && resumen.porcentajeManejo() >= 100;
+            if (finJornada) {
+                resumen = servicio.pausarPorFinJornada(idViaje);
+                eventos = servicio.eventos(idViaje);
+                lblEstado.setText("Jornada máxima completada: pausa y descanso automáticos.");
+            } else {
+                lblEstado.setText("Actualizado " + LocalTime.now().format(HORA_CORTA) + ".");
+            }
             pintar(resumen, eventos);
-            lblEstado.setText("Actualizado " + LocalTime.now().format(HORA_CORTA) + ".");
         } catch (PersistenciaException e) {
             idViaje = null;
             mostrarVacio("Error de persistencia: " + e.getMessage());
@@ -225,7 +233,7 @@ public class CabinaController {
                 + "        Máximo permitido: " + horas(viaje.horasMaxConduccion()));
 
         lblManejo.setText(resumen.manejoTexto() + "  (" + resumen.porcentajeManejo() + " %)");
-        lblDescanso.setText(resumen.descansoTexto());
+        lblDescanso.setText(resumen.descansoRestanteTexto());
         lblPaso.setText(resumen.paso().getEtiqueta());
 
         lblSemaforo.setText(resumen.semaforo().getEtiqueta());
@@ -234,11 +242,12 @@ public class CabinaController {
                 + resumen.semaforo().getColor() + ";");
         lblMensaje.setText(resumen.mensaje());
         if (resumen.paso() == JornadaService.Paso.EN_PAUSA) {
-            if (resumen.puedeReanudar()) {
-                lblMensaje.setText("Descanso mínimo cumplido. Puede reanudar el manejo.");
+            if (resumen.porcentajeManejo() >= 100) {
+                lblMensaje.setText("Jornada máxima completada: pausa automática. Descanso restante "
+                        + resumen.descansoRestanteTexto() + "; se sigue contando mientras la pausa esté activa.");
             } else {
-                lblMensaje.setText("Descanso insuficiente: faltan " + resumen.descansoRestanteTexto()
-                        + " (mínimo " + resumen.descansoMinimoTexto() + ") para reanudar.");
+                lblMensaje.setText("Pausa activa: descanso restante " + resumen.descansoRestanteTexto()
+                        + ". Puede reanudar cuando lo necesite; el descanso se sigue contando.");
             }
         }
         mostrarSiguiente(viaje.idViaje());
