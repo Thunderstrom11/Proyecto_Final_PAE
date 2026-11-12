@@ -407,7 +407,7 @@ El script inserta los catálogos y un conjunto mínimo de datos para probar el s
 | Unidad | `U-001` (`M 000001`), estado `DISPONIBLE` |
 | Operador | `Operador Demo`, cédula `001-000000-0001A`, estado `DISPONIBLE` |
 | Usuario administrador | `admin` / `Admin123!` |
-| Usuario operador | `operador` / `operador123!` |
+| Usuario operador | `operador` / `Operador123!` |
 
 > Las contraseñas de ejemplo se almacenan con hash BCrypt. **Cámbialas antes de usar el sistema fuera del entorno académico.** Si quieres un esquema vacío, elimina la sección 9 del script: en el primer arranque el asistente de configuración crea la cuenta de administrador.
 >
@@ -453,7 +453,7 @@ DB_PASSWORD=tu_contrasena
 
 ### Operador
 
-1. Iniciar sesión eligiendo la opción **Operador** (demo: `operador` / `operador123!`). La cabina muestra **solo el operador vinculado a ese usuario**; no hay selector libre de operadores.
+1. Iniciar sesión eligiendo la opción **Operador** (demo: `operador` / `Operador123!`). La cabina muestra **solo el operador vinculado a ese usuario**; no hay selector libre de operadores.
 2. Presionar `INICIAR TRAYECTO` para comenzar el registro de la jornada.
 3. Registrar pausas de descanso y reanudar el manejo; el sistema acumula los tiempos y muestra cuánto descanso falta.
 4. Presionar `CONFIRMAR ENTREGA` al finalizar el viaje; el botón solo se habilita con un tramo en marcha.

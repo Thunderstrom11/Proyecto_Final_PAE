@@ -470,9 +470,10 @@ VALUES (
 
 -- Usuarios de demostración. Cambia estas contraseñas en producción.
 -- El hash se genera con BCrypt (pgcrypto); la aplicación debe verificar
--- con un algoritmo BCrypt compatible.
-INSERT INTO usuarios (username, password_hash, rol)
-VALUES ('admin', crypt('Admin123!', gen_salt('bf', 10)), 'ADMIN');
+-- con un algoritmo BCrypt compatible. El primer administrador es el principal:
+-- solo él puede gestionar cuentas y permisos en el panel administrativo.
+INSERT INTO usuarios (username, password_hash, rol, es_principal, puede_ver_reportes)
+VALUES ('admin', crypt('Admin123!', gen_salt('bf', 10)), 'ADMIN', TRUE, TRUE);
 
 INSERT INTO usuarios (username, password_hash, rol, id_operador)
 VALUES (

@@ -76,6 +76,7 @@ final class DatosIniciales {
                     demo.setEstado(porNombre(sesion, EstadoOperador.class, "DISPONIBLE"));
                     sesion.persist(demo);
                 }
+                asegurarAdminPrincipal(sesion);
                 tx.commit();
             } catch (RuntimeException e) {
                 if (tx.isActive()) {
@@ -121,6 +122,31 @@ final class DatosIniciales {
                     .setParameter("d", departamento)
                     .executeUpdate();
         }
+    }
+
+    /**
+     * Garantiza que exista un administrador principal: las bases creadas antes del panel
+     * administrativo (o con el script viejo) no tienen ninguno y nadie podria gestionar cuentas.
+     * Promueve al administrador activo mas antiguo.
+     */
+    private static void asegurarAdminPrincipal(Session sesion) {
+        Long principales = sesion.createQuery(
+                        "select count(u) from Usuario u where u.esPrincipal = true", Long.class)
+                .getSingleResult();
+        if (principales > 0) {
+            return;
+        }
+        Integer id = sesion.createQuery(
+                        "select min(u.id) from Usuario u where u.rol = :rol and u.activo = true", Integer.class)
+                .setParameter("rol", RolUsuario.ADMIN)
+                .getSingleResult();
+        if (id == null) {
+            return;
+        }
+        sesion.createMutationQuery(
+                        "update Usuario u set u.esPrincipal = true, u.puedeVerReportes = true where u.id = :id")
+                .setParameter("id", id)
+                .executeUpdate();
     }
 
     private static long total(Session sesion, Class<?> clase) {
