@@ -87,7 +87,7 @@ public class UsuarioDAO extends GenericDAO<Usuario, Integer> {
         if (existeUsername(operador.getCedula())) {
             throw new IllegalStateException("Ya existe una cuenta con el usuario " + operador.getCedula() + ".");
         }
-        String temporal = "operador123!";
+        String temporal = passwordTemporal();
         Usuario usuario = new Usuario();
         usuario.setUsername(operador.getCedula());
         usuario.setPasswordHash(BCrypt.hashpw(temporal, BCrypt.gensalt()));
@@ -98,6 +98,31 @@ public class UsuarioDAO extends GenericDAO<Usuario, Integer> {
         usuario.setPuedeVerReportes(false);
         guardar(usuario);
         return temporal;
+    }
+
+    /** Contraseña temporal aleatoria: una por cuenta, se muestra una sola vez al crearla. */
+    private static String passwordTemporal() {
+        String mayusculas = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        String minusculas = "abcdefghijkmnopqrstuvwxyz";
+        String digitos = "23456789";
+        String simbolos = "!@#$%&*";
+        String todos = mayusculas + minusculas + digitos + simbolos;
+        java.security.SecureRandom azar = new java.security.SecureRandom();
+        StringBuilder clave = new StringBuilder();
+        clave.append(mayusculas.charAt(azar.nextInt(mayusculas.length())));
+        clave.append(minusculas.charAt(azar.nextInt(minusculas.length())));
+        clave.append(digitos.charAt(azar.nextInt(digitos.length())));
+        clave.append(simbolos.charAt(azar.nextInt(simbolos.length())));
+        for (int i = 0; i < 6; i++) {
+            clave.append(todos.charAt(azar.nextInt(todos.length())));
+        }
+        for (int i = clave.length() - 1; i > 0; i--) {
+            int j = azar.nextInt(i + 1);
+            char cambio = clave.charAt(i);
+            clave.setCharAt(i, clave.charAt(j));
+            clave.setCharAt(j, cambio);
+        }
+        return clave.toString();
     }
 
     public void restablecerPassword(Usuario usuario, String nuevaPassword) {

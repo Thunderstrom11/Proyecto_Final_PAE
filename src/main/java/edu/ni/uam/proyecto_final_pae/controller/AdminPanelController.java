@@ -301,18 +301,21 @@ public class AdminPanelController {
                     throw new IllegalArgumentException("Ese operador ya tiene una cuenta de acceso.");
                 }
             }
+            String nuevaPassword = null;
+            if (!vacio(txtPassword)) {
+                nuevaPassword = txtPassword.getText();
+                if (nuevaPassword.length() < 8) {
+                    throw new IllegalArgumentException("La contraseña debe tener al menos 8 caracteres.");
+                }
+            }
             seleccionada.setUsername(username);
             seleccionada.setRol(rol);
             seleccionada.setOperador(operador);
             seleccionada.setActivo(chkCuentaActiva.isSelected());
             seleccionada.setPuedeVerReportes(rol == RolUsuario.ADMIN && chkCuentaReportes.isSelected());
-            if (!vacio(txtPassword)) {
-                String password = txtPassword.getText();
-                if (password.length() < 8) {
-                    throw new IllegalArgumentException("La contraseña debe tener al menos 8 caracteres.");
-                }
+            if (nuevaPassword != null) {
                 seleccionada.setPasswordHash(
-                        org.mindrot.jbcrypt.BCrypt.hashpw(password, org.mindrot.jbcrypt.BCrypt.gensalt()));
+                        org.mindrot.jbcrypt.BCrypt.hashpw(nuevaPassword, org.mindrot.jbcrypt.BCrypt.gensalt()));
             }
             usuarioDAO.actualizar(seleccionada);
             limpiarCuenta();
