@@ -68,6 +68,7 @@ public class CabinaController {
     /** Viaje que se esta atendiendo en la cabina (null si el operador no tiene viajes activos). */
     private Integer idViaje;
     private Integer idOperadorSesion;
+    private Timeline reloj;
 
     @FXML
     private void initialize() {
@@ -97,7 +98,13 @@ public class CabinaController {
         }
         cmbOperador.valueProperty().addListener((observable, anterior, actual) -> refrescar());
 
-        Timeline reloj = new Timeline(new KeyFrame(Duration.seconds(2), evento -> refrescar()));
+        reloj = new Timeline(new KeyFrame(Duration.seconds(2), evento -> {
+            if (!Navegacion.vistaVisible(btnSalir)) {
+                reloj.stop();
+                return;
+            }
+            refrescar();
+        }));
         reloj.setCycleCount(Timeline.INDEFINITE);
         reloj.play();
         refrescar();

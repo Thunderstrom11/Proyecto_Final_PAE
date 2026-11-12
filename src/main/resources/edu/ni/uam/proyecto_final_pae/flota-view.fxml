@@ -19,6 +19,7 @@
     <top>
         <VBox spacing="4">
             <Label text="Gestión de flota" styleClass="page-title"/>
+            <Label fx:id="lblEmpresa" styleClass="status-label"/>
             <Label fx:id="lblEstado" text="Listo." styleClass="status-label"/>
             <HBox spacing="8" styleClass="actions-bar">
                 <Button fx:id="btnCargas" text="Cargas" styleClass="btn-secondary" onAction="#abrirCargas">
@@ -30,7 +31,7 @@
                 <Button fx:id="btnMonitor" text="Monitor" styleClass="btn-secondary" onAction="#abrirMonitor">
                     <graphic><FontIcon iconLiteral="fas-desktop"/></graphic>
                 </Button>
-                <Button fx:id="btnSalir" text="Salir" styleClass="btn-ghost" onAction="#salir">
+                <Button fx:id="btnSalir" text="Cerrar sesión" styleClass="btn-ghost" onAction="#salir">
                     <graphic><FontIcon iconLiteral="fas-sign-out-alt"/></graphic>
                 </Button>
             </HBox>
@@ -163,6 +164,71 @@
                             </Button>
                             <Button fx:id="btnLimpiarOperador" text="Limpiar formulario" maxWidth="Infinity"
                                     styleClass="btn-ghost" onAction="#limpiarOperador">
+                                <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
+                            </Button>
+                        </VBox>
+                    </right>
+                </BorderPane>
+            </Tab>
+
+            <Tab text="Clientes">
+                <BorderPane>
+                    <center>
+                        <VBox spacing="8">
+                            <HBox spacing="8" styleClass="actions-bar">
+                                <Button fx:id="btnVerClientes" text="Ver todos"
+                                        styleClass="btn-secondary" onAction="#verClientes">
+                                    <graphic><FontIcon iconLiteral="fas-list"/></graphic>
+                                </Button>
+                                <Button fx:id="btnVerClientesActivos" text="Activos"
+                                        styleClass="btn-secondary" onAction="#verClientesActivos">
+                                    <graphic><FontIcon iconLiteral="fas-check-circle"/></graphic>
+                                </Button>
+                            </HBox>
+                            <TableView fx:id="tablaClientes" VBox.vgrow="ALWAYS">
+                                <columns>
+                                    <TableColumn fx:id="colNombreCliente" text="Empresa" prefWidth="150"/>
+                                    <TableColumn fx:id="colContactoCliente" text="Contacto" prefWidth="110"/>
+                                    <TableColumn fx:id="colTelefonoCliente" text="Teléfono" prefWidth="90"/>
+                                    <TableColumn fx:id="colEmailCliente" text="Email" prefWidth="140"/>
+                                    <TableColumn fx:id="colDireccionCliente" text="Dirección" prefWidth="140"/>
+                                    <TableColumn fx:id="colActivoCliente" text="Activo" prefWidth="60"/>
+                                    <TableColumn fx:id="colRegistroCliente" text="Registro" prefWidth="110"/>
+                                </columns>
+                            </TableView>
+                        </VBox>
+                    </center>
+                    <right>
+                        <VBox spacing="8" prefWidth="290" styleClass="form-pane">
+                            <padding>
+                                <Insets top="12" right="12" bottom="12" left="14"/>
+                            </padding>
+                            <Label text="Nombre de la empresa *"/>
+                            <TextField fx:id="txtNombreCliente" promptText="Cliente S.A."/>
+                            <Label text="Contacto"/>
+                            <TextField fx:id="txtContactoCliente" promptText="Persona de contacto"/>
+                            <Label text="Teléfono"/>
+                            <TextField fx:id="txtTelefonoCliente" promptText="2222-2222"/>
+                            <Label text="Email"/>
+                            <TextField fx:id="txtEmailCliente" promptText="cliente@empresa.com"/>
+                            <Label text="Dirección"/>
+                            <TextField fx:id="txtDireccionCliente" promptText="Dirección del cliente"/>
+                            <CheckBox fx:id="chkActivoCliente" text="Cliente activo" selected="true"/>
+                            <Separator/>
+                            <Button fx:id="btnGuardarCliente" text="Guardar nuevo" maxWidth="Infinity"
+                                    styleClass="btn-primary" onAction="#guardarCliente">
+                                <graphic><FontIcon iconLiteral="fas-plus"/></graphic>
+                            </Button>
+                            <Button fx:id="btnActualizarCliente" text="Actualizar seleccionado" maxWidth="Infinity"
+                                    styleClass="btn-secondary" onAction="#actualizarCliente">
+                                <graphic><FontIcon iconLiteral="fas-edit"/></graphic>
+                            </Button>
+                            <Button fx:id="btnEliminarCliente" text="Eliminar seleccionado" maxWidth="Infinity"
+                                    styleClass="btn-danger" onAction="#eliminarCliente">
+                                <graphic><FontIcon iconLiteral="fas-trash-alt"/></graphic>
+                            </Button>
+                            <Button fx:id="btnLimpiarCliente" text="Limpiar formulario" maxWidth="Infinity"
+                                    styleClass="btn-ghost" onAction="#limpiarCliente">
                                 <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
                             </Button>
                         </VBox>

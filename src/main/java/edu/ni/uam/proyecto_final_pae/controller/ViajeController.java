@@ -25,6 +25,8 @@ public class ViajeController {
     private final UbicacionDAO ubicacionDAO = new UbicacionDAO();
     private final JornadaService jornadaService = new JornadaService();
 
+    private Timeline reloj;
+
     // ------------------- pestaña Viajes
     @FXML private TableView<Viaje> tabla;
     @FXML private TableColumn<Viaje, String> colId;
@@ -142,7 +144,13 @@ public class ViajeController {
             error("No se pudo conectar con la base de datos", e);
         }
 
-        Timeline reloj = new Timeline(new KeyFrame(javafx.util.Duration.seconds(30), evento -> verificarSesion()));
+        reloj = new Timeline(new KeyFrame(javafx.util.Duration.seconds(30), evento -> {
+            if (!Navegacion.vistaVisible(lblEstado)) {
+                reloj.stop();
+                return;
+            }
+            verificarSesion();
+        }));
         reloj.setCycleCount(Timeline.INDEFINITE);
         reloj.play();
     }
@@ -239,6 +247,7 @@ public class ViajeController {
 
     @FXML
     private void limpiar() {
+        tabla.getSelectionModel().clearSelection();
         cmbUnidad.getSelectionModel().clearSelection();
         cmbOperador.getSelectionModel().clearSelection();
         cmbCarga.getSelectionModel().clearSelection();
@@ -291,6 +300,7 @@ public class ViajeController {
         try {
             List<Viaje> lista = consulta.get();
             tabla.setItems(FXCollections.observableArrayList(lista));
+            tabla.refresh();
             lblEstado.setText(titulo + ": " + lista.size() + " registro(s).");
         } catch (PersistenciaException e) {
             error("No se pudo consultar los viajes", e);

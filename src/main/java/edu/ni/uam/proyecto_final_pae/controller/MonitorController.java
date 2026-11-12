@@ -79,6 +79,7 @@ public class MonitorController {
     @FXML private Button btnSalir;
 
     private List<Fila> todas = List.of();
+    private Timeline reloj;
 
     /** Fila ya calculada del monitor. */
     public record Fila(
@@ -160,7 +161,13 @@ public class MonitorController {
 
         txtFiltro.textProperty().addListener((observable, anterior, actual) -> aplicarFiltro());
 
-        Timeline reloj = new Timeline(new KeyFrame(Duration.seconds(5), evento -> refrescarAutomatico()));
+        reloj = new Timeline(new KeyFrame(Duration.seconds(5), evento -> {
+            if (!Navegacion.vistaVisible(btnSalir)) {
+                reloj.stop();
+                return;
+            }
+            refrescarAutomatico();
+        }));
         reloj.setCycleCount(Timeline.INDEFINITE);
         reloj.play();
         refrescarAutomatico();
@@ -226,7 +233,9 @@ public class MonitorController {
             todas = filas;
             aplicarFiltro();
             tablaUnidades.setItems(FXCollections.observableArrayList(unidadDAO.listar()));
+            tablaUnidades.refresh();
             tablaOperadores.setItems(FXCollections.observableArrayList(operadorDAO.listar()));
+            tablaOperadores.refresh();
             lblEstado.setText("Monitor actualizado " + LocalTime.now().format(HORA_CORTA)
                     + "  ·  " + filas.size() + " viaje(s) activo(s).");
         } catch (PersistenciaException e) {
@@ -242,6 +251,7 @@ public class MonitorController {
         String filtro = txtFiltro.getText();
         List<Fila> visibles = todas.stream().filter(fila -> fila.coincide(filtro)).toList();
         tabla.setItems(FXCollections.observableArrayList(visibles));
+        tabla.refresh();
     }
 
     private static String texto(String valor) {

@@ -35,18 +35,10 @@ public class UsuarioDAO extends GenericDAO<Usuario, Integer> {
         return usuarios.isEmpty() ? null : usuarios.get(0);
     }
 
-    /**
-     * Deja un administrador de demostración si la tabla aún no tiene usuarios.
-     * El script de base de datos ya inserta admin/Admin123!; esto solo cubre una base vacía.
-     */
-    public void asegurarAdminDemo() {
-        if (buscarPorUsername("admin") != null) {
-            return;
-        }
-        Usuario admin = new Usuario();
-        admin.setUsername("admin");
-        admin.setPasswordHash(BCrypt.hashpw("Admin123!", BCrypt.gensalt()));
-        admin.setRol(RolUsuario.ADMIN);
-        guardar(admin);
+    /** true si ya existe un administrador activo (el asistente de primer arranque lo consulta). */
+    public boolean existeAdministrador() {
+        return Transaccion.consultar(sesion -> sesion.createQuery(
+                        "select count(u) from Usuario u where u.rol = :rol and u.activo = true", Long.class)
+                .setParameter("rol", RolUsuario.ADMIN).getSingleResult() > 0);
     }
 }
