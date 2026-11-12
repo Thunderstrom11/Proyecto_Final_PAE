@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.URL?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="edu.ni.uam.proyecto_final_pae.controller.SetupController"
+      alignment="CENTER" spacing="10" prefWidth="500" prefHeight="720">
+    <stylesheets>
+        <URL value="@styles/fleetroute.css"/>
+    </stylesheets>
+    <padding>
+        <Insets top="22" right="34" bottom="22" left="34"/>
+    </padding>
+
+    <Label text="FleetRoute Pro" styleClass="page-title"/>
+    <Label text="Configuración inicial · primer arranque" styleClass="status-label"/>
+    <Separator/>
+
+    <ScrollPane fitToWidth="true" styleClass="form-scroll" VBox.vgrow="ALWAYS">
+        <VBox spacing="10">
+            <VBox spacing="7" styleClass="form-pane">
+                <padding>
+                    <Insets top="14" right="16" bottom="14" left="16"/>
+                </padding>
+                <Label text="Datos de la empresa" styleClass="section-title">
+                    <graphic><FontIcon iconLiteral="fas-building"/></graphic>
+                </Label>
+                <Label text="Nombre de la empresa *"/>
+                <TextField fx:id="txtNombre" promptText="Transportes S.A."/>
+                <Label text="RUC"/>
+                <TextField fx:id="txtRuc" promptText="J0310000000000"/>
+                <Label text="Teléfono"/>
+                <TextField fx:id="txtTelefono" promptText="2222-2222"/>
+                <Label text="Correo electrónico"/>
+                <TextField fx:id="txtEmail" promptText="info@empresa.com"/>
+                <Label text="Dirección"/>
+                <TextField fx:id="txtDireccion" promptText="Managua, Nicaragua"/>
+            </VBox>
+
+            <VBox fx:id="panelAdmin" spacing="7" styleClass="form-pane">
+                <padding>
+                    <Insets top="14" right="16" bottom="14" left="16"/>
+                </padding>
+                <Label text="Usuario administrador" styleClass="section-title">
+                    <graphic><FontIcon iconLiteral="fas-user-shield"/></graphic>
+                </Label>
+                <Label text="Cree la cuenta con la que entrará a la oficina. Guarde bien la contraseña: se almacena con hash BCrypt."
+                       styleClass="status-label" wrapText="true"/>
+                <Label text="Usuario *"/>
+                <TextField fx:id="txtUsuario" promptText="admin"/>
+                <Label text="Contraseña * (mínimo 8 caracteres)"/>
+                <PasswordField fx:id="txtPassword"/>
+                <Label text="Confirmar contraseña *"/>
+                <PasswordField fx:id="txtConfirmar"/>
+            </VBox>
+        </VBox>
+    </ScrollPane>
+
+    <Button fx:id="btnGuardar" text="Guardar y continuar" maxWidth="Infinity"
+            styleClass="btn-primary" onAction="#guardar">
+        <graphic><FontIcon iconLiteral="fas-check"/></graphic>
+    </Button>
+    <Label fx:id="lblMensaje" textFill="#B42318" wrapText="true"/>
+</VBox>
