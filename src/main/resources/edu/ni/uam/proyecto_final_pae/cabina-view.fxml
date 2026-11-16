@@ -22,11 +22,12 @@
             <Label text="Cabina del operador" styleClass="page-title"/>
             <HBox spacing="10" alignment="CENTER_LEFT" styleClass="actions-bar">
                 <Label text="Operador:"/>
-                <ComboBox fx:id="cmbOperador" prefWidth="260"/>
-                <Button text="Actualizar" styleClass="btn-secondary" onAction="#refrescar">
+                <Label fx:id="lblOperadorSesion" text="—" styleClass="field-label"/>
+                <Button fx:id="btnActualizar" text="Actualizar" styleClass="btn-secondary" onAction="#refrescar">
                     <graphic><FontIcon iconLiteral="fas-sync-alt"/></graphic>
                 </Button>
-                <Label fx:id="lblEstado" text="Seleccione un operador." styleClass="status-label"/>
+                <Label fx:id="lblEstado" text="Cabina lista." styleClass="status-label"/>
+                <Label fx:id="lblActualizado" text="" styleClass="status-label"/>
                 <Region HBox.hgrow="ALWAYS"/>
                 <Button fx:id="btnSalir" text="Cerrar sesión" styleClass="btn-ghost" onAction="#salir">
                     <graphic><FontIcon iconLiteral="fas-sign-out-alt"/></graphic>
@@ -87,26 +88,29 @@
     </center>
 
     <bottom>
-        <HBox spacing="10" styleClass="actions-bar">
+        <VBox spacing="6">
             <padding>
                 <Insets top="12"/>
             </padding>
-            <Button fx:id="btnIniciar" text="Iniciar trayecto" onAction="#iniciar"
-                    maxWidth="Infinity" HBox.hgrow="ALWAYS" styleClass="btn-primary">
-                <graphic><FontIcon iconLiteral="fas-play"/></graphic>
-            </Button>
-            <Button fx:id="btnPausar" text="Pausa" onAction="#pausar"
-                    maxWidth="Infinity" HBox.hgrow="ALWAYS" styleClass="btn-secondary">
-                <graphic><FontIcon iconLiteral="fas-pause"/></graphic>
-            </Button>
-            <Button fx:id="btnReanudar" text="Reanudar" onAction="#reanudar"
-                    maxWidth="Infinity" HBox.hgrow="ALWAYS" styleClass="btn-success">
-                <graphic><FontIcon iconLiteral="fas-redo"/></graphic>
-            </Button>
-            <Button fx:id="btnConfirmar" text="Confirmar entrega" onAction="#confirmarEntrega"
-                    maxWidth="Infinity" HBox.hgrow="ALWAYS" styleClass="btn-primary">
-                <graphic><FontIcon iconLiteral="fas-check-circle"/></graphic>
-            </Button>
-        </HBox>
+            <Label fx:id="lblSugerencia" text="" wrapText="true" styleClass="status-label"/>
+            <HBox spacing="10">
+                <Button fx:id="btnIniciar" text="Iniciar trayecto" onAction="#iniciar"
+                        maxWidth="Infinity" HBox.hgrow="ALWAYS" styleClass="btn-primary">
+                    <graphic><FontIcon iconLiteral="fas-play"/></graphic>
+                </Button>
+                <Button fx:id="btnPausar" text="Pausa" onAction="#pausar"
+                        maxWidth="Infinity" HBox.hgrow="ALWAYS" styleClass="btn-secondary">
+                    <graphic><FontIcon iconLiteral="fas-pause"/></graphic>
+                </Button>
+                <Button fx:id="btnReanudar" text="Reanudar" onAction="#reanudar"
+                        maxWidth="Infinity" HBox.hgrow="ALWAYS" styleClass="btn-success">
+                    <graphic><FontIcon iconLiteral="fas-redo"/></graphic>
+                </Button>
+                <Button fx:id="btnConfirmar" text="Confirmar entrega" onAction="#confirmarEntrega"
+                        maxWidth="Infinity" HBox.hgrow="ALWAYS" styleClass="btn-primary">
+                    <graphic><FontIcon iconLiteral="fas-check-circle"/></graphic>
+                </Button>
+            </HBox>
+        </VBox>
     </bottom>
 </BorderPane>

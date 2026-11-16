@@ -1,6 +1,7 @@
 package edu.ni.uam.proyecto_final_pae.controller;
 
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
+import edu.ni.uam.proyecto_final_pae.dao.EmpresaDAO;
 import edu.ni.uam.proyecto_final_pae.dao.ViajeDAO;
 import edu.ni.uam.proyecto_final_pae.model.RolUsuario;
 import edu.ni.uam.proyecto_final_pae.model.Usuario;
@@ -17,11 +18,14 @@ import javafx.stage.Stage;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Locale;
 
 /** Reporte financiero de viajes finalizados (RF de control financiero, movido a la pantalla inicial). */
 public class ReporteController {
 
     private final ViajeDAO viajeDAO = new ViajeDAO();
+    private final EmpresaDAO empresaDAO = new EmpresaDAO();
+    private String moneda = "NIO";
 
     @FXML private TableView<Object[]> tablaOperadores;
     @FXML private TableColumn<Object[], String> colOpNombre;
@@ -36,6 +40,15 @@ public class ReporteController {
 
     @FXML
     private void initialize() {
+        try {
+            empresaDAO.obtener().ifPresent(empresa -> {
+                if (empresa.getMoneda() != null && !empresa.getMoneda().isBlank()) {
+                    moneda = empresa.getMoneda();
+                }
+            });
+        } catch (PersistenciaException e) {
+            // Se conserva NIO como moneda por defecto.
+        }
         colOpNombre.setCellValueFactory(c -> new SimpleStringProperty(String.valueOf(c.getValue()[0])));
         colOpViajes.setCellValueFactory(c -> new SimpleStringProperty(String.valueOf(c.getValue()[1])));
         colOpTotal.setCellValueFactory(c -> new SimpleStringProperty(dinero(c.getValue()[2])));
@@ -96,8 +109,21 @@ public class ReporteController {
         stage.close();
     }
 
-    private static String dinero(Object valor) {
-        return "C$ " + aDecimal(valor).setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
+    private String dinero(Object valor) {
+        BigDecimal numero = aDecimal(valor).setScale(2, java.math.RoundingMode.HALF_UP);
+        String texto = String.format(Locale.US, "%,.2f", numero);
+        String simbolo = switch (moneda) {
+            case "NIO" -> "C$";
+            case "USD" -> "$";
+            case "EUR" -> "€";
+            case "CRC" -> "₡";
+            case "GTQ" -> "Q";
+            case "HNL" -> "L";
+            case "PAB" -> "B/.";
+            case "MXN" -> "MX$";
+            default -> moneda;
+        };
+        return simbolo + " " + texto;
     }
 
     private static BigDecimal aDecimal(Object valor) {

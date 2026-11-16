@@ -27,6 +27,10 @@
                 <Label text="Panel administrativo" styleClass="page-title"/>
                 <Region HBox.hgrow="ALWAYS"/>
                 <Label fx:id="lblAdministrador" styleClass="status-label"/>
+                <Button text="Cerrar sesión" styleClass="btn-ghost" onAction="#cerrarSesion">
+                    <graphic><FontIcon iconLiteral="fas-sign-out-alt"/></graphic>
+                    <tooltip><Tooltip text="Cierra la sesión y vuelve al inicio."/></tooltip>
+                </Button>
             </HBox>
             <Label fx:id="lblEstado" text="Solo el administrador principal puede modificar cuentas, ubicaciones y rutas." styleClass="status-label"/>
             <padding><Insets bottom="10"/></padding>
@@ -94,7 +98,7 @@
                                     <padding><Insets top="12" right="12" bottom="12" left="14"/></padding>
                                     <Label text="Nombre de usuario *"/>
                                     <TextField fx:id="txtUsername" promptText="usuario o cédula"/>
-                                    <Label text="Contraseña * (o nueva al restablecer)"/>
+                                    <Label text="Contraseña (solo al crear o restablecer)"/>
                                     <PasswordField fx:id="txtPassword" promptText="Mínimo 8 caracteres"/>
                                     <Label text="Rol *"/>
                                     <ComboBox fx:id="cmbRol" maxWidth="Infinity"/>
@@ -117,7 +121,7 @@
                                             styleClass="btn-secondary" onAction="#restablecerCuenta">
                                         <graphic><FontIcon iconLiteral="fas-key"/></graphic>
                                     </Button>
-                                    <Button text="Limpiar formulario" maxWidth="Infinity"
+                                    <Button fx:id="btnLimpiarCuentaForm" text="Limpiar formulario" maxWidth="Infinity"
                                             styleClass="btn-ghost" onAction="#limpiarCuenta">
                                         <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
                                     </Button>
@@ -132,6 +136,15 @@
                 <BorderPane>
                     <center>
                         <VBox spacing="8">
+                            <HBox spacing="6" alignment="CENTER_LEFT">
+                                <TextField fx:id="txtBuscarUbicacion" promptText="buscador" HBox.hgrow="ALWAYS">
+                                    <tooltip><Tooltip text="Busca por nombre, departamento o país."/></tooltip>
+                                </TextField>
+                                <Button styleClass="icon-button" onAction="#limpiarBusquedaUbicacion">
+                                    <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
+                                    <tooltip><Tooltip text="Limpiar búsqueda de ubicaciones."/></tooltip>
+                                </Button>
+                            </HBox>
                             <TableView fx:id="tablaUbicaciones" VBox.vgrow="ALWAYS">
                                 <columns>
                                     <TableColumn fx:id="colUbicacionNombre" text="Ubicación" prefWidth="200"/>
@@ -155,7 +168,11 @@
                             <Label text="Departamento *"/>
                             <TextField fx:id="txtDepartamentoUbicacion" promptText="Managua"/>
                             <Label text="País *"/>
-                            <ComboBox fx:id="cmbPaisUbicacion" maxWidth="Infinity"/>
+                            <ComboBox fx:id="cmbPaisUbicacion" maxWidth="Infinity" promptText="buscador">
+                                <tooltip>
+                                    <Tooltip text="Escriba para buscar un país."/>
+                                </tooltip>
+                            </ComboBox>
                             <Label text="Latitud (opcional)"/>
                             <TextField fx:id="txtLatitud" promptText="12.1364"/>
                             <Label text="Longitud (opcional)"/>
@@ -173,7 +190,7 @@
                                     styleClass="btn-danger" onAction="#eliminarUbicacion">
                                 <graphic><FontIcon iconLiteral="fas-trash-alt"/></graphic>
                             </Button>
-                            <Button text="Limpiar formulario" maxWidth="Infinity"
+                            <Button fx:id="btnLimpiarUbicacionForm" text="Limpiar formulario" maxWidth="Infinity"
                                     styleClass="btn-ghost" onAction="#limpiarUbicacion">
                                 <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
                             </Button>
@@ -188,6 +205,15 @@
                         <VBox spacing="8">
                             <Label text="Tiempo estimado configurado entre origen y destino"
                                    style="-fx-font-weight: bold;"/>
+                            <HBox spacing="6" alignment="CENTER_LEFT">
+                                <TextField fx:id="txtBuscarRutaAdmin" promptText="buscador" HBox.hgrow="ALWAYS">
+                                    <tooltip><Tooltip text="Busca por origen o destino de la ruta."/></tooltip>
+                                </TextField>
+                                <Button styleClass="icon-button" onAction="#limpiarBusquedaRuta">
+                                    <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
+                                    <tooltip><Tooltip text="Limpiar búsqueda de rutas."/></tooltip>
+                                </Button>
+                            </HBox>
                             <TableView fx:id="tablaRutas" VBox.vgrow="ALWAYS">
                                 <columns>
                                     <TableColumn fx:id="colRutaOrigen" text="Origen" prefWidth="220"/>
@@ -219,7 +245,7 @@
                                     styleClass="btn-danger" onAction="#eliminarRuta">
                                 <graphic><FontIcon iconLiteral="fas-trash-alt"/></graphic>
                             </Button>
-                            <Button text="Limpiar formulario" maxWidth="Infinity"
+                            <Button fx:id="btnLimpiarRutaForm" text="Limpiar formulario" maxWidth="Infinity"
                                     styleClass="btn-ghost" onAction="#limpiarRuta">
                                 <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
                             </Button>

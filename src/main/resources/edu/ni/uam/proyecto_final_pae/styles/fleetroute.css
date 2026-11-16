@@ -168,6 +168,7 @@
 .table-view .column-header .label {
     -fx-text-fill: #223A5E;
     -fx-font-weight: 700;
+    -fx-font-size: 11px;
 }
 
 .table-row-cell:selected {
@@ -359,6 +360,16 @@
 
 .filter-toggle:hover {
     -fx-background-color: #E8EEF6;
+}
+
+.filter-active {
+    -fx-background-color: #0E7490;
+    -fx-text-fill: white;
+    -fx-border-color: #0E7490;
+}
+
+.filter-active .ikonli-font-icon {
+    -fx-icon-color: white;
 }
 
 .filter-toggle:selected {

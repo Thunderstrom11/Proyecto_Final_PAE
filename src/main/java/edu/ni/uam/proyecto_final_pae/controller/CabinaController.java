@@ -13,8 +13,8 @@ import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.util.Duration;
@@ -45,8 +45,9 @@ public class CabinaController {
     private final JornadaService servicio = new JornadaService();
     private final FlotaDAO flotaDAO = new FlotaDAO();
 
-    @FXML private ComboBox<FlotaDAO.Opcion> cmbOperador;
+    @FXML private Label lblOperadorSesion;
     @FXML private Label lblEstado;
+    @FXML private Label lblActualizado;
     @FXML private Label lblViaje;
     @FXML private Label lblRuta;
     @FXML private Label lblSla;
@@ -55,6 +56,7 @@ public class CabinaController {
     @FXML private Label lblPaso;
     @FXML private Label lblSemaforo;
     @FXML private Label lblMensaje;
+    @FXML private Label lblSugerencia;
     @FXML private Label lblSiguienteCarga;
     @FXML private Label lblSiguienteRuta;
     @FXML private Label lblSiguienteSla;
@@ -68,6 +70,7 @@ public class CabinaController {
     /** Viaje que se esta atendiendo en la cabina (null si el operador no tiene viajes activos). */
     private Integer idViaje;
     private Integer idOperadorSesion;
+    private FlotaDAO.Opcion operadorSesion;
     private Timeline reloj;
 
     @FXML
@@ -82,13 +85,12 @@ public class CabinaController {
             List<FlotaDAO.Opcion> opciones = flotaDAO.operadores().stream()
                     .filter(opcion -> opcion.id() == idOperadorSesion)
                     .toList();
-            cmbOperador.setItems(FXCollections.observableArrayList(opciones));
             if (opciones.isEmpty()) {
                 mostrarVacio("El operador de la sesión no existe en la base de datos.");
                 return;
             }
-            cmbOperador.getSelectionModel().selectFirst();
-            cmbOperador.setDisable(true);
+            operadorSesion = opciones.get(0);
+            lblOperadorSesion.setText(operadorSesion.nombre());
         } catch (SecurityException e) {
             mostrarVacio(e.getMessage());
             return;
@@ -96,7 +98,6 @@ public class CabinaController {
             lblEstado.setText("No se pudieron cargar los operadores: " + e.getMessage());
             return;
         }
-        cmbOperador.valueProperty().addListener((observable, anterior, actual) -> refrescar());
 
         reloj = new Timeline(new KeyFrame(Duration.seconds(2), evento -> {
             if (!Navegacion.vistaVisible(btnSalir)) {
@@ -127,15 +128,16 @@ public class CabinaController {
         if (!SesionActual.activa()) {
             idViaje = null;
             mostrarVacio("La sesión expiró por inactividad.");
-            Navegacion.sesionExpirada(Navegacion.stageDe(cmbOperador));
+            Navegacion.sesionExpirada(Navegacion.stageDe(btnIniciar));
             return;
         }
-        FlotaDAO.Opcion operador = cmbOperador.getValue();
+        FlotaDAO.Opcion operador = operadorSesion;
         if (operador == null) {
             idViaje = null;
-            mostrarVacio("Seleccione un operador para ver su cabina.");
+            mostrarVacio("El operador de la sesión no está disponible.");
             return;
         }
+        lblActualizado.setText("Actualizado " + LocalTime.now().format(HORA_CORTA));
         try {
             Optional<FlotaDAO.FilaViaje> viaje = flotaDAO.viajeDelOperador(operador.id());
             if (viaje.isEmpty()) {
@@ -153,8 +155,6 @@ public class CabinaController {
                 resumen = servicio.pausarPorFinJornada(idViaje);
                 eventos = servicio.eventos(idViaje);
                 lblEstado.setText("Jornada máxima completada: pausa y descanso automáticos.");
-            } else {
-                lblEstado.setText("Actualizado " + LocalTime.now().format(HORA_CORTA) + ".");
             }
             pintar(resumen, eventos);
         } catch (PersistenciaException e) {
@@ -184,11 +184,13 @@ public class CabinaController {
             advertencia("No hay un viaje activo para este operador.");
             return;
         }
+        ButtonType confirmar = new ButtonType("Confirmar entrega", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelar = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
         Alert confirmacion = new Alert(Alert.AlertType.CONFIRMATION,
-                "¿Confirmar la entrega del viaje #" + idViaje + "?", ButtonType.YES, ButtonType.NO);
+                "¿Confirmar la entrega del viaje #" + idViaje + "?", confirmar, cancelar);
         confirmacion.setHeaderText(null);
         Optional<ButtonType> respuesta = confirmacion.showAndWait();
-        if (respuesta.isEmpty() || respuesta.get() != ButtonType.YES) {
+        if (respuesta.isEmpty() || respuesta.get() != confirmar) {
             return;
         }
         ejecutar(servicio::confirmarEntrega);
@@ -261,6 +263,17 @@ public class CabinaController {
         btnPausar.setDisable(resumen.paso() != JornadaService.Paso.EN_MARCHA);
         btnReanudar.setDisable(!(resumen.paso() == JornadaService.Paso.EN_PAUSA && resumen.puedeReanudar()));
         btnConfirmar.setDisable(resumen.paso() != JornadaService.Paso.EN_MARCHA);
+
+        switch (resumen.paso()) {
+            case SIN_INICIAR -> lblSugerencia.setText(
+                    "Pulse «Iniciar trayecto» para comenzar el viaje.");
+            case EN_MARCHA -> lblSugerencia.setText(
+                    "Puede pausar el trayecto o confirmar la entrega.");
+            case EN_PAUSA -> lblSugerencia.setText(resumen.puedeReanudar()
+                    ? "Puede reanudar el trayecto cuando lo necesite."
+                    : "Espere a completar el descanso mínimo para reanudar.");
+            case FINALIZADO -> lblSugerencia.setText("El viaje ya fue entregado.");
+        }
     }
 
     private void mostrarSiguiente(int idViajeActual) {
@@ -299,6 +312,7 @@ public class CabinaController {
         btnPausar.setDisable(true);
         btnReanudar.setDisable(true);
         btnConfirmar.setDisable(true);
+        lblSugerencia.setText("Las acciones se habilitarán cuando el operador tenga un viaje activo.");
     }
 
     private String lineaBitacora(RegistroJornada registro) {

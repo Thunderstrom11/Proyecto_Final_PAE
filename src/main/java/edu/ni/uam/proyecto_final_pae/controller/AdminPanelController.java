@@ -11,10 +11,13 @@ import edu.ni.uam.proyecto_final_pae.model.Ruta;
 import edu.ni.uam.proyecto_final_pae.model.Ubicacion;
 import edu.ni.uam.proyecto_final_pae.model.Usuario;
 import edu.ni.uam.proyecto_final_pae.security.SesionActual;
+import edu.ni.uam.proyecto_final_pae.util.ComboBuscador;
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
@@ -27,6 +30,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 
 import java.math.BigDecimal;
+import java.text.Normalizer;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -97,6 +101,8 @@ public class AdminPanelController {
 
     // rutas
     @FXML private TableView<Ruta> tablaRutas;
+    @FXML private TextField txtBuscarUbicacion;
+    @FXML private TextField txtBuscarRutaAdmin;
     @FXML private TableColumn<Ruta, String> colRutaOrigen;
     @FXML private TableColumn<Ruta, String> colRutaDestino;
     @FXML private TableColumn<Ruta, String> colRutaHoras;
@@ -112,8 +118,12 @@ public class AdminPanelController {
 
     private List<Usuario> todasLasCuentas = List.of();
     private List<Ubicacion> ubicaciones = List.of();
+    private List<Ruta> todasLasRutas = List.of();
     private String filtroRolCuenta = "Todos";
     private String filtroEstadoCuenta = "Todos";
+    private List<String> paisesMundo = List.of();
+    private final ObservableList<String> paisesFiltrados = FXCollections.observableArrayList();
+    private boolean ajustandoPais;
 
     @FXML
     private void initialize() {
@@ -122,10 +132,12 @@ public class AdminPanelController {
             admin = SesionActual.requerir(RolUsuario.ADMIN);
         } catch (SecurityException e) {
             lblEstado.setText(e.getMessage());
+            deshabilitarPanel();
             return;
         }
         if (!Boolean.TRUE.equals(admin.getEsPrincipal())) {
             lblEstado.setText("Solo el administrador principal puede usar este panel.");
+            deshabilitarPanel();
             return;
         }
         lblAdministrador.setText("Sesión: " + admin.getUsername());
@@ -133,18 +145,33 @@ public class AdminPanelController {
         configurarCuentas();
         configurarUbicaciones();
         configurarRutas();
+        txtBuscarUbicacion.textProperty().addListener((o, a, b) -> aplicarFiltroUbicaciones());
+        txtBuscarRutaAdmin.textProperty().addListener((o, a, b) -> aplicarFiltroRutas());
         cargarMapa();
 
         try {
-            cmbOperadorCuenta.setItems(FXCollections.observableArrayList(operadorDAO.listar()));
-            cmbPaisUbicacion.setItems(FXCollections.observableArrayList(paisesDelMundo()));
-            cmbPaisUbicacion.setValue("Nicaragua");
+            ComboBuscador.configurar(cmbOperadorCuenta, operadorDAO.listar());
+            paisesMundo = paisesDelMundo();
+            paisesFiltrados.setAll(paisesMundo);
+            cmbPaisUbicacion.setItems(paisesFiltrados);
+            cmbPaisUbicacion.setEditable(true);
+            cmbPaisUbicacion.setValue(null);
+            cmbPaisUbicacion.getEditor().clear();
+            configurarBuscadorPais();
             cargarCuentas();
             cargarUbicaciones();
             cargarRutas();
         } catch (PersistenciaException e) {
             error("No se pudo conectar con la base de datos", e);
         }
+    }
+
+    private void deshabilitarPanel() {
+        Platform.runLater(() -> {
+            if (lblEstado.getScene() != null) {
+                lblEstado.getScene().getRoot().setDisable(true);
+            }
+        });
     }
 
     // ------------------------------------------------------------------ cuentas
@@ -301,22 +328,11 @@ public class AdminPanelController {
                     throw new IllegalArgumentException("Ese operador ya tiene una cuenta de acceso.");
                 }
             }
-            String nuevaPassword = null;
-            if (!vacio(txtPassword)) {
-                nuevaPassword = txtPassword.getText();
-                if (nuevaPassword.length() < 8) {
-                    throw new IllegalArgumentException("La contraseña debe tener al menos 8 caracteres.");
-                }
-            }
             seleccionada.setUsername(username);
             seleccionada.setRol(rol);
             seleccionada.setOperador(operador);
             seleccionada.setActivo(chkCuentaActiva.isSelected());
             seleccionada.setPuedeVerReportes(rol == RolUsuario.ADMIN && chkCuentaReportes.isSelected());
-            if (nuevaPassword != null) {
-                seleccionada.setPasswordHash(
-                        org.mindrot.jbcrypt.BCrypt.hashpw(nuevaPassword, org.mindrot.jbcrypt.BCrypt.gensalt()));
-            }
             usuarioDAO.actualizar(seleccionada);
             limpiarCuenta();
             cargarCuentas();
@@ -355,6 +371,11 @@ public class AdminPanelController {
         } catch (PersistenciaException e) {
             error("No se pudo restablecer la contraseña", e);
         }
+    }
+
+    @FXML
+    private void cerrarSesion() {
+        Navegacion.cerrarSesion(Navegacion.stageDe(lblEstado));
     }
 
     @FXML
@@ -438,9 +459,9 @@ public class AdminPanelController {
 
         BooleanBinding incompleta = Bindings.createBooleanBinding(
                 () -> vacio(txtNombreUbicacion) || vacio(txtDepartamentoUbicacion)
-                        || cmbPaisUbicacion.getValue() == null,
+                        || resolverPais() == null,
                 txtNombreUbicacion.textProperty(), txtDepartamentoUbicacion.textProperty(),
-                cmbPaisUbicacion.valueProperty());
+                cmbPaisUbicacion.valueProperty(), cmbPaisUbicacion.getEditor().textProperty());
         BooleanBinding sinSeleccion = tablaUbicaciones.getSelectionModel().selectedItemProperty().isNull();
 
         btnGuardarUbicacion.disableProperty().bind(incompleta);
@@ -448,10 +469,78 @@ public class AdminPanelController {
         btnEliminarUbicacion.disableProperty().bind(sinSeleccion);
     }
 
+    private void configurarBuscadorPais() {
+        cmbPaisUbicacion.setEditable(true);
+        cmbPaisUbicacion.getEditor().textProperty().addListener((o, anterior, texto) -> {
+            if (ajustandoPais) {
+                return;
+            }
+            String filtro = normalizar(texto);
+            List<String> filtrados = paisesMundo.stream()
+                    .filter(pais -> normalizar(pais).contains(filtro))
+                    .toList();
+            ajustandoPais = true;
+            paisesFiltrados.setAll(filtrados);
+            cmbPaisUbicacion.getEditor().setText(texto == null ? "" : texto);
+            if (texto != null) {
+                cmbPaisUbicacion.getEditor().positionCaret(texto.length());
+            }
+            ajustandoPais = false;
+            if (filtrados.isEmpty() || filtro.isBlank()) {
+                cmbPaisUbicacion.hide();
+            } else {
+                cmbPaisUbicacion.show();
+            }
+        });
+        cmbPaisUbicacion.setOnAction(evento -> {
+            if (ajustandoPais) {
+                return;
+            }
+            String pais = cmbPaisUbicacion.getValue();
+            if (pais != null && paisesMundo.contains(pais)) {
+                ajustandoPais = true;
+                paisesFiltrados.setAll(paisesMundo);
+                cmbPaisUbicacion.getEditor().setText(pais);
+                cmbPaisUbicacion.getEditor().positionCaret(pais.length());
+                ajustandoPais = false;
+                cmbPaisUbicacion.hide();
+            }
+        });
+    }
+
+    private void seleccionarPais(String pais) {
+        ajustandoPais = true;
+        paisesFiltrados.setAll(paisesMundo);
+        cmbPaisUbicacion.setValue(pais);
+        cmbPaisUbicacion.getEditor().setText(pais == null ? "" : pais);
+        cmbPaisUbicacion.getEditor().positionCaret(pais == null ? 0 : pais.length());
+        ajustandoPais = false;
+    }
+
+    private String resolverPais() {
+        String buscado = normalizar(cmbPaisUbicacion.getEditor().getText());
+        if (buscado.isBlank()) {
+            return null;
+        }
+        return paisesMundo.stream()
+                .filter(pais -> normalizar(pais).equals(buscado))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private String normalizar(String texto) {
+        if (texto == null) {
+            return "";
+        }
+        return Normalizer.normalize(texto.trim(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT);
+    }
+
     private void llenarUbicacion(Ubicacion ubicacion) {
         txtNombreUbicacion.setText(ubicacion.getNombre());
         txtDepartamentoUbicacion.setText(ubicacion.getDepartamento());
-        cmbPaisUbicacion.setValue(ubicacion.getPais());
+        seleccionarPais(ubicacion.getPais());
         txtLatitud.setText(ubicacion.getLatitud() == null ? ""
                 : String.format(Locale.ROOT, "%.4f", ubicacion.getLatitud()));
         txtLongitud.setText(ubicacion.getLongitud() == null ? ""
@@ -486,8 +575,7 @@ public class AdminPanelController {
             return;
         }
         try {
-            Ubicacion ubicacion = construirUbicacion(new Ubicacion());
-            ubicacion.setId(seleccionada.getId());
+            Ubicacion ubicacion = construirUbicacion(seleccionada);
             ubicacionDAO.actualizar(ubicacion);
             limpiarUbicacion();
             cargarUbicaciones();
@@ -528,7 +616,7 @@ public class AdminPanelController {
         tablaUbicaciones.getSelectionModel().clearSelection();
         txtNombreUbicacion.clear();
         txtDepartamentoUbicacion.clear();
-        cmbPaisUbicacion.setValue("Nicaragua");
+        seleccionarPais(null);
         txtLatitud.clear();
         txtLongitud.clear();
         dibujarMapa();
@@ -539,9 +627,18 @@ public class AdminPanelController {
         String departamento = requerido(txtDepartamentoUbicacion, "El departamento", 80);
         ubicacion.setNombre(nombre);
         ubicacion.setDepartamento(departamento);
-        ubicacion.setPais(cmbPaisUbicacion.getValue());
-        ubicacion.setLatitud(coordenada(txtLatitud, "La latitud", -90, 90));
-        ubicacion.setLongitud(coordenada(txtLongitud, "La longitud", -180, 180));
+        ubicacion.setPais(resolverPais());
+        if (ubicacion.getPais() == null) {
+            throw new IllegalArgumentException("Seleccione un país de la lista.");
+        }
+        Double latitud = coordenada(txtLatitud, "La latitud", -90, 90);
+        Double longitud = coordenada(txtLongitud, "La longitud", -180, 180);
+        if ((latitud == null) != (longitud == null)) {
+            throw new IllegalArgumentException(
+                    "Ingrese latitud y longitud juntas, o deje ambas coordenadas vacías.");
+        }
+        ubicacion.setLatitud(latitud);
+        ubicacion.setLongitud(longitud);
         return ubicacion;
     }
 
@@ -564,11 +661,27 @@ public class AdminPanelController {
 
     private void cargarUbicaciones() {
         ubicaciones = ubicacionDAO.listar();
-        tablaUbicaciones.setItems(FXCollections.observableArrayList(ubicaciones));
-        tablaUbicaciones.refresh();
-        cmbOrigenRuta.setItems(FXCollections.observableArrayList(ubicaciones));
-        cmbDestinoRuta.setItems(FXCollections.observableArrayList(ubicaciones));
+        aplicarFiltroUbicaciones();
+        ComboBuscador.configurar(cmbOrigenRuta, ubicaciones);
+        ComboBuscador.configurar(cmbDestinoRuta, ubicaciones);
         dibujarMapa();
+    }
+
+    private void aplicarFiltroUbicaciones() {
+        String filtro = normalizar(txtBuscarUbicacion == null ? "" : txtBuscarUbicacion.getText());
+        List<Ubicacion> visibles = ubicaciones.stream()
+                .filter(u -> filtro.isBlank()
+                        || normalizar(u.getNombre()).contains(filtro)
+                        || normalizar(u.getDepartamento()).contains(filtro)
+                        || normalizar(u.getPais()).contains(filtro))
+                .toList();
+        tablaUbicaciones.setItems(FXCollections.observableArrayList(visibles));
+        tablaUbicaciones.refresh();
+    }
+
+    @FXML
+    private void limpiarBusquedaUbicacion() {
+        txtBuscarUbicacion.clear();
     }
 
     private void cargarMapa() {
@@ -800,9 +913,24 @@ public class AdminPanelController {
     }
 
     private void cargarRutas() {
-        List<Ruta> rutas = rutaDAO.listar();
-        tablaRutas.setItems(FXCollections.observableArrayList(rutas));
+        todasLasRutas = rutaDAO.listar();
+        aplicarFiltroRutas();
+    }
+
+    private void aplicarFiltroRutas() {
+        String filtro = normalizar(txtBuscarRutaAdmin == null ? "" : txtBuscarRutaAdmin.getText());
+        List<Ruta> visibles = todasLasRutas.stream()
+                .filter(r -> filtro.isBlank()
+                        || normalizar(r.getOrigen().getNombre()).contains(filtro)
+                        || normalizar(r.getDestino().getNombre()).contains(filtro))
+                .toList();
+        tablaRutas.setItems(FXCollections.observableArrayList(visibles));
         tablaRutas.refresh();
+    }
+
+    @FXML
+    private void limpiarBusquedaRuta() {
+        txtBuscarRutaAdmin.clear();
     }
 
     // ------------------------------------------------------------------ apoyo
@@ -851,10 +979,12 @@ public class AdminPanelController {
     }
 
     private boolean confirmar(String mensaje) {
-        Alert alerta = new Alert(Alert.AlertType.CONFIRMATION, mensaje, ButtonType.YES, ButtonType.NO);
+        ButtonType continuar = new ButtonType("Continuar", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelar = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
+        Alert alerta = new Alert(Alert.AlertType.CONFIRMATION, mensaje, continuar, cancelar);
         alerta.setHeaderText(null);
         Optional<ButtonType> respuesta = alerta.showAndWait();
-        return respuesta.isPresent() && respuesta.get() == ButtonType.YES;
+        return respuesta.isPresent() && respuesta.get() == continuar;
     }
 
     private void advertencia(String mensaje) {

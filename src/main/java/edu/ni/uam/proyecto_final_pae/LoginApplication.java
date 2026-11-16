@@ -4,6 +4,7 @@ import edu.ni.uam.proyecto_final_pae.config.HibernateUtil;
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.controller.Navegacion;
 import edu.ni.uam.proyecto_final_pae.dao.EmpresaDAO;
+import edu.ni.uam.proyecto_final_pae.util.Tooltips;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -30,6 +31,7 @@ public class LoginApplication extends Application {
         }
         FXMLLoader fxmlLoader = new FXMLLoader(LoginApplication.class.getResource(vista));
         Scene scene = new Scene(fxmlLoader.load(), ancho, alto);
+        Tooltips.instalar(scene.getRoot());
         stage.setTitle("FleetRoute Pro — " + titulo);
         stage.setScene(scene);
         stage.show();

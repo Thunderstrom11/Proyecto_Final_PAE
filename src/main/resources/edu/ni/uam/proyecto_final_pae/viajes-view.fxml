@@ -18,7 +18,14 @@
 
     <top>
         <VBox spacing="4">
-            <Label text="Gestión de viajes" styleClass="page-title"/>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="Gestión de viajes" styleClass="page-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button text="Cerrar sesión" styleClass="btn-ghost" onAction="#cerrarSesion">
+                    <graphic><FontIcon iconLiteral="fas-sign-out-alt"/></graphic>
+                    <tooltip><Tooltip text="Cierra la sesión y vuelve al inicio."/></tooltip>
+                </Button>
+            </HBox>
             <Label fx:id="lblEstado" text="Listo." styleClass="status-label"/>
             <padding><Insets bottom="10"/></padding>
         </VBox>
@@ -67,6 +74,11 @@
                                 styleClass="btn-success" onAction="#finalizar">
                             <graphic><FontIcon iconLiteral="fas-check-circle"/></graphic>
                         </Button>
+                        <Button fx:id="btnCancelarViaje" text="Cancelar viaje"
+                                styleClass="btn-ghost" onAction="#cancelarViaje">
+                            <graphic><FontIcon iconLiteral="fas-times"/></graphic>
+                            <tooltip><Tooltip text="Cancela el viaje seleccionado y libera la unidad, el operador y la carga."/></tooltip>
+                        </Button>
                     </HBox>
                     <TableView fx:id="tabla" VBox.vgrow="ALWAYS">
                         <columns>
@@ -107,9 +119,35 @@
 
                             <Label text="Origen *"/>
                             <ComboBox fx:id="cmbOrigen" maxWidth="Infinity"/>
+                            <Label text="Coordenadas origen" styleClass="field-label"/>
+                            <Label fx:id="lblCoordenadasOrigen" text="Sin coordenadas exactas."
+                                   styleClass="status-label" wrapText="true"/>
+                            <HBox spacing="6">
+                                <Button fx:id="btnBuscarOrigen" text="Buscar lugar" styleClass="btn-secondary"
+                                        onAction="#abrirPickerOrigen">
+                                    <graphic><FontIcon iconLiteral="fas-map-marker-alt"/></graphic>
+                                </Button>
+                                <Button fx:id="btnGoogleOrigen" text="Google Maps" styleClass="btn-ghost"
+                                        onAction="#abrirGoogleOrigen">
+                                    <graphic><FontIcon iconLiteral="fas-external-link-alt"/></graphic>
+                                </Button>
+                            </HBox>
 
                             <Label text="Destino *"/>
                             <ComboBox fx:id="cmbDestino" maxWidth="Infinity"/>
+                            <Label text="Coordenadas destino" styleClass="field-label"/>
+                            <Label fx:id="lblCoordenadasDestino" text="Sin coordenadas exactas."
+                                   styleClass="status-label" wrapText="true"/>
+                            <HBox spacing="6">
+                                <Button fx:id="btnBuscarDestino" text="Buscar lugar" styleClass="btn-secondary"
+                                        onAction="#abrirPickerDestino">
+                                    <graphic><FontIcon iconLiteral="fas-map-marker-alt"/></graphic>
+                                </Button>
+                                <Button fx:id="btnGoogleDestino" text="Google Maps" styleClass="btn-ghost"
+                                        onAction="#abrirGoogleDestino">
+                                    <graphic><FontIcon iconLiteral="fas-external-link-alt"/></graphic>
+                                </Button>
+                            </HBox>
 
                             <Label text="Tiempo estimado *"/>
                             <TextField fx:id="txtTiempo" promptText="Se calcula al elegir origen y destino"
