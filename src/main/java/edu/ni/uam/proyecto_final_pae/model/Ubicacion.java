@@ -7,7 +7,8 @@ import java.util.Objects;
 /** Origen o destino de un viaje: tabla ubicaciones. */
 @Entity
 @Table(name = "ubicaciones",
-        uniqueConstraints = @UniqueConstraint(name = "uq_ubicacion", columnNames = {"nombre", "departamento"}))
+        uniqueConstraints = @UniqueConstraint(name = "uq_ubicacion",
+                columnNames = {"nombre", "departamento", "pais"}))
 public class Ubicacion {
 
     @Id
@@ -23,6 +24,12 @@ public class Ubicacion {
 
     @Column(name = "pais", nullable = false, length = 80)
     private String pais = "Nicaragua";
+
+    @Column(name = "categoria", nullable = false, length = 20)
+    private String categoria = "Otro";
+
+    @Column(name = "color", nullable = false, length = 7)
+    private String color = "#0891B2";
 
     @Column(name = "latitud")
     private Double latitud;
@@ -75,6 +82,22 @@ public class Ubicacion {
 
     public void setPais(String pais) {
         this.pais = pais;
+    }
+
+    public String getCategoria() {
+        return categoria;
+    }
+
+    public void setCategoria(String categoria) {
+        this.categoria = categoria;
+    }
+
+    public String getColor() {
+        return color;
+    }
+
+    public void setColor(String color) {
+        this.color = color;
     }
 
     public Double getLatitud() {

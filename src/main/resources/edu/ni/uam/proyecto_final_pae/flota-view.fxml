@@ -26,6 +26,10 @@
             <HBox spacing="10" alignment="CENTER_LEFT">
                 <Label text="Gestión de flota" styleClass="page-title"/>
                 <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="btnRefrescarFlota" styleClass="icon-button" onAction="#refrescarFlota">
+                    <graphic><FontIcon iconLiteral="fas-sync-alt" iconSize="18"/></graphic>
+                    <tooltip><Tooltip text="Actualizar los datos de flota."/></tooltip>
+                </Button>
                 <Button fx:id="btnReporte" styleClass="icon-button" onAction="#abrirReporte">
                     <graphic><FontIcon iconLiteral="fas-chart-pie" iconSize="18"/></graphic>
                     <tooltip><Tooltip text="Reporte financiero"/></tooltip>
@@ -57,7 +61,7 @@
     </top>
 
     <center>
-        <TabPane tabClosingPolicy="UNAVAILABLE">
+        <TabPane fx:id="tabs" tabClosingPolicy="UNAVAILABLE">
 
             <Tab text="Unidades">
                 <BorderPane>
@@ -187,18 +191,18 @@
                                    styleClass="status-label"/>
                             <TableView fx:id="tablaOperadores" VBox.vgrow="ALWAYS">
                                 <columns>
-                                    <TableColumn fx:id="colCedula" text="Cédula" prefWidth="130"/>
-                                    <TableColumn fx:id="colNombreOperador" text="Nombre" prefWidth="180"/>
-                                    <TableColumn fx:id="colTelefono" text="Teléfono" prefWidth="110"/>
-                                    <TableColumn fx:id="colHorasMax" text="Máx. conducción" prefWidth="120"/>
-                                    <TableColumn fx:id="colHorasMin" text="Mín. descanso" prefWidth="110"/>
-                                    <TableColumn fx:id="colEstadoOperador" text="Estado" prefWidth="120"/>
+                                    <TableColumn fx:id="colCedula" text="Cédula" prefWidth="105"/>
+                                    <TableColumn fx:id="colNombreOperador" text="Nombre" prefWidth="135"/>
+                                    <TableColumn fx:id="colTelefono" text="Teléfono" prefWidth="85"/>
+                                    <TableColumn fx:id="colHorasMax" text="Máx. conducción (horas)" prefWidth="145"/>
+                                    <TableColumn fx:id="colHorasMin" text="Mín. descanso (horas)" prefWidth="135"/>
+                                    <TableColumn fx:id="colEstadoOperador" text="Estado" prefWidth="90"/>
                                 </columns>
                             </TableView>
                         </VBox>
                     </center>
                     <right>
-                        <VBox spacing="8" prefWidth="290" styleClass="form-pane">
+                        <VBox spacing="8" prefWidth="280" styleClass="form-pane">
                             <padding>
                                 <Insets top="12" right="12" bottom="12" left="14"/>
                             </padding>

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.URL?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="edu.ni.uam.proyecto_final_pae.controller.LugarPickerController"
+            prefWidth="920" prefHeight="620">
+    <stylesheets>
+        <URL value="@styles/fleetroute.css"/>
+    </stylesheets>
+    <padding>
+        <Insets top="14" right="14" bottom="14" left="14"/>
+    </padding>
+
+    <top>
+        <VBox spacing="6">
+            <Label text="Seleccionar lugar exacto" styleClass="page-title"/>
+            <Label fx:id="lblPais" text="País: —" styleClass="status-label"/>
+            <HBox spacing="6" alignment="CENTER_LEFT">
+                <TextField fx:id="txtBuscar" promptText="buscador" prefWidth="320">
+                    <tooltip><Tooltip text="Escriba una dirección o lugar; también puede pegar un enlace de Google Maps o coordenadas."/></tooltip>
+                </TextField>
+                <Button fx:id="btnBuscar" text="Buscar" styleClass="btn-primary" onAction="#buscar">
+                    <graphic><FontIcon iconLiteral="fas-search"/></graphic>
+                </Button>
+                <Button fx:id="btnPegar" styleClass="icon-button" onAction="#pegarUbicacion">
+                    <graphic><FontIcon iconLiteral="fas-paste"/></graphic>
+                    <tooltip><Tooltip text="Pegar enlace de Google Maps o coordenadas."/></tooltip>
+                </Button>
+                <Label fx:id="lblEstado" text="Busque una referencia, mueva el mapa y haga clic en el punto exacto."
+                       styleClass="status-label" wrapText="true" HBox.hgrow="ALWAYS"/>
+            </HBox>
+            <padding><Insets bottom="8"/></padding>
+        </VBox>
+    </top>
+
+    <center>
+        <HBox spacing="10">
+            <VBox spacing="6" prefWidth="330">
+                <Label text="Resultados" styleClass="field-label"/>
+                <ListView fx:id="lista" VBox.vgrow="ALWAYS"/>
+            </VBox>
+            <StackPane fx:id="contenedorMapa" HBox.hgrow="ALWAYS" prefWidth="540" prefHeight="430"
+                       style="-fx-background-color: #D6EAF8;">
+                <VBox fx:id="panelCargaMapa" alignment="CENTER" spacing="10" maxWidth="280">
+                    <Label text="Cargando mapa…" styleClass="field-label"/>
+                    <ProgressBar fx:id="barraMapa" prefWidth="220" progress="0"/>
+                    <Label fx:id="lblCargaMapa" text="0 %" styleClass="status-label"/>
+                </VBox>
+            </StackPane>
+        </HBox>
+    </center>
+
+    <bottom>
+        <VBox spacing="8">
+            <padding><Insets top="10"/></padding>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label text="Nombre para guardar *" styleClass="field-label"/>
+                <TextField fx:id="txtNombreLugar" prefWidth="360"
+                           promptText="Ej. Casa frente a Tienda X"/>
+                <Button fx:id="btnEditarLugar" styleClass="icon-button" onAction="#alternarEdicion">
+                    <graphic><FontIcon iconLiteral="fas-edit"/></graphic>
+                    <tooltip><Tooltip text="Editar nombre, icono y color."/></tooltip>
+                </Button>
+                <Button fx:id="btnGuardarCambios" styleClass="icon-button"
+                        onAction="#guardarCambiosLugar" visible="false" managed="false">
+                    <graphic><FontIcon iconLiteral="fas-check"/></graphic>
+                    <tooltip><Tooltip text="Confirmar cambios."/></tooltip>
+                </Button>
+            </HBox>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label text="Icono" styleClass="field-label"/>
+                <ComboBox fx:id="cmbCategoria" prefWidth="150"/>
+                <Label text="Color" styleClass="field-label"/>
+                <ComboBox fx:id="cmbColor" prefWidth="190"/>
+            </HBox>
+            <Label fx:id="lblSeleccion" text="Ningún lugar seleccionado." styleClass="status-label"/>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="btnGoogle" text="Ver en Google Maps" styleClass="btn-secondary"
+                        onAction="#abrirGoogleMaps">
+                    <graphic><FontIcon iconLiteral="fas-map-marked-alt"/></graphic>
+                </Button>
+                <Button fx:id="btnCancelar" text="Cancelar" styleClass="btn-ghost" onAction="#cancelar"/>
+                <Button fx:id="btnConfirmar" text="Confirmar lugar" styleClass="btn-primary"
+                        onAction="#confirmar">
+                    <graphic><FontIcon iconLiteral="fas-check"/></graphic>
+                </Button>
+            </HBox>
+        </VBox>
+    </bottom>
+</BorderPane>

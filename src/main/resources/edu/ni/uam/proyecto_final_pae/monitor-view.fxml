@@ -18,7 +18,14 @@
 
     <top>
         <VBox spacing="6">
-            <Label text="Monitor de flota" styleClass="page-title"/>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="Monitor de flota" styleClass="page-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button text="Cerrar sesión" styleClass="btn-ghost" onAction="#cerrarSesion">
+                    <graphic><FontIcon iconLiteral="fas-sign-out-alt"/></graphic>
+                    <tooltip><Tooltip text="Cierra la sesión y vuelve al inicio."/></tooltip>
+                </Button>
+            </HBox>
             <Label fx:id="lblEstado" text="Sin datos." styleClass="status-label"/>
             <padding>
                 <Insets bottom="10"/>
@@ -49,6 +56,7 @@
                             <TableColumn fx:id="colOperador" text="Operador" prefWidth="110"/>
                             <TableColumn fx:id="colCarga" text="Carga" prefWidth="75"/>
                             <TableColumn fx:id="colRuta" text="Origen → destino" prefWidth="150"/>
+                            <TableColumn fx:id="colCoordenadas" text="Coordenadas" prefWidth="230"/>
                             <TableColumn fx:id="colSla" text="Límite del cliente" prefWidth="110"/>
                             <TableColumn fx:id="colManejo" text="Manejo" prefWidth="105"/>
                             <TableColumn fx:id="colSemaforo" text="Semáforo" prefWidth="120"/>
@@ -105,8 +113,8 @@
                             <TableColumn fx:id="colOperadorNombre" text="Nombre" prefWidth="180"/>
                             <TableColumn fx:id="colOperadorCedula" text="Cédula" prefWidth="130"/>
                             <TableColumn fx:id="colOperadorTelefono" text="Teléfono" prefWidth="110"/>
-                            <TableColumn fx:id="colOperadorMax" text="Máx. conducción" prefWidth="120"/>
-                            <TableColumn fx:id="colOperadorMin" text="Mín. descanso" prefWidth="110"/>
+                            <TableColumn fx:id="colOperadorMax" text="Máx. conducción (horas)" prefWidth="145"/>
+                            <TableColumn fx:id="colOperadorMin" text="Mín. descanso (horas)" prefWidth="135"/>
                             <TableColumn fx:id="colOperadorEstado" text="Estado" prefWidth="120"/>
                         </columns>
                     </TableView>

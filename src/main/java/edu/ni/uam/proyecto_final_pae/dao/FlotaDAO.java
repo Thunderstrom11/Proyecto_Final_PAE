@@ -45,7 +45,8 @@ public class FlotaDAO {
             select v.id, u.numeroUnidad, u.id, o.nombre, o.id, c.numeroCarga,
                    c.fechaLimiteCliente, v.tiempoEstimado,
                    origen.nombre, destino.nombre, ev.nombre,
-                   o.horasMaxConduccion, o.horasMinDescanso
+                   o.horasMaxConduccion, o.horasMinDescanso,
+                   origen.latitud, origen.longitud, destino.latitud, destino.longitud
               from Viaje v
               join v.unidad u
               join v.operador o
@@ -71,7 +72,11 @@ public class FlotaDAO {
             String destino,
             String estado,
             BigDecimal horasMaxConduccion,
-            BigDecimal horasMinDescanso) {
+            BigDecimal horasMinDescanso,
+            Double latitudOrigen,
+            Double longitudOrigen,
+            Double latitudDestino,
+            Double longitudDestino) {
     }
 
     /** Operador para el selector de la cabina (mientras el login de Persona 2 no este integrado). */
@@ -304,7 +309,15 @@ public class FlotaDAO {
                 (String) f[9],
                 (String) f[10],
                 decimal(f[11]),
-                decimal(f[12]));
+                decimal(f[12]),
+                decimalDouble(f[13]),
+                decimalDouble(f[14]),
+                decimalDouble(f[15]),
+                decimalDouble(f[16]));
+    }
+
+    private static Double decimalDouble(Object valor) {
+        return valor == null ? null : ((Number) valor).doubleValue();
     }
 
     private static int entero(Object valor) {

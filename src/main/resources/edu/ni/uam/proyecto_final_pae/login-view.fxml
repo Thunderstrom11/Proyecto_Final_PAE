@@ -31,7 +31,7 @@
     </HBox>
 
     <Label text="Usuario" maxWidth="Infinity"/>
-    <TextField fx:id="txtUsuario" promptText="su usuario"/>
+    <TextField fx:id="txtUsuario" promptText="su usuario" onAction="#siguienteCampo"/>
     <Label text="Contraseña" maxWidth="Infinity"/>
     <PasswordField fx:id="txtPassword" onAction="#ingresar"/>
 

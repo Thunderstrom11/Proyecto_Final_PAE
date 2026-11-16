@@ -39,6 +39,8 @@
                 <TextField fx:id="txtEmail" promptText="info@empresa.com"/>
                 <Label text="Dirección"/>
                 <TextField fx:id="txtDireccion" promptText="Managua, Nicaragua"/>
+                <Label text="Moneda de la empresa *"/>
+                <ComboBox fx:id="cmbMoneda" maxWidth="Infinity"/>
             </VBox>
 
             <VBox fx:id="panelAdmin" spacing="7" styleClass="form-pane">

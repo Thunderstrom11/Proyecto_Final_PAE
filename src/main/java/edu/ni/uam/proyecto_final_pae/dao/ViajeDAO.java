@@ -176,6 +176,53 @@ public class ViajeDAO extends GenericDAO<Viaje, Integer> {
         });
     }
 
+    /** Cancela un viaje activo y libera sus recursos cuando no pertenece a una cadena. */
+    public void cancelar(int idViaje) {
+        Transaccion.ejecutar(sesion -> {
+            Viaje viaje = sesion.find(Viaje.class, idViaje, LockModeType.PESSIMISTIC_WRITE);
+            if (viaje == null) {
+                throw new PersistenciaException("El viaje ya no existe.", null);
+            }
+            String estado = viaje.getEstado() == null ? "" : viaje.getEstado().getNombre();
+            if (!List.of("PROGRAMADO", "EN_CURSO", "PAUSADO").contains(estado)) {
+                throw new PersistenciaException(
+                        "Solo se pueden cancelar viajes programados, en curso o pausados.", null);
+            }
+            Long siguientes = sesion.createQuery(
+                            "select count(v) from Viaje v join v.estado e "
+                                    + "where v.viajePrevio.id = :id "
+                                    + "and e.nombre in ('PROGRAMADO', 'EN_CURSO', 'PAUSADO')",
+                            Long.class)
+                    .setParameter("id", idViaje)
+                    .getSingleResult();
+            if (siguientes != null && siguientes > 0) {
+                throw new PersistenciaException(
+                        "No se puede cancelar: tiene un viaje encadenado activo.", null);
+            }
+
+            Carga carga = sesion.find(Carga.class, viaje.getCarga().getId(),
+                    LockModeType.PESSIMISTIC_WRITE);
+            if (carga != null) {
+                carga.setEstado(catalogo(sesion, EstadoCarga.class, "PENDIENTE"));
+            }
+            viaje.setEstado(catalogo(sesion, EstadoViaje.class, "CANCELADO"));
+
+            if (viaje.getViajePrevio() == null) {
+                Unidad unidad = sesion.find(Unidad.class, viaje.getUnidad().getId(),
+                        LockModeType.PESSIMISTIC_WRITE);
+                Operador operador = sesion.find(Operador.class, viaje.getOperador().getId(),
+                        LockModeType.PESSIMISTIC_WRITE);
+                if (unidad != null) {
+                    unidad.setEstado(catalogo(sesion, EstadoUnidad.class, "DISPONIBLE"));
+                }
+                if (operador != null) {
+                    operador.setEstado(catalogo(sesion, EstadoOperador.class, "DISPONIBLE"));
+                }
+            }
+            return null;
+        });
+    }
+
     private static boolean hayViajeActivo(Session sesion, String campo, int id, Integer excluirIdViaje) {
         String hql = "select count(v) from Viaje v join v.estado e "
                 + "where v." + campo + ".id = :id "

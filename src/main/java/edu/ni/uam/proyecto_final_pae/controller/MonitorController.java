@@ -27,6 +27,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.util.Duration;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -59,6 +60,7 @@ public class MonitorController {
     @FXML private TableColumn<Fila, String> colOperador;
     @FXML private TableColumn<Fila, String> colCarga;
     @FXML private TableColumn<Fila, String> colRuta;
+    @FXML private TableColumn<Fila, String> colCoordenadas;
     @FXML private TableColumn<Fila, String> colSla;
     @FXML private TableColumn<Fila, String> colManejo;
     @FXML private TableColumn<Fila, String> colSemaforo;
@@ -98,6 +100,7 @@ public class MonitorController {
             String operador,
             String carga,
             String ruta,
+            String coordenadas,
             String limite,
             String manejo,
             String semaforo,
@@ -110,7 +113,7 @@ public class MonitorController {
                 return true;
             }
             String buscado = texto.trim().toLowerCase(Locale.ROOT);
-            return java.util.stream.Stream.of(id, unidad, operador, carga, ruta, estado)
+            return java.util.stream.Stream.of(id, unidad, operador, carga, ruta, coordenadas, estado)
                     .anyMatch(valor -> valor != null && valor.toLowerCase(Locale.ROOT).contains(buscado));
         }
     }
@@ -128,6 +131,7 @@ public class MonitorController {
         colOperador.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().operador()));
         colCarga.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().carga()));
         colRuta.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().ruta()));
+        colCoordenadas.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().coordenadas()));
         colSla.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().limite()));
         colManejo.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().manejo()));
         colSemaforo.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().semaforo()));
@@ -145,9 +149,9 @@ public class MonitorController {
         colOperadorTelefono.setCellValueFactory(c -> new SimpleStringProperty(
                 c.getValue().getTelefono() == null ? "—" : c.getValue().getTelefono()));
         colOperadorMax.setCellValueFactory(c -> new SimpleStringProperty(
-                c.getValue().getHorasMaxConduccion().toPlainString()));
+                horas(c.getValue().getHorasMaxConduccion())));
         colOperadorMin.setCellValueFactory(c -> new SimpleStringProperty(
-                c.getValue().getHorasMinDescanso().toPlainString()));
+                horas(c.getValue().getHorasMinDescanso())));
         colOperadorEstado.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getEstado().getNombre()));
 
         colManejo.setStyle("-fx-alignment: CENTER;");
@@ -171,12 +175,12 @@ public class MonitorController {
 
         txtFiltro.textProperty().addListener((observable, anterior, actual) -> aplicarFiltro());
 
-        cmbEstadoUnidades.getItems().setAll("Todos", "En ruta", "Disponible");
+        cmbEstadoUnidades.getItems().setAll("Todos", "En ruta", "Disponible", "Mantenimiento");
         cmbEstadoUnidades.setValue("Todos");
         cmbEstadoUnidades.valueProperty().addListener((o, a, b) -> aplicarFiltroUnidades());
         txtFiltroUnidades.textProperty().addListener((o, a, b) -> aplicarFiltroUnidades());
 
-        cmbEstadoOperadores.getItems().setAll("Todos", "Descanso", "Disponible");
+        cmbEstadoOperadores.getItems().setAll("Todos", "En ruta", "Disponible", "Descanso", "Inactivo");
         cmbEstadoOperadores.setValue("Todos");
         cmbEstadoOperadores.valueProperty().addListener((o, a, b) -> aplicarFiltroOperadores());
         txtFiltroOperadores.textProperty().addListener((o, a, b) -> aplicarFiltroOperadores());
@@ -191,6 +195,11 @@ public class MonitorController {
         reloj.setCycleCount(Timeline.INDEFINITE);
         reloj.play();
         refrescarAutomatico();
+    }
+
+    @FXML
+    private void cerrarSesion() {
+        Navegacion.cerrarSesion(Navegacion.stageDe(lblEstado));
     }
 
     @FXML
@@ -241,6 +250,8 @@ public class MonitorController {
                         viaje.operador(),
                         viaje.numeroCarga(),
                         texto(viaje.origen()) + " → " + texto(viaje.destino()),
+                        coordenadas(viaje.latitudOrigen(), viaje.longitudOrigen()) + " → "
+                                + coordenadas(viaje.latitudDestino(), viaje.longitudDestino()),
                         viaje.fechaLimite() == null ? "—" : viaje.fechaLimite().format(FECHA),
                         resumen.manejoTexto(),
                         resumen.semaforo().getEtiqueta(),
@@ -268,9 +279,13 @@ public class MonitorController {
     }
 
     private void aplicarFiltro() {
+        Fila seleccionada = tabla.getSelectionModel().getSelectedItem();
         String filtro = txtFiltro.getText();
         List<Fila> visibles = todas.stream().filter(fila -> fila.coincide(filtro)).toList();
         tabla.setItems(FXCollections.observableArrayList(visibles));
+        if (seleccionada != null && visibles.contains(seleccionada)) {
+            tabla.getSelectionModel().select(seleccionada);
+        }
         tabla.refresh();
     }
 
@@ -278,6 +293,7 @@ public class MonitorController {
         if (txtFiltroUnidades == null || cmbEstadoUnidades == null) {
             return;
         }
+        Unidad seleccionada = tablaUnidades.getSelectionModel().getSelectedItem();
         String texto = txtFiltroUnidades.getText();
         String estado = cmbEstadoUnidades.getValue();
         List<Unidad> visibles = todasUnidades.stream()
@@ -286,6 +302,9 @@ public class MonitorController {
                 .toList();
         ObservableList<Unidad> items = FXCollections.observableArrayList(visibles);
         tablaUnidades.setItems(items);
+        if (seleccionada != null && visibles.contains(seleccionada)) {
+            tablaUnidades.getSelectionModel().select(seleccionada);
+        }
         tablaUnidades.refresh();
     }
 
@@ -293,6 +312,7 @@ public class MonitorController {
         if (txtFiltroOperadores == null || cmbEstadoOperadores == null) {
             return;
         }
+        Operador seleccionado = tablaOperadores.getSelectionModel().getSelectedItem();
         String texto = txtFiltroOperadores.getText();
         String estado = cmbEstadoOperadores.getValue();
         List<Operador> visibles = todosOperadores.stream()
@@ -301,6 +321,9 @@ public class MonitorController {
                 .toList();
         ObservableList<Operador> items = FXCollections.observableArrayList(visibles);
         tablaOperadores.setItems(items);
+        if (seleccionado != null && visibles.contains(seleccionado)) {
+            tablaOperadores.getSelectionModel().select(seleccionado);
+        }
         tablaOperadores.refresh();
     }
 
@@ -325,6 +348,9 @@ public class MonitorController {
         if ("En ruta".equals(filtro)) {
             return "EN_RUTA".equals(estado);
         }
+        if ("Mantenimiento".equals(filtro)) {
+            return "MANTENIMIENTO".equals(estado);
+        }
         return "DISPONIBLE".equals(estado);
     }
 
@@ -343,14 +369,30 @@ public class MonitorController {
             return true;
         }
         String estado = operador.getEstado() == null ? "" : operador.getEstado().getNombre();
+        if ("En ruta".equals(filtro)) {
+            return "EN_RUTA".equals(estado);
+        }
         if ("Descanso".equals(filtro)) {
             return "DESCANSO".equals(estado);
+        }
+        if ("Inactivo".equals(filtro)) {
+            return "INACTIVO".equals(estado);
         }
         return "DISPONIBLE".equals(estado);
     }
 
     private static boolean contiene(String valor, String buscado) {
         return valor != null && valor.toLowerCase(Locale.ROOT).contains(buscado);
+    }
+
+    private static String horas(BigDecimal valor) {
+        return valor == null ? "—" : valor.stripTrailingZeros().toPlainString() + " h";
+    }
+
+    private static String coordenadas(Double latitud, Double longitud) {
+        return latitud == null || longitud == null
+                ? "—"
+                : String.format(java.util.Locale.ROOT, "%.5f, %.5f", latitud, longitud);
     }
 
     private static String texto(String valor) {

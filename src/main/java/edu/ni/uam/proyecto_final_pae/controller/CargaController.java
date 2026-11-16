@@ -9,6 +9,7 @@ import edu.ni.uam.proyecto_final_pae.model.Cliente;
 import edu.ni.uam.proyecto_final_pae.model.EstadoCarga;
 import edu.ni.uam.proyecto_final_pae.model.RolUsuario;
 import edu.ni.uam.proyecto_final_pae.security.SesionActual;
+import edu.ni.uam.proyecto_final_pae.util.ComboBuscador;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.beans.binding.Bindings;
@@ -147,12 +148,25 @@ public class CargaController {
     // ------------------------------------------------------------------ acciones
 
     @FXML
+    private void cerrarSesion() {
+        Navegacion.cerrarSesion(Navegacion.stageDe(lblEstado));
+    }
+
+    @FXML
     private void verTodas() {
         if (!sesionAdmin()) {
             return;
         }
         filtroEstado = null;
+        marcarFiltro(btnVerTodas);
         cargarTodas("Todas las cargas");
+    }
+
+    private void marcarFiltro(Button activo) {
+        for (Button boton : List.of(btnVerTodas, btnVerPendientes, btnEntregadas, btnEnTransito)) {
+            boton.getStyleClass().remove("filter-active");
+        }
+        activo.getStyleClass().add("filter-active");
     }
 
     @FXML
@@ -161,6 +175,7 @@ public class CargaController {
             return;
         }
         filtroEstado = "PENDIENTE";
+        marcarFiltro(btnVerPendientes);
         cargarTodas("Cargas pendientes");
     }
 
@@ -170,6 +185,7 @@ public class CargaController {
             return;
         }
         filtroEstado = "ENTREGADA";
+        marcarFiltro(btnEntregadas);
         cargarTodas("Cargas entregadas");
     }
 
@@ -179,6 +195,7 @@ public class CargaController {
             return;
         }
         filtroEstado = "EN_TRANSITO";
+        marcarFiltro(btnEnTransito);
         cargarTodas("Cargas en tránsito");
     }
 
@@ -190,6 +207,7 @@ public class CargaController {
         txtPesoMin.clear();
         txtPesoMax.clear();
         filtroEstado = null;
+        marcarFiltro(btnVerTodas);
         aplicarFiltros("Filtro de cargas limpio");
     }
 
@@ -200,6 +218,9 @@ public class CargaController {
         }
         try {
             Carga carga = construir(new Carga());
+            if (carga.getFechaLimiteCliente().isBefore(LocalDateTime.now())) {
+                throw new IllegalArgumentException("La fecha y hora límite deben ser futuras.");
+            }
             EstadoCarga pendiente = catalogoDAO.porNombre(EstadoCarga.class, "PENDIENTE");
             carga.setEstado(pendiente);
             cargaDAO.guardar(carga);
@@ -224,8 +245,7 @@ public class CargaController {
             return;
         }
         try {
-            Carga carga = construir(new Carga());
-            carga.setId(seleccionada.getId());
+            Carga carga = construir(seleccionada);
             cargaDAO.actualizar(carga);
             limpiar();
             verTodas();
@@ -247,11 +267,13 @@ public class CargaController {
             advertencia("Seleccione una carga de la tabla para eliminarla.");
             return;
         }
+        ButtonType eliminar = new ButtonType("Eliminar", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelar = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
         Alert confirmacion = new Alert(Alert.AlertType.CONFIRMATION,
-                "¿Eliminar la carga " + seleccionada.getNumeroCarga() + "?", ButtonType.YES, ButtonType.NO);
+                "¿Eliminar la carga " + seleccionada.getNumeroCarga() + "?", eliminar, cancelar);
         confirmacion.setHeaderText(null);
         Optional<ButtonType> respuesta = confirmacion.showAndWait();
-        if (respuesta.isEmpty() || respuesta.get() != ButtonType.YES) {
+        if (respuesta.isEmpty() || respuesta.get() != eliminar) {
             return;
         }
         try {
@@ -288,8 +310,13 @@ public class CargaController {
         if (nombre.isEmpty() || nombre.get().isBlank()) {
             return;
         }
+        String nombreCliente = nombre.get().trim();
+        if (nombreCliente.length() > 150) {
+            advertencia("El nombre del cliente no puede pasar de 150 caracteres.");
+            return;
+        }
         try {
-            Cliente cliente = clienteDAO.guardar(new Cliente(nombre.get().trim()));
+            Cliente cliente = clienteDAO.guardar(new Cliente(nombreCliente));
             recargarClientes();
             cmbCliente.getSelectionModel().select(cliente);
         } catch (PersistenciaException e) {
@@ -355,7 +382,7 @@ public class CargaController {
     }
 
     private void recargarClientes() {
-        cmbCliente.setItems(FXCollections.observableArrayList(clienteDAO.listarActivos()));
+        ComboBuscador.configurar(cmbCliente, clienteDAO.listarActivos());
     }
 
     private boolean vacio(TextField campo) {
@@ -389,6 +416,7 @@ public class CargaController {
         BigDecimal pesoMin = pesoFiltro(txtPesoMin.getText());
         BigDecimal pesoMax = pesoFiltro(txtPesoMax.getText());
 
+        Carga seleccionada = tabla.getSelectionModel().getSelectedItem();
         List<Carga> visibles = todas.stream()
                 .filter(c -> filtroEstado == null || filtroEstado.equals(c.getEstado().getNombre()))
                 .filter(c -> texto.isEmpty() || coincide(c, texto))
@@ -398,6 +426,9 @@ public class CargaController {
                 .filter(c -> pesoMax == null || c.getPesoToneladas().compareTo(pesoMax) <= 0)
                 .toList();
         tabla.setItems(FXCollections.observableArrayList(visibles));
+        if (seleccionada != null && visibles.contains(seleccionada)) {
+            tabla.getSelectionModel().select(seleccionada);
+        }
         tabla.refresh();
         lblEstado.setText(titulo + ": " + visibles.size() + " registro(s).");
     }

@@ -2,12 +2,15 @@ package edu.ni.uam.proyecto_final_pae.controller;
 
 import edu.ni.uam.proyecto_final_pae.config.GeoUtil;
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
+import edu.ni.uam.proyecto_final_pae.dao.EmpresaDAO;
 import edu.ni.uam.proyecto_final_pae.dao.RutaDAO;
 import edu.ni.uam.proyecto_final_pae.dao.UbicacionDAO;
 import edu.ni.uam.proyecto_final_pae.dao.ViajeDAO;
 import edu.ni.uam.proyecto_final_pae.model.*;
 import edu.ni.uam.proyecto_final_pae.security.SesionActual;
 import edu.ni.uam.proyecto_final_pae.service.JornadaService;
+import edu.ni.uam.proyecto_final_pae.util.ComboBuscador;
+import edu.ni.uam.proyecto_final_pae.util.Tooltips;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.beans.binding.Bindings;
@@ -15,10 +18,19 @@ import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 
+import java.awt.Desktop;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 public class ViajeController {
@@ -26,9 +38,11 @@ public class ViajeController {
     private final ViajeDAO viajeDAO = new ViajeDAO();
     private final UbicacionDAO ubicacionDAO = new UbicacionDAO();
     private final RutaDAO rutaDAO = new RutaDAO();
+    private final EmpresaDAO empresaDAO = new EmpresaDAO();
     private final JornadaService jornadaService = new JornadaService();
 
     private Timeline reloj;
+    private String moneda = "NIO";
 
     @FXML private TextField txtBuscarViaje;
     @FXML private TextField txtCobroMin;
@@ -62,11 +76,20 @@ public class ViajeController {
     @FXML private TextField txtCobro;
     @FXML private Label lblEstado;
     @FXML private CheckBox chkEncadenado;
+    @FXML private Label lblCoordenadasOrigen;
+    @FXML private Label lblCoordenadasDestino;
+    @FXML private Button btnBuscarOrigen;
+    @FXML private Button btnBuscarDestino;
+    @FXML private Button btnGoogleOrigen;
+    @FXML private Button btnGoogleDestino;
+
+    private boolean ajustandoLugar;
 
     @FXML private Button btnVerTodos;
     @FXML private Button btnVerActivos;
     @FXML private Button btnVerFinalizados;
     @FXML private Button btnFinalizar;
+    @FXML private Button btnCancelarViaje;
     @FXML private Button btnCrear;
     @FXML private Button btnLimpiar;
 
@@ -75,6 +98,16 @@ public class ViajeController {
         if (!sesionAdmin()) {
             return;
         }
+        try {
+            empresaDAO.obtener().ifPresent(empresa -> {
+                if (empresa.getMoneda() != null && !empresa.getMoneda().isBlank()) {
+                    moneda = empresa.getMoneda();
+                }
+            });
+        } catch (PersistenciaException e) {
+            // Se conserva NIO como moneda por defecto.
+        }
+        colCobro.setText("Cobro (" + moneda + ")");
         // columnas viajes
         colId.setCellValueFactory(c -> new SimpleStringProperty(String.valueOf(c.getValue().getId())));
         colUnidad.setCellValueFactory(c -> new SimpleStringProperty(
@@ -85,7 +118,7 @@ public class ViajeController {
                 c.getValue().getCarga() == null ? "—" : c.getValue().getCarga().getNumeroCarga()));
         colOrigen.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getOrigen().getNombre()));
         colDestino.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getDestino().getNombre()));
-        colCobro.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getCobroViaje().toPlainString()));
+        colCobro.setCellValueFactory(c -> new SimpleStringProperty(formatearMoneda(c.getValue().getCobroViaje())));
         colEstado.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getEstado().getNombre()));
 
         // toggle encadenamiento
@@ -106,8 +139,14 @@ public class ViajeController {
         rbDestino.setToggleGroup(rutas);
         rbOrigen.setSelected(true);
 
-        cmbOrigen.valueProperty().addListener((o, a, b) -> actualizarTiempo());
-        cmbDestino.valueProperty().addListener((o, a, b) -> actualizarTiempo());
+        cmbOrigen.valueProperty().addListener((o, a, b) -> {
+            actualizarTiempo();
+            actualizarCoordenadasOrigen();
+        });
+        cmbDestino.valueProperty().addListener((o, a, b) -> {
+            actualizarTiempo();
+            actualizarCoordenadasDestino();
+        });
         txtBuscarViaje.textProperty().addListener((o, a, b) -> aplicarFiltros("Filtro de viajes"));
         txtCobroMin.textProperty().addListener((o, a, b) -> aplicarFiltros("Filtro de viajes"));
         txtCobroMax.textProperty().addListener((o, a, b) -> aplicarFiltros("Filtro de viajes"));
@@ -138,13 +177,29 @@ public class ViajeController {
                     || viaje.getFechaInicio() == null;
         }, tabla.getSelectionModel().selectedItemProperty());
 
+        BooleanBinding sinViajeCancelable = Bindings.createBooleanBinding(() -> {
+            Viaje viaje = tabla.getSelectionModel().getSelectedItem();
+            if (viaje == null || viaje.getEstado() == null) {
+                return true;
+            }
+            String estado = viaje.getEstado().getNombre();
+            return !("PROGRAMADO".equals(estado) || "EN_CURSO".equals(estado)
+                    || "PAUSADO".equals(estado));
+        }, tabla.getSelectionModel().selectedItemProperty());
+
         btnCrear.disableProperty().bind(datosViajeIncompletos);
         btnFinalizar.disableProperty().bind(sinViajeEnCurso);
+        btnCancelarViaje.disableProperty().bind(sinViajeCancelable);
+        btnBuscarOrigen.disableProperty().bind(cmbOrigen.valueProperty().isNull());
+        btnBuscarDestino.disableProperty().bind(cmbDestino.valueProperty().isNull());
+        btnGoogleOrigen.setDisable(true);
+        btnGoogleDestino.setDisable(true);
 
         try {
             recargarDisponibles();
-            cmbOrigen.setItems(FXCollections.observableArrayList(ubicacionDAO.listar()));
-            cmbDestino.setItems(FXCollections.observableArrayList(ubicacionDAO.listar()));
+            List<Ubicacion> ubicaciones = ubicacionDAO.listar();
+            ComboBuscador.configurar(cmbOrigen, ubicaciones);
+            ComboBuscador.configurar(cmbDestino, ubicaciones);
             verTodos();
         } catch (PersistenciaException e) {
             error("No se pudo conectar con la base de datos", e);
@@ -184,7 +239,15 @@ public class ViajeController {
             return;
         }
         filtroEstado = null;
+        marcarFiltro(btnVerTodos);
         cargarTodos("Todos los viajes");
+    }
+
+    private void marcarFiltro(Button activo) {
+        for (Button boton : List.of(btnVerTodos, btnVerActivos, btnVerFinalizados)) {
+            boton.getStyleClass().remove("filter-active");
+        }
+        activo.getStyleClass().add("filter-active");
     }
 
     @FXML private void verActivos() {
@@ -192,6 +255,7 @@ public class ViajeController {
             return;
         }
         filtroEstado = "ACTIVO";
+        marcarFiltro(btnVerActivos);
         cargarTodos("Viajes activos");
     }
 
@@ -200,6 +264,7 @@ public class ViajeController {
             return;
         }
         filtroEstado = "FINALIZADO";
+        marcarFiltro(btnVerFinalizados);
         cargarTodos("Viajes finalizados");
     }
 
@@ -231,6 +296,15 @@ public class ViajeController {
             if (v.getOrigen().getId().equals(v.getDestino().getId())) {
                 throw new IllegalArgumentException("El origen y el destino deben ser distintos.");
             }
+            Unidad unidadViaje = chkEncadenado.isSelected() && v.getViajePrevio() != null
+                    ? v.getViajePrevio().getUnidad() : v.getUnidad();
+            if (unidadViaje != null && unidadViaje.getCapacidadToneladas() != null
+                    && v.getCarga().getPesoToneladas() != null
+                    && v.getCarga().getPesoToneladas().compareTo(
+                    unidadViaje.getCapacidadToneladas()) > 0) {
+                throw new IllegalArgumentException("El peso de la carga supera la capacidad de la unidad ("
+                        + unidadViaje.getCapacidadToneladas().stripTrailingZeros().toPlainString() + " t).");
+            }
             v.setTiempoEstimado(numero(txtTiempo.getText(), "tiempo estimado"));
             v.setCobroViaje(numero(txtCobro.getText(), "cobro"));
             if (v.getTiempoEstimado().signum() <= 0 || v.getCobroViaje().signum() <= 0) {
@@ -239,6 +313,7 @@ public class ViajeController {
 
             viajeDAO.crear(v);
             limpiar();
+            recargarDisponibles();
             verTodos();
             lblEstado.setText("Viaje " + v.getId() + " creado.");
         } catch (IllegalArgumentException e) {
@@ -255,21 +330,59 @@ public class ViajeController {
         }
         Viaje sel = tabla.getSelectionModel().getSelectedItem();
         if (sel == null) {
-            advertencia("Selecciona un viaje de la tabla.");
+            advertencia("Seleccione un viaje de la tabla.");
             return;
         }
+        ButtonType finalizar = new ButtonType("Finalizar", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelar = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
         Alert ok = new Alert(Alert.AlertType.CONFIRMATION,
-                "¿Confirmar entrega del viaje #" + sel.getId() + "?",
-                ButtonType.YES, ButtonType.NO);
+                "¿Confirmar entrega del viaje #" + sel.getId() + "?", finalizar, cancelar);
         Optional<ButtonType> r = ok.showAndWait();
-        if (r.isEmpty() || r.get() != ButtonType.YES) return;
+        if (r.isEmpty() || r.get() != finalizar) return;
         try {
             jornadaService.confirmarEntrega(sel.getId());
+            recargarDisponibles();
             verTodos();
             lblEstado.setText("Viaje #" + sel.getId() + " finalizado.");
         } catch (PersistenciaException e) {
             error("No se pudo finalizar el viaje", e);
         }
+    }
+
+    @FXML
+    private void cancelarViaje() {
+        if (!sesionAdmin()) {
+            return;
+        }
+        Viaje seleccionado = tabla.getSelectionModel().getSelectedItem();
+        if (seleccionado == null) {
+            advertencia("Seleccione un viaje de la tabla.");
+            return;
+        }
+        ButtonType cancelar = new ButtonType("Cancelar viaje", ButtonBar.ButtonData.OK_DONE);
+        ButtonType volver = new ButtonType("Volver", ButtonBar.ButtonData.CANCEL_CLOSE);
+        Alert confirmacion = new Alert(Alert.AlertType.CONFIRMATION,
+                "¿Cancelar el viaje #" + seleccionado.getId()
+                        + "? La unidad, el operador y la carga quedarán disponibles.",
+                cancelar, volver);
+        confirmacion.setHeaderText("Cancelar viaje");
+        Optional<ButtonType> respuesta = confirmacion.showAndWait();
+        if (respuesta.isEmpty() || respuesta.get() != cancelar) {
+            return;
+        }
+        try {
+            viajeDAO.cancelar(seleccionado.getId());
+            recargarDisponibles();
+            verTodos();
+            lblEstado.setText("Viaje #" + seleccionado.getId() + " cancelado.");
+        } catch (PersistenciaException e) {
+            error("No se pudo cancelar el viaje", e);
+        }
+    }
+
+    @FXML
+    private void cerrarSesion() {
+        Navegacion.cerrarSesion(Navegacion.stageDe(lblEstado));
     }
 
     @FXML
@@ -284,24 +397,132 @@ public class ViajeController {
         chkEncadenado.setSelected(false);
         txtTiempo.clear();
         txtCobro.clear();
+        actualizarCoordenadasOrigen();
+        actualizarCoordenadasDestino();
+    }
+
+    @FXML
+    private void abrirPickerOrigen() {
+        Ubicacion base = cmbOrigen.getValue();
+        if (base == null) {
+            advertencia("Seleccione primero una ubicación base para el origen.");
+            return;
+        }
+        Ubicacion elegida = seleccionarLugar(base, "origen");
+        if (elegida != null) {
+            ajustandoLugar = true;
+            agregarUbicacionACombos(elegida);
+            cmbOrigen.setValue(elegida);
+            ajustandoLugar = false;
+            actualizarTiempo();
+            actualizarCoordenadasOrigen();
+        }
+    }
+
+    @FXML
+    private void abrirPickerDestino() {
+        Ubicacion base = cmbDestino.getValue();
+        if (base == null) {
+            advertencia("Seleccione primero una ubicación base para el destino.");
+            return;
+        }
+        Ubicacion elegida = seleccionarLugar(base, "destino");
+        if (elegida != null) {
+            ajustandoLugar = true;
+            agregarUbicacionACombos(elegida);
+            cmbDestino.setValue(elegida);
+            ajustandoLugar = false;
+            actualizarTiempo();
+            actualizarCoordenadasDestino();
+        }
+    }
+
+    private Ubicacion seleccionarLugar(Ubicacion base, String rol) {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    getClass().getResource("/edu/ni/uam/proyecto_final_pae/lugar-picker-view.fxml"));
+            Parent root = loader.load();
+            Tooltips.instalar(root);
+            LugarPickerController controller = loader.getController();
+            Stage stage = new Stage();
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.initOwner(txtBuscarViaje.getScene().getWindow());
+            stage.setTitle("Seleccionar lugar exacto");
+            stage.setScene(new Scene(root));
+            stage.setOnShown(evento -> controller.configurar(base.getPais(), base, stage, rol));
+            stage.showAndWait();
+            return controller.getSeleccion();
+        } catch (IOException e) {
+            advertencia("No se pudo abrir el selector de lugares: " + e.getMessage());
+            return null;
+        }
+    }
+
+    private void agregarUbicacionACombos(Ubicacion ubicacion) {
+        ComboBuscador.agregarOpcion(cmbOrigen, ubicacion);
+        ComboBuscador.agregarOpcion(cmbDestino, ubicacion);
+    }
+
+    private void actualizarCoordenadasOrigen() {
+        actualizarCoordenadas(cmbOrigen.getValue(), lblCoordenadasOrigen, btnGoogleOrigen);
+    }
+
+    private void actualizarCoordenadasDestino() {
+        actualizarCoordenadas(cmbDestino.getValue(), lblCoordenadasDestino, btnGoogleDestino);
+    }
+
+    private void actualizarCoordenadas(Ubicacion ubicacion, Label etiqueta, Button boton) {
+        if (ubicacion == null || ubicacion.getLatitud() == null || ubicacion.getLongitud() == null) {
+            etiqueta.setText("Sin coordenadas exactas.");
+            boton.setDisable(true);
+            return;
+        }
+        etiqueta.setText(ubicacion.getNombre() + "  ·  "
+                + String.format(Locale.ROOT, "%.5f, %.5f",
+                ubicacion.getLatitud(), ubicacion.getLongitud()));
+        boton.setDisable(false);
+    }
+
+    @FXML
+    private void abrirGoogleOrigen() {
+        abrirGoogleMaps(cmbOrigen.getValue());
+    }
+
+    @FXML
+    private void abrirGoogleDestino() {
+        abrirGoogleMaps(cmbDestino.getValue());
+    }
+
+    private void abrirGoogleMaps(Ubicacion ubicacion) {
+        if (ubicacion == null || ubicacion.getLatitud() == null || ubicacion.getLongitud() == null) {
+            advertencia("Seleccione un lugar con coordenadas para abrir Google Maps.");
+            return;
+        }
+        try {
+            String url = "https://www.google.com/maps/search/?api=1&query="
+                    + ubicacion.getLatitud() + "," + ubicacion.getLongitud();
+            Desktop.getDesktop().browse(URI.create(url));
+        } catch (Exception e) {
+            advertencia("No se pudo abrir Google Maps: " + e.getMessage());
+        }
     }
 
     // ------------------- apoyo
 
     private void recargarDisponibles() {
-        cmbUnidad.setItems(FXCollections.observableArrayList(viajeDAO.unidadesDisponibles()));
-        cmbOperador.setItems(FXCollections.observableArrayList(viajeDAO.operadoresDisponibles()));
-        cmbCarga.setItems(FXCollections.observableArrayList(viajeDAO.cargasPendientes()));
+        ComboBuscador.configurar(cmbUnidad, viajeDAO.unidadesDisponibles());
+        ComboBuscador.configurar(cmbOperador, viajeDAO.operadoresDisponibles());
+        ComboBuscador.configurar(cmbCarga, viajeDAO.cargasPendientes());
     }
 
     private void cargarViajesEncadenables() {
         // Solo se puede encadenar sobre un viaje que ya esta en ruta.
-        cmbViajePrevio.setItems(FXCollections.observableArrayList(viajeDAO.listarActivos().stream()
+        ComboBuscador.configurar(cmbViajePrevio, viajeDAO.listarActivos().stream()
                 .filter(viaje -> viaje.getEstado() != null
                         && ("EN_CURSO".equals(viaje.getEstado().getNombre())
                         || "PAUSADO".equals(viaje.getEstado().getNombre())))
-                .toList()));
-        cmbCarga.setItems(FXCollections.observableArrayList(viajeDAO.cargasPendientes()));
+                .toList());
+        ComboBuscador.configurar(cmbCarga, viajeDAO.cargasPendientes());
     }
 
     private void mostrar(java.util.function.Supplier<List<Viaje>> consulta, String titulo) {
@@ -336,6 +557,7 @@ public class ViajeController {
         BigDecimal cobroMax = numeroFiltro(txtCobroMax.getText());
         boolean porOrigen = rbOrigen == null || rbOrigen.isSelected();
 
+        Viaje seleccionado = tabla.getSelectionModel().getSelectedItem();
         List<Viaje> visibles = todos.stream()
                 .filter(this::coincideEstado)
                 .filter(viaje -> coincideTexto(viaje, busqueda))
@@ -344,6 +566,9 @@ public class ViajeController {
                 .toList();
 
         tabla.setItems(FXCollections.observableArrayList(visibles));
+        if (seleccionado != null && visibles.contains(seleccionado)) {
+            tabla.getSelectionModel().select(seleccionado);
+        }
         tabla.refresh();
         lblEstado.setText(titulo + ": " + visibles.size() + " de " + todos.size() + " viaje(s).");
     }
@@ -440,7 +665,7 @@ public class ViajeController {
 
     private <T> T requerido(T valor, String campo) {
         if (valor == null) {
-            throw new IllegalArgumentException("Selecciona " + campo + ".");
+            throw new IllegalArgumentException("Seleccione " + campo + ".");
         }
         return valor;
     }
@@ -455,6 +680,24 @@ public class ViajeController {
         } catch (NumberFormatException | NullPointerException e) {
             throw new IllegalArgumentException("El " + campo + " debe ser numérico, ej. 12.50");
         }
+    }
+
+    private String formatearMoneda(BigDecimal valor) {
+        if (valor == null) {
+            return "—";
+        }
+        String numero = String.format(Locale.US, "%,.2f", valor);
+        return switch (moneda) {
+            case "NIO" -> "C$ " + numero;
+            case "USD" -> "$ " + numero;
+            case "EUR" -> "€ " + numero;
+            case "CRC" -> "₡ " + numero;
+            case "GTQ" -> "Q " + numero;
+            case "HNL" -> "L " + numero;
+            case "PAB" -> "B/. " + numero;
+            case "MXN" -> "MX$ " + numero;
+            default -> moneda + " " + numero;
+        };
     }
 
     private void advertencia(String msg) {
