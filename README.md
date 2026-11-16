@@ -93,9 +93,11 @@ Ambos roles inician sesión con credenciales almacenadas en la base de datos; la
 - **Gestión de unidades, operadores y cargas:** alta, consulta, actualización y baja.
 - **Gestión de clientes:** pestaña con todos los campos de `clientes` (empresa, contacto, teléfono, email, dirección y activo), con validaciones y bajas protegidas por integridad referencial.
 - **Panel administrativo:** cuentas de administradores y operadores, permisos de reportes, restablecimiento de contraseñas, catálogo mundial de países, ubicaciones editables con imagen de referencia y rutas con tiempo estimado.
-- **Asistente de primera configuración:** en el primer arranque se capturan los datos de la empresa y se crea la cuenta de administrador, sin editar archivos ni buscar en la base de datos.
+- **Lugares exactos para viajes:** al elegir origen/destino se abre un selector con búsqueda Nominatim y mapa Leaflet. Se puede buscar una referencia, mover el mapa y hacer clic en el punto exacto (por ejemplo, una casa cercana); el nombre para guardar es editable. El lugar se guarda en `ubicaciones` con país, nombre, latitud y longitud, por lo que puede reutilizarse al buscar ese país. El botón **Google Maps** abre la ubicación en el navegador.
+- **Asistente de primera configuración:** en el primer arranque se capturan los datos de la empresa, la moneda con la que se muestran los cobros y se crea la cuenta de administrador, sin editar archivos ni buscar en la base de datos.
 
 > La pestaña Ubicaciones incluye una imagen de referencia de Centroamérica basada en Natural Earth, con los puntos de las ubicaciones registradas. Al hacer clic sobre la imagen se llenan las coordenadas del formulario.
+> El selector de lugares exactos usa Leaflet con mosaicos de Esri y búsqueda Nominatim/OpenStreetMap; la búsqueda respeta el límite de 1 petición por segundo y requiere conexión a Internet.
 
 ### Módulo Operador (Cabina)
 
@@ -189,8 +191,7 @@ El código sigue una arquitectura en capas con el patrón **DAO**, separando la 
 ```text
 Proyecto_Final_PAE/
 ├── database/
-│   ├── fleetroute_pro.sql      # Esquema, catálogos, triggers y datos de ejemplo
-│   └── migracion_panel_admin.sql  # Columnas y tabla nuevas para bases ya existentes
+│   └── fleetroute_pro.sql      # Esquema, catálogos, triggers y datos de ejemplo
 ├── src/
 │   ├── main/
 │   │   ├── java/edu/ni/uam/proyecto_final_pae/
@@ -230,9 +231,9 @@ La base de datos `fleetroute_pro` tiene **15 tablas**: 5 catálogos, 4 maestros,
 
 | Tabla | Campos principales | Función |
 |-------|--------------------|---------|
-| `empresa` | `id_empresa`, `nombre`, `ruc`, `telefono`, `email`, `direccion`, `fecha_configuracion` | Perfil de la empresa transportista; una fila creada por el asistente de primer arranque. |
+| `empresa` | `id_empresa`, `nombre`, `ruc`, `telefono`, `email`, `direccion`, `moneda`, `fecha_configuracion` | Perfil de la empresa transportista; una fila creada por el asistente de primer arranque. |
 | `clientes` | `id_cliente`, `nombre_empresa`, `contacto`, `telefono`, `email`, `direccion`, `activo`, `fecha_registro` | Catálogo de clientes para asociar cargas; se gestiona desde la pestaña Clientes. |
-| `ubicaciones` | `id_ubicacion`, `nombre`, `departamento`, `pais`, `latitud`, `longitud` | Catálogo maestro de orígenes y destinos; las coordenadas permiten estimar el tiempo con la fórmula de Haversine. |
+| `ubicaciones` | `id_ubicacion`, `nombre`, `departamento`, `pais`, `categoria`, `color`, `latitud`, `longitud` | Catálogo maestro de orígenes y destinos; las coordenadas permiten estimar el tiempo con la fórmula de Haversine y `categoria`/`color` definen el icono del marcador. |
 | `unidades` | `id_unidad`, `numero_unidad`, `placas`, `modelo`, `capacidad_toneladas`, `id_estado_unidad`, `fecha_registro` | Camiones y estado operativo; capacidad opcional. |
 | `operadores` | `id_operador`, `cedula`, `nombre`, `telefono`, `horas_max_conduccion`, `horas_min_descanso`, `id_estado_operador`, `fecha_ingreso` | Choferes y reglas de descanso. |
 | `usuarios` | `id_usuario`, `username`, `password_hash`, `rol`, `id_operador`, `activo`, `es_principal`, `puede_ver_reportes`, `fecha_creacion` | Acceso al sistema con rol `ADMIN` u `OPERADOR`; el administrador principal gestiona cuentas, permisos y contraseñas. |
@@ -326,7 +327,40 @@ psql -U postgres -d fleetroute_pro -v ON_ERROR_STOP=1 -f database/fleetroute_pro
 1. Crear una base de datos llamada `fleetroute_pro`.
 2. Abrir la base de datos y ejecutar el contenido de `database/fleetroute_pro.sql` desde el Query Tool.
 
-**Si la base ya existía antes del panel administrativo**, no ejecutes el script completo (borra las tablas). Ejecuta `database/migracion_panel_admin.sql`, que agrega las columnas `es_principal`, `puede_ver_reportes`, las coordenadas de `ubicaciones` y la tabla `rutas`.
+**Si la base ya existía**, no ejecutes el script completo (borra las tablas). Aplica una sola vez estos cambios desde el Query Tool de pgAdmin para actualizarla:
+
+```sql
+BEGIN;
+
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS es_principal BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS puede_ver_reportes BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE usuarios DROP COLUMN IF EXISTS clave_visible;
+
+ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS latitud DOUBLE PRECISION;
+ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS longitud DOUBLE PRECISION;
+ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS categoria VARCHAR(20) NOT NULL DEFAULT 'Otro';
+ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS color VARCHAR(7) NOT NULL DEFAULT '#0891B2';
+ALTER TABLE ubicaciones DROP CONSTRAINT IF EXISTS uq_ubicacion;
+ALTER TABLE ubicaciones ADD CONSTRAINT uq_ubicacion UNIQUE (nombre, departamento, pais);
+
+ALTER TABLE empresa ADD COLUMN IF NOT EXISTS moneda VARCHAR(3) NOT NULL DEFAULT 'NIO';
+
+CREATE TABLE IF NOT EXISTS rutas (
+    id_ruta               SERIAL PRIMARY KEY,
+    id_origen             INT NOT NULL REFERENCES ubicaciones (id_ubicacion) ON DELETE RESTRICT,
+    id_destino            INT NOT NULL REFERENCES ubicaciones (id_ubicacion) ON DELETE RESTRICT,
+    tiempo_estimado_horas NUMERIC(6,2) NOT NULL CHECK (tiempo_estimado_horas > 0),
+    CONSTRAINT uq_ruta_origen_destino UNIQUE (id_origen, id_destino),
+    CONSTRAINT ck_ruta_distinta CHECK (id_origen <> id_destino)
+);
+
+UPDATE usuarios
+   SET es_principal = TRUE,
+       puede_ver_reportes = TRUE
+ WHERE username = 'admin';
+
+COMMIT;
+```
 
 > El script no crea la base de datos; solo el esquema y los datos. En Windows, si `psql` no se reconoce, agrega la carpeta `bin` de PostgreSQL al `PATH` o ejecuta los comandos desde la ruta de instalación.
 >
@@ -369,7 +403,7 @@ mvn clean javafx:run
 Si la tabla `empresa` aún no tiene datos, la aplicación abre un **asistente de configuración inicial** antes del login:
 
 1. **Datos de la empresa:** nombre (obligatorio), RUC, teléfono, correo y dirección. Se guardan en la tabla `empresa` y el nombre aparece en el login y en la pantalla de administración.
-2. **Usuario administrador:** solo si no existe ningún administrador activo. Pide usuario y contraseña (mínimo 8 caracteres, con confirmación) y la guarda con hash BCrypt. Si la base ya tiene un administrador (por ejemplo, el `admin` del script), este paso se omite.
+2. **Usuario administrador:** solo si no existe ningún administrador activo. Pide usuario, contraseña (mínimo 8 caracteres, con confirmación), moneda de la empresa y guarda la contraseña con hash BCrypt. Si la base ya tiene un administrador (por ejemplo, el `admin` del script), este paso se omite.
 
 Al guardar, el asistente entrega el control al login. En ejecuciones posteriores la aplicación va directo al login.
 
@@ -407,7 +441,7 @@ El script inserta los catálogos y un conjunto mínimo de datos para probar el s
 | Unidad | `U-001` (`M 000001`), estado `DISPONIBLE` |
 | Operador | `Operador Demo`, cédula `001-000000-0001A`, estado `DISPONIBLE` |
 | Usuario administrador | `admin` / `Admin123!` |
-| Usuario operador | `operador` / `Operador123!` |
+| Usuario operador | `operador` / `operador123!` |
 
 > Las contraseñas de ejemplo se almacenan con hash BCrypt. **Cámbialas antes de usar el sistema fuera del entorno académico.** Si quieres un esquema vacío, elimina la sección 9 del script: en el primer arranque el asistente de configuración crea la cuenta de administrador.
 >
@@ -453,12 +487,13 @@ DB_PASSWORD=tu_contrasena
 
 ### Operador
 
-1. Iniciar sesión eligiendo la opción **Operador** (demo: `operador` / `Operador123!`). La cabina muestra **solo el operador vinculado a ese usuario**; no hay selector libre de operadores.
+1. Iniciar sesión eligiendo la opción **Operador** (demo: `operador` / `operador123!`). La cabina muestra **solo el operador vinculado a ese usuario**; no hay selector libre de operadores.
 2. Presionar `INICIAR TRAYECTO` para comenzar el registro de la jornada.
 3. Registrar pausas de descanso y reanudar el manejo; el sistema acumula los tiempos y muestra cuánto descanso falta.
 4. Presionar `CONFIRMAR ENTREGA` al finalizar el viaje; el botón solo se habilita con un tramo en marcha.
 5. Si existe un viaje encadenado, se activa automáticamente en la cabina; si no, la unidad y el operador vuelven a estado **Disponible**.
 6. La sesión expira tras **15 minutos de inactividad**; también se puede cerrar con el botón **Cerrar sesión**.
+7. Tras **3 intentos fallidos** de inicio de sesión, el acceso se bloquea durante **30 segundos**. Si se fallan otros **3 intentos** después de ese bloqueo, la aplicación se cierra.
 
 > Si un operador no puede entrar, verifique que exista un registro en `usuarios` con `rol = 'OPERADOR'` y su `id_operador` asociado. El usuario demo `operador` está vinculado a **Operador Demo**.
 
@@ -589,7 +624,6 @@ WHERE c2.numero_carga = 'C-DEMO-2' AND c1.numero_carga = 'C-DEMO-1'
 - **Documento de Requerimientos — FleetRoute Pro v1.0:** objetivo general, requerimientos funcionales y no funcionales, reglas de negocio y modelo relacional.
 - **README.md:** guía de instalación, configuración y uso del sistema.
 - **`database/fleetroute_pro.sql`:** 15 tablas, catálogos, restricciones, índices, triggers y datos de ejemplo.
-- **`database/migracion_panel_admin.sql`:** migración incremental para bases creadas antes del panel administrativo.
 
 ---
 

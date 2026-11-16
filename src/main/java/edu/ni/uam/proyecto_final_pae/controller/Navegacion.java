@@ -1,6 +1,7 @@
 package edu.ni.uam.proyecto_final_pae.controller;
 
 import edu.ni.uam.proyecto_final_pae.security.SesionActual;
+import edu.ni.uam.proyecto_final_pae.util.Tooltips;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
@@ -10,14 +11,35 @@ import javafx.scene.control.ButtonType;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /** Utilidades de navegación y cierre de sesión. */
 public final class Navegacion {
 
     public static final double LOGIN_ANCHO = 460;
     public static final double LOGIN_ALTO = 620;
+    private static final List<Stage> VENTANAS = new ArrayList<>();
 
     private Navegacion() {
+    }
+
+    /** Registra una ventana para poder cerrarla cuando termine la sesión. */
+    public static void registrar(Stage stage) {
+        if (stage == null) {
+            return;
+        }
+        VENTANAS.remove(stage);
+        VENTANAS.add(stage);
+        stage.setOnHidden(evento -> VENTANAS.remove(stage));
+    }
+
+    private static void cerrarOtrasVentanas(Stage principal) {
+        for (Stage ventana : new ArrayList<>(VENTANAS)) {
+            if (ventana != principal) {
+                ventana.close();
+            }
+        }
     }
 
     public static Stage stageDe(Node nodo) {
@@ -50,8 +72,11 @@ public final class Navegacion {
                 controlador.mostrarMensaje(mensaje);
             }
             stage.setTitle("FleetRoute Pro — Iniciar sesión");
-            stage.setScene(new Scene(root, LOGIN_ANCHO, LOGIN_ALTO));
+            Scene scene = new Scene(root, LOGIN_ANCHO, LOGIN_ALTO);
+            Tooltips.instalar(root);
+            stage.setScene(scene);
             stage.centerOnScreen();
+            registrar(stage);
             stage.show();
         } catch (IOException e) {
             Alert alerta = new Alert(Alert.AlertType.ERROR,
@@ -63,6 +88,7 @@ public final class Navegacion {
 
     public static void cerrarSesion(Stage stage) {
         SesionActual.cerrar();
+        cerrarOtrasVentanas(stage);
         abrirLogin(stage);
     }
 
@@ -71,6 +97,7 @@ public final class Navegacion {
             return;
         }
         SesionActual.cerrar();
+        cerrarOtrasVentanas(stage);
         Alert alerta = new Alert(Alert.AlertType.INFORMATION,
                 "La sesión expiró por inactividad. Vuelva a iniciar sesión.", ButtonType.OK);
         alerta.setHeaderText("Sesión expirada");

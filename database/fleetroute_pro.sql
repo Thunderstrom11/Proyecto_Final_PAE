@@ -94,6 +94,7 @@ CREATE TABLE empresa (
     telefono            VARCHAR(30),
     email               VARCHAR(120),
     direccion           VARCHAR(200),
+    moneda              VARCHAR(3)   NOT NULL DEFAULT 'NIO',
     fecha_configuracion TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
@@ -113,10 +114,12 @@ CREATE TABLE ubicaciones (
     nombre       VARCHAR(120) NOT NULL,
     departamento VARCHAR(80)  NOT NULL,
     pais         VARCHAR(80)  NOT NULL DEFAULT 'Nicaragua',
+    categoria    VARCHAR(20)  NOT NULL DEFAULT 'Otro',
+    color        VARCHAR(7)   NOT NULL DEFAULT '#0891B2',
     latitud      DOUBLE PRECISION,
     longitud     DOUBLE PRECISION,
 
-    CONSTRAINT uq_ubicacion UNIQUE (nombre, departamento)
+    CONSTRAINT uq_ubicacion UNIQUE (nombre, departamento, pais)
 );
 
 CREATE TABLE rutas (

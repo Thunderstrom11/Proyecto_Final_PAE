@@ -29,6 +29,9 @@ public class Empresa {
     @Column(name = "direccion", length = 200)
     private String direccion;
 
+    @Column(name = "moneda", nullable = false, length = 3)
+    private String moneda = "NIO";
+
     /** La llena la base de datos (DEFAULT NOW()). */
     @Column(name = "fecha_configuracion", insertable = false, updatable = false)
     private LocalDateTime fechaConfiguracion;
@@ -82,6 +85,14 @@ public class Empresa {
 
     public void setDireccion(String direccion) {
         this.direccion = direccion;
+    }
+
+    public String getMoneda() {
+        return moneda;
+    }
+
+    public void setMoneda(String moneda) {
+        this.moneda = moneda;
     }
 
     public LocalDateTime getFechaConfiguracion() {

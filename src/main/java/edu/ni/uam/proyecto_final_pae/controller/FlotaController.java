@@ -16,6 +16,7 @@ import edu.ni.uam.proyecto_final_pae.model.RolUsuario;
 import edu.ni.uam.proyecto_final_pae.model.Unidad;
 import edu.ni.uam.proyecto_final_pae.model.Usuario;
 import edu.ni.uam.proyecto_final_pae.security.SesionActual;
+import edu.ni.uam.proyecto_final_pae.util.Tooltips;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.beans.binding.Bindings;
@@ -27,9 +28,10 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.stage.Stage;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -124,6 +126,7 @@ public class FlotaController {
     @FXML private Label lblEstadoUnidades;
     @FXML private Label lblEstadoOperadores;
     @FXML private Label lblEstadoClientes;
+    @FXML private TabPane tabs;
 
     @FXML private Button btnPanelAdmin;
     @FXML private Button btnReporte;
@@ -181,8 +184,10 @@ public class FlotaController {
         colNombreOperador.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getNombre()));
         colTelefono.setCellValueFactory(c -> new SimpleStringProperty(
                 c.getValue().getTelefono() == null ? "—" : c.getValue().getTelefono()));
-        colHorasMax.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getHorasMaxConduccion().toPlainString()));
-        colHorasMin.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getHorasMinDescanso().toPlainString()));
+        colHorasMax.setCellValueFactory(c -> new SimpleStringProperty(
+                horas(c.getValue().getHorasMaxConduccion())));
+        colHorasMin.setCellValueFactory(c -> new SimpleStringProperty(
+                horas(c.getValue().getHorasMinDescanso())));
         colEstadoOperador.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getEstado().getNombre()));
 
         colNombreCliente.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getNombreEmpresa()));
@@ -308,15 +313,25 @@ public class FlotaController {
         txtFiltroCliente.clear();
     }
 
+    @FXML
+    private void refrescarFlota() {
+        if (!sesionAdmin()) {
+            return;
+        }
+        recargarUnidades();
+        recargarOperadores();
+        recargarClientes();
+        mensaje("Datos actualizados.");
+    }
+
     private void mensaje(String texto) {
-        if (lblEstadoUnidades != null) {
-            lblEstadoUnidades.setText(texto);
-        }
-        if (lblEstadoOperadores != null) {
+        int indice = tabs == null ? 0 : tabs.getSelectionModel().getSelectedIndex();
+        if (indice == 1 && lblEstadoOperadores != null) {
             lblEstadoOperadores.setText(texto);
-        }
-        if (lblEstadoClientes != null) {
+        } else if (indice == 2 && lblEstadoClientes != null) {
             lblEstadoClientes.setText(texto);
+        } else if (lblEstadoUnidades != null) {
+            lblEstadoUnidades.setText(texto);
         }
     }
 
@@ -592,6 +607,27 @@ public class FlotaController {
         };
     }
 
+    private void mostrarCredencialesOperador(String usuario, String temporal) {
+        TextArea contenido = new TextArea("Usuario: " + usuario
+                + "\nContraseña temporal: " + temporal
+                + "\nEl administrador principal puede restablecerla desde el panel administrativo.");
+        contenido.setEditable(false);
+        contenido.setWrapText(true);
+        contenido.setPrefRowCount(4);
+        ButtonType copiar = new ButtonType("Copiar", ButtonBar.ButtonData.OK_DONE);
+        Alert alerta = new Alert(Alert.AlertType.INFORMATION, "", copiar, ButtonType.CLOSE);
+        alerta.setTitle("Cuenta del operador creada");
+        alerta.setHeaderText("Cuenta del operador creada");
+        alerta.getDialogPane().setContent(contenido);
+        alerta.showAndWait().ifPresent(respuesta -> {
+            if (respuesta == copiar) {
+                ClipboardContent portapapeles = new ClipboardContent();
+                portapapeles.putString("Usuario: " + usuario + "\nContraseña temporal: " + temporal);
+                Clipboard.getSystemClipboard().setContent(portapapeles);
+            }
+        });
+    }
+
     @FXML
     private void guardarOperador() {
         if (!sesionAdmin()) {
@@ -614,10 +650,7 @@ public class FlotaController {
             recargarOperadores();
             mensaje("Operador " + operador.getNombre() + " guardado.");
             if (temporal != null) {
-                informacion("Cuenta del operador creada",
-                        "Usuario: " + operador.getCedula()
-                                + "\nContraseña temporal: " + temporal
-                                + "\nEl administrador principal puede restablecerla desde el panel administrativo.");
+                mostrarCredencialesOperador(operador.getCedula(), temporal);
             }
         } catch (IllegalArgumentException e) {
             advertencia(e.getMessage());
@@ -962,11 +995,16 @@ public class FlotaController {
             FXMLLoader loader = new FXMLLoader(
                     getClass().getResource("/edu/ni/uam/proyecto_final_pae/" + archivo));
             Parent root = loader.load();
+            Tooltips.instalar(root);
             Stage stage = new Stage();
             stage.setTitle("FleetRoute Pro — " + titulo);
             stage.setScene(new Scene(root, ancho, alto));
+            stage.setMinWidth(Math.min(ancho, 900));
+            stage.setMinHeight(Math.min(alto, 620));
+            Navegacion.registrar(stage);
+            stage.setMaximized(true);
             stage.show();
-        } catch (IOException e) {
+        } catch (Exception e) {
             advertencia("No se pudo abrir " + titulo + ": " + e.getMessage());
         }
     }
@@ -998,6 +1036,10 @@ public class FlotaController {
         return valor == null || valor.isBlank() ? "—" : valor;
     }
 
+    private static String horas(BigDecimal valor) {
+        return valor == null ? "—" : valor.stripTrailingZeros().toPlainString() + " h";
+    }
+
     private BigDecimal decimal(String valor, String nombre) {
         try {
             return new BigDecimal(valor.replace(',', '.'));
@@ -1007,10 +1049,12 @@ public class FlotaController {
     }
 
     private boolean confirmar(String mensaje) {
-        Alert alerta = new Alert(Alert.AlertType.CONFIRMATION, mensaje, ButtonType.YES, ButtonType.NO);
+        ButtonType eliminar = new ButtonType("Eliminar", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelar = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
+        Alert alerta = new Alert(Alert.AlertType.CONFIRMATION, mensaje, eliminar, cancelar);
         alerta.setHeaderText(null);
         Optional<ButtonType> respuesta = alerta.showAndWait();
-        return respuesta.isPresent() && respuesta.get() == ButtonType.YES;
+        return respuesta.isPresent() && respuesta.get() == eliminar;
     }
 
     private void advertencia(String mensaje) {

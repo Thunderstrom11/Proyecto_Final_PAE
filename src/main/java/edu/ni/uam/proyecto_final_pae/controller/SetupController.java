@@ -7,18 +7,33 @@ import edu.ni.uam.proyecto_final_pae.dao.UsuarioDAO;
 import edu.ni.uam.proyecto_final_pae.model.Empresa;
 import edu.ni.uam.proyecto_final_pae.model.RolUsuario;
 import edu.ni.uam.proyecto_final_pae.model.Usuario;
+import edu.ni.uam.proyecto_final_pae.util.ComboBuscador;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 import org.mindrot.jbcrypt.BCrypt;
 
+import java.util.List;
+
 /** Asistente de primer arranque: perfil de la empresa y cuenta de administrador. */
 public class SetupController {
+
+    private static final String[] MONEDAS = {
+            "NIO — Córdoba nicaragüense",
+            "USD — Dólar estadounidense",
+            "EUR — Euro",
+            "CRC — Colón costarricense",
+            "GTQ — Quetzal guatemalteco",
+            "HNL — Lempira hondureña",
+            "PAB — Balboa panameño",
+            "MXN — Peso mexicano"
+    };
 
     private final EmpresaDAO empresaDAO = new EmpresaDAO();
     private final UsuarioDAO usuarioDAO = new UsuarioDAO();
@@ -28,6 +43,7 @@ public class SetupController {
     @FXML private TextField txtTelefono;
     @FXML private TextField txtEmail;
     @FXML private TextField txtDireccion;
+    @FXML private ComboBox<String> cmbMoneda;
 
     @FXML private VBox panelAdmin;
     @FXML private TextField txtUsuario;
@@ -41,6 +57,8 @@ public class SetupController {
 
     @FXML
     private void initialize() {
+        ComboBuscador.configurar(cmbMoneda, List.of(MONEDAS));
+        cmbMoneda.setValue(MONEDAS[0]);
         try {
             crearAdmin = !usuarioDAO.existeAdministrador();
         } catch (PersistenciaException e) {
@@ -82,6 +100,10 @@ public class SetupController {
         empresa.setTelefono(opcional(txtTelefono, "El teléfono", 30));
         empresa.setEmail(opcional(txtEmail, "El correo", 120));
         empresa.setDireccion(opcional(txtDireccion, "La dirección", 200));
+        if (cmbMoneda.getValue() == null || cmbMoneda.getValue().isBlank()) {
+            throw new IllegalArgumentException("Seleccione la moneda de la empresa.");
+        }
+        empresa.setMoneda(cmbMoneda.getValue().substring(0, 3));
         if (empresa.getEmail() != null && !empresa.getEmail().matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
             throw new IllegalArgumentException("El correo de la empresa no tiene un formato válido.");
         }
