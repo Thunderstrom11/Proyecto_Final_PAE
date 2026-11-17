@@ -95,6 +95,8 @@ CREATE TABLE empresa (
     email               VARCHAR(120),
     direccion           VARCHAR(200),
     moneda              VARCHAR(3)   NOT NULL DEFAULT 'NIO',
+    pais                VARCHAR(80)  NOT NULL DEFAULT 'Nicaragua',
+    zona_horaria        VARCHAR(60)  NOT NULL DEFAULT 'America/Managua',
     fecha_configuracion TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
@@ -127,6 +129,7 @@ CREATE TABLE rutas (
     id_origen             INT NOT NULL,
     id_destino            INT NOT NULL,
     tiempo_estimado_horas NUMERIC(6,2) NOT NULL,
+    precio                NUMERIC(12,2),
 
     CONSTRAINT fk_ruta_origen
         FOREIGN KEY (id_origen) REFERENCES ubicaciones (id_ubicacion)
@@ -136,6 +139,7 @@ CREATE TABLE rutas (
         ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT uq_ruta_origen_destino UNIQUE (id_origen, id_destino),
     CONSTRAINT ck_ruta_tiempo CHECK (tiempo_estimado_horas > 0),
+    CONSTRAINT ck_ruta_precio CHECK (precio IS NULL OR precio > 0),
     CONSTRAINT ck_ruta_distinta CHECK (id_origen <> id_destino)
 );
 
@@ -145,6 +149,8 @@ CREATE TABLE unidades (
     placas               VARCHAR(15)   NOT NULL UNIQUE,
     modelo               VARCHAR(80)   NOT NULL,
     capacidad_toneladas  NUMERIC(8,2),
+    seguro_vencimiento   DATE,
+    revision_vencimiento DATE,
     id_estado_unidad     SMALLINT      NOT NULL,
     fecha_registro       TIMESTAMP     NOT NULL DEFAULT NOW(),
 
@@ -160,6 +166,10 @@ CREATE TABLE operadores (
     cedula                VARCHAR(20)  NOT NULL UNIQUE,
     nombre                VARCHAR(150) NOT NULL,
     telefono              VARCHAR(30),
+    licencia_numero       VARCHAR(30),
+    licencia_categoria    VARCHAR(10),
+    licencia_vencimiento  DATE,
+    contacto_emergencia   VARCHAR(120),
     horas_max_conduccion  NUMERIC(5,2) NOT NULL,
     horas_min_descanso    NUMERIC(5,2) NOT NULL,
     id_estado_operador    SMALLINT     NOT NULL,
@@ -304,14 +314,20 @@ CREATE TABLE registro_jornada (
 -- =====================================================================
 
 -- 5.1 La fecha límite del cliente no puede ser anterior a la fecha actual.
---     Se usa la fecha de Nicaragua para no depender de la zona del servidor.
+--     Usa la zona horaria configurada en empresa; si no hay fila, Managua.
 CREATE OR REPLACE FUNCTION fn_validar_fecha_limite_carga()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
 DECLARE
-    v_hoy DATE := (CURRENT_TIMESTAMP AT TIME ZONE 'America/Managua')::date;
+    v_zona TEXT;
+    v_hoy  DATE;
 BEGIN
+    SELECT zona_horaria INTO v_zona FROM empresa ORDER BY id_empresa LIMIT 1;
+    IF v_zona IS NULL OR btrim(v_zona) = '' THEN
+        v_zona := 'America/Managua';
+    END IF;
+    v_hoy := (CURRENT_TIMESTAMP AT TIME ZONE v_zona)::date;
     IF TG_OP = 'INSERT' THEN
         IF NEW.fecha_limite_cliente::date < v_hoy THEN
             RAISE EXCEPTION

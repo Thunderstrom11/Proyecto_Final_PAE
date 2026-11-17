@@ -24,6 +24,18 @@ public class Operador {
     @Column(name = "telefono", length = 30)
     private String telefono;
 
+    @Column(name = "licencia_numero", length = 30)
+    private String licenciaNumero;
+
+    @Column(name = "licencia_categoria", length = 10)
+    private String licenciaCategoria;
+
+    @Column(name = "licencia_vencimiento")
+    private LocalDate licenciaVencimiento;
+
+    @Column(name = "contacto_emergencia", length = 120)
+    private String contactoEmergencia;
+
     @Column(name = "horas_max_conduccion", nullable = false, precision = 5, scale = 2)
     private BigDecimal horasMaxConduccion;
 
@@ -70,6 +82,38 @@ public class Operador {
 
     public void setTelefono(String telefono) {
         this.telefono = telefono;
+    }
+
+    public String getLicenciaNumero() {
+        return licenciaNumero;
+    }
+
+    public void setLicenciaNumero(String licenciaNumero) {
+        this.licenciaNumero = licenciaNumero;
+    }
+
+    public String getLicenciaCategoria() {
+        return licenciaCategoria;
+    }
+
+    public void setLicenciaCategoria(String licenciaCategoria) {
+        this.licenciaCategoria = licenciaCategoria;
+    }
+
+    public LocalDate getLicenciaVencimiento() {
+        return licenciaVencimiento;
+    }
+
+    public void setLicenciaVencimiento(LocalDate licenciaVencimiento) {
+        this.licenciaVencimiento = licenciaVencimiento;
+    }
+
+    public String getContactoEmergencia() {
+        return contactoEmergencia;
+    }
+
+    public void setContactoEmergencia(String contactoEmergencia) {
+        this.contactoEmergencia = contactoEmergencia;
     }
 
     public BigDecimal getHorasMaxConduccion() {

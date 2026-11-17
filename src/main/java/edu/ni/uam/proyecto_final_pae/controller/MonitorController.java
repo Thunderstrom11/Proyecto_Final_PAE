@@ -132,6 +132,8 @@ public class MonitorController {
         colCarga.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().carga()));
         colRuta.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().ruta()));
         colCoordenadas.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().coordenadas()));
+        colRuta.setCellFactory(columna -> celdaConTooltip());
+        colCoordenadas.setCellFactory(columna -> celdaConTooltip());
         colSla.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().limite()));
         colManejo.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().manejo()));
         colSemaforo.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().semaforo()));
@@ -238,7 +240,7 @@ public class MonitorController {
             List<Integer> idsViaje = viajes.stream().map(FlotaDAO.FilaViaje::idViaje).toList();
             Map<Integer, List<RegistroJornada>> eventosPorViaje = registroDAO.listarPorViajes(idsViaje)
                     .stream().collect(Collectors.groupingBy(RegistroJornada::getIdViaje));
-            LocalDateTime ahora = LocalDateTime.now(JornadaService.ZONA);
+            LocalDateTime ahora = LocalDateTime.now(JornadaService.zona());
 
             List<Fila> filas = new ArrayList<>();
             for (FlotaDAO.FilaViaje viaje : viajes) {
@@ -393,6 +395,17 @@ public class MonitorController {
         return latitud == null || longitud == null
                 ? "—"
                 : String.format(java.util.Locale.ROOT, "%.5f, %.5f", latitud, longitud);
+    }
+
+    private static TableCell<Fila, String> celdaConTooltip() {
+        return new TableCell<>() {
+            @Override
+            protected void updateItem(String valor, boolean vacio) {
+                super.updateItem(valor, vacio);
+                setText(vacio ? null : valor);
+                setTooltip(vacio || valor == null ? null : new Tooltip(valor));
+            }
+        };
     }
 
     private static String texto(String valor) {

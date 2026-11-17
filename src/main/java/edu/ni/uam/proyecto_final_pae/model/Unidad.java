@@ -3,6 +3,7 @@ package edu.ni.uam.proyecto_final_pae.model;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /** Camion o tractocamion de la flota: tabla unidades. */
@@ -26,6 +27,12 @@ public class Unidad {
 
     @Column(name = "capacidad_toneladas", precision = 8, scale = 2)
     private BigDecimal capacidadToneladas;
+
+    @Column(name = "seguro_vencimiento")
+    private LocalDate seguroVencimiento;
+
+    @Column(name = "revision_vencimiento")
+    private LocalDate revisionVencimiento;
 
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "id_estado_unidad", nullable = false)
@@ -75,6 +82,22 @@ public class Unidad {
 
     public void setCapacidadToneladas(BigDecimal capacidadToneladas) {
         this.capacidadToneladas = capacidadToneladas;
+    }
+
+    public LocalDate getSeguroVencimiento() {
+        return seguroVencimiento;
+    }
+
+    public void setSeguroVencimiento(LocalDate seguroVencimiento) {
+        this.seguroVencimiento = seguroVencimiento;
+    }
+
+    public LocalDate getRevisionVencimiento() {
+        return revisionVencimiento;
+    }
+
+    public void setRevisionVencimiento(LocalDate revisionVencimiento) {
+        this.revisionVencimiento = revisionVencimiento;
     }
 
     public EstadoUnidad getEstado() {

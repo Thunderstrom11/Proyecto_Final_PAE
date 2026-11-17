@@ -66,24 +66,54 @@ public class ViajeDAO extends GenericDAO<Viaje, Integer> {
 
     /** Total facturado por operador: solo viajes FINALIZADO [nombreOperador, #viajes, suma]. */
     public List<Object[]> totalFacturadoPorOperador() {
-        return Transaccion.consultar(sesion -> sesion.createQuery(
-                "select v.operador.nombre, count(v), sum(v.cobroViaje) "
-                        + "from Viaje v join v.estado e "
-                        + "where e.nombre = 'FINALIZADO' "
-                        + "group by v.operador.id, v.operador.nombre "
-                        + "order by sum(v.cobroViaje) desc",
-                Object[].class).getResultList());
+        return totalFacturadoPorOperador(null, null);
+    }
+
+    /** Igual que el anterior, acotado a un rango de fechas de finalización (puede ser nulo). */
+    public List<Object[]> totalFacturadoPorOperador(java.time.LocalDateTime desde, java.time.LocalDateTime hasta) {
+        return Transaccion.consultar(sesion -> {
+            String hql = "select v.operador.nombre, count(v), sum(v.cobroViaje) "
+                    + "from Viaje v join v.estado e "
+                    + "where e.nombre = 'FINALIZADO'"
+                    + (desde == null ? "" : " and v.fechaFin >= :desde")
+                    + (hasta == null ? "" : " and v.fechaFin <= :hasta")
+                    + " group by v.operador.id, v.operador.nombre "
+                    + "order by sum(v.cobroViaje) desc";
+            var consulta = sesion.createQuery(hql, Object[].class);
+            if (desde != null) {
+                consulta.setParameter("desde", desde);
+            }
+            if (hasta != null) {
+                consulta.setParameter("hasta", hasta);
+            }
+            return consulta.getResultList();
+        });
     }
 
     /** Total facturado por unidad: solo viajes FINALIZADO [numeroUnidad, #viajes, suma]. */
     public List<Object[]> totalFacturadoPorUnidad() {
-        return Transaccion.consultar(sesion -> sesion.createQuery(
-                "select v.unidad.numeroUnidad, count(v), sum(v.cobroViaje) "
-                        + "from Viaje v join v.estado e "
-                        + "where e.nombre = 'FINALIZADO' "
-                        + "group by v.unidad.id, v.unidad.numeroUnidad "
-                        + "order by sum(v.cobroViaje) desc",
-                Object[].class).getResultList());
+        return totalFacturadoPorUnidad(null, null);
+    }
+
+    /** Igual que el anterior, acotado a un rango de fechas de finalización (puede ser nulo). */
+    public List<Object[]> totalFacturadoPorUnidad(java.time.LocalDateTime desde, java.time.LocalDateTime hasta) {
+        return Transaccion.consultar(sesion -> {
+            String hql = "select v.unidad.numeroUnidad, count(v), sum(v.cobroViaje) "
+                    + "from Viaje v join v.estado e "
+                    + "where e.nombre = 'FINALIZADO'"
+                    + (desde == null ? "" : " and v.fechaFin >= :desde")
+                    + (hasta == null ? "" : " and v.fechaFin <= :hasta")
+                    + " group by v.unidad.id, v.unidad.numeroUnidad "
+                    + "order by sum(v.cobroViaje) desc";
+            var consulta = sesion.createQuery(hql, Object[].class);
+            if (desde != null) {
+                consulta.setParameter("desde", desde);
+            }
+            if (hasta != null) {
+                consulta.setParameter("hasta", hasta);
+            }
+            return consulta.getResultList();
+        });
     }
 
 

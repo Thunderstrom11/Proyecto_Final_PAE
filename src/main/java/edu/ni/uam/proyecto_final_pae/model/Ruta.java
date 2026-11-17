@@ -27,6 +27,9 @@ public class Ruta {
     @Column(name = "tiempo_estimado_horas", nullable = false, precision = 6, scale = 2)
     private BigDecimal tiempoEstimadoHoras;
 
+    @Column(name = "precio", precision = 12, scale = 2)
+    private BigDecimal precio;
+
     public Ruta() {
     }
 
@@ -34,6 +37,11 @@ public class Ruta {
         this.origen = origen;
         this.destino = destino;
         this.tiempoEstimadoHoras = tiempoEstimadoHoras;
+    }
+
+    public Ruta(Ubicacion origen, Ubicacion destino, BigDecimal tiempoEstimadoHoras, BigDecimal precio) {
+        this(origen, destino, tiempoEstimadoHoras);
+        this.precio = precio;
     }
 
     public Integer getId() {
@@ -66,6 +74,14 @@ public class Ruta {
 
     public void setTiempoEstimadoHoras(BigDecimal tiempoEstimadoHoras) {
         this.tiempoEstimadoHoras = tiempoEstimadoHoras;
+    }
+
+    public BigDecimal getPrecio() {
+        return precio;
+    }
+
+    public void setPrecio(BigDecimal precio) {
+        this.precio = precio;
     }
 
     @Override

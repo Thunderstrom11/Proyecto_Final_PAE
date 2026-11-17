@@ -316,6 +316,10 @@ public class CargaController {
             return;
         }
         try {
+            if (clienteDAO.existeNombreEmpresa(nombreCliente)) {
+                advertencia("Ya existe un cliente con ese nombre.");
+                return;
+            }
             Cliente cliente = clienteDAO.guardar(new Cliente(nombreCliente));
             recargarClientes();
             cmbCliente.getSelectionModel().select(cliente);

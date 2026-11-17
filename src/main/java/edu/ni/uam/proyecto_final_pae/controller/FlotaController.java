@@ -714,16 +714,25 @@ public class FlotaController {
             advertencia("Seleccione un operador de la tabla para eliminarlo.");
             return;
         }
-        if (!confirmar("¿Eliminar al operador " + seleccionado.getNombre() + "?")) {
+        if (!confirmar("¿Eliminar al operador " + seleccionado.getNombre() + "?"
+                + (usuarioDAO.existeCuentaOperador(seleccionado.getId())
+                ? " También se elimina su cuenta de acceso." : ""))) {
             return;
         }
         try {
-            operadorDAO.eliminar(seleccionado.getId());
+            if (flotaDAO.operadorTieneViajes(seleccionado.getId())) {
+                informacion("Operación no permitida",
+                        "El operador tiene viajes registrados y no se puede eliminar.");
+                return;
+            }
+            operadorDAO.eliminarConCuenta(seleccionado.getId());
             limpiarOperador();
             recargarOperadores();
             mensaje("Operador eliminado.");
+        } catch (IllegalArgumentException e) {
+            advertencia(e.getMessage());
         } catch (PersistenciaException e) {
-            error("No se pudo eliminar el operador (puede tener un usuario o viajes)", e);
+            error("No se pudo eliminar el operador", e);
         }
     }
 
@@ -740,6 +749,9 @@ public class FlotaController {
 
     private Operador construirOperador(Operador operador) {
         String cedula = requerido(txtCedula, "La cédula", 20);
+        if (cedula.contains(" ")) {
+            throw new IllegalArgumentException("La cédula no puede contener espacios.");
+        }
         String nombre = requerido(txtNombreOperador, "El nombre", 150);
         BigDecimal horasMax = decimal(requerido(txtHorasMax, "Las horas máximas de conducción", 5), "Las horas máximas");
         BigDecimal horasMin = decimal(requerido(txtHorasMin, "Las horas mínimas de descanso", 5), "Las horas mínimas");
@@ -991,6 +1003,9 @@ public class FlotaController {
     }
 
     private void abrirVista(String archivo, String titulo, double ancho, double alto) {
+        if (Navegacion.enfocarVentana("FleetRoute Pro — " + titulo)) {
+            return;
+        }
         try {
             FXMLLoader loader = new FXMLLoader(
                     getClass().getResource("/edu/ni/uam/proyecto_final_pae/" + archivo));
@@ -1012,7 +1027,7 @@ public class FlotaController {
     private String requerido(TextField campo, String nombre, int maximo) {
         String valor = campo.getText() == null ? "" : campo.getText().trim();
         if (valor.isEmpty()) {
-            throw new IllegalArgumentException(nombre + " es obligatorio.");
+            throw new IllegalArgumentException("Complete " + nombre + ".");
         }
         if (valor.length() > maximo) {
             throw new IllegalArgumentException(nombre + " no puede pasar de " + maximo + " caracteres.");

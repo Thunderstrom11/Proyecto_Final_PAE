@@ -78,6 +78,7 @@ public class ViajeController {
     @FXML private CheckBox chkEncadenado;
     @FXML private Label lblCoordenadasOrigen;
     @FXML private Label lblCoordenadasDestino;
+    private String cobroSugerido;
     @FXML private Button btnBuscarOrigen;
     @FXML private Button btnBuscarDestino;
     @FXML private Button btnGoogleOrigen;
@@ -397,6 +398,7 @@ public class ViajeController {
         chkEncadenado.setSelected(false);
         txtTiempo.clear();
         txtCobro.clear();
+        cobroSugerido = null;
         actualizarCoordenadasOrigen();
         actualizarCoordenadasDestino();
     }
@@ -638,29 +640,47 @@ public class ViajeController {
         if (origen == null || destino == null) {
             txtTiempo.clear();
             txtTiempo.setPromptText("Se calcula con origen y destino");
+            aplicarCobroSugerido(null);
             return;
         }
         if (origen.getId() != null && origen.getId().equals(destino.getId())) {
             txtTiempo.clear();
             txtTiempo.setPromptText("Origen y destino deben ser distintos");
+            aplicarCobroSugerido(null);
             return;
         }
         try {
             Optional<Ruta> ruta = rutaDAO.buscar(origen, destino);
             if (ruta.isPresent() && ruta.get().getTiempoEstimadoHoras() != null) {
                 txtTiempo.setText(ruta.get().getTiempoEstimadoHoras().stripTrailingZeros().toPlainString());
+                aplicarCobroSugerido(ruta.get().getPrecio());
                 return;
             }
             if (GeoUtil.tieneCoordenadas(origen) && GeoUtil.tieneCoordenadas(destino)) {
                 txtTiempo.setText(GeoUtil.horasEstimadas(origen, destino).stripTrailingZeros().toPlainString());
+                aplicarCobroSugerido(null);
                 return;
             }
             txtTiempo.clear();
             txtTiempo.setPromptText("Sin ruta configurada ni coordenadas");
+            aplicarCobroSugerido(null);
         } catch (PersistenciaException e) {
             txtTiempo.clear();
             txtTiempo.setPromptText("No se pudo calcular el tiempo");
         }
+    }
+
+    /** Actualiza el cobro sugerido sin pisar un valor que el usuario haya escrito. */
+    private void aplicarCobroSugerido(java.math.BigDecimal precio) {
+        String nuevo = precio == null ? null : precio.stripTrailingZeros().toPlainString();
+        String actual = txtCobro.getText() == null ? null : txtCobro.getText().trim();
+        boolean vacio = actual == null || actual.isEmpty();
+        boolean automatico = cobroSugerido != null && cobroSugerido.equals(actual);
+        if (!vacio && !automatico) {
+            return;
+        }
+        txtCobro.setText(nuevo == null ? "" : nuevo);
+        cobroSugerido = nuevo;
     }
 
     private <T> T requerido(T valor, String campo) {

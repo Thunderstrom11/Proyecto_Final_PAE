@@ -2,6 +2,7 @@ package edu.ni.uam.proyecto_final_pae.service;
 
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.config.Transaccion;
+import edu.ni.uam.proyecto_final_pae.config.ZonaHoraria;
 import edu.ni.uam.proyecto_final_pae.dao.FlotaDAO;
 import edu.ni.uam.proyecto_final_pae.dao.RegistroJornadaDAO;
 import edu.ni.uam.proyecto_final_pae.model.RegistroJornada;
@@ -35,8 +36,10 @@ public class JornadaService {
     public static final String REANUDAR = "REANUDAR";
     public static final String CONFIRMAR_ENTREGA = "CONFIRMAR_ENTREGA";
 
-    /** Misma zona que hibernate.jdbc.time_zone. */
-    public static final ZoneId ZONA = ZoneId.of("America/Managua");
+    /** Zona horaria configurada para la empresa. */
+    public static ZoneId zona() {
+        return ZonaHoraria.actual();
+    }
 
     private static final BigDecimal UMBRAL_FATIGA = new BigDecimal("0.80");
     private static final DateTimeFormatter HORA = DateTimeFormatter.ofPattern("dd/MM HH:mm");
@@ -143,7 +146,7 @@ public class JornadaService {
     public Resumen resumen(int idViaje) {
         FlotaDAO.FilaViaje viaje = flotaDAO.datosViaje(idViaje)
                 .orElseThrow(() -> new PersistenciaException("No existe el viaje " + idViaje + ".", null));
-        return calcular(viaje, registroDAO.listarPorViaje(idViaje), LocalDateTime.now(ZONA));
+        return calcular(viaje, registroDAO.listarPorViaje(idViaje), LocalDateTime.now(zona()));
     }
 
     /**
@@ -296,7 +299,7 @@ public class JornadaService {
                 throw new PersistenciaException(
                         "El viaje esta en estado " + viaje.estado() + "; no se puede iniciar.", null);
             }
-            registroDAO.registrar(sesion, idViaje, INICIO_TRAYECTO, LocalDateTime.now(ZONA),
+            registroDAO.registrar(sesion, idViaje, INICIO_TRAYECTO, LocalDateTime.now(zona()),
                     "Inicio de trayecto desde la cabina");
             flotaDAO.cambiarEstadoViaje(sesion, idViaje, "EN_CURSO", true);
             flotaDAO.cambiarEstadoOperador(sesion, viaje.idOperador(), "EN_RUTA");
@@ -316,7 +319,7 @@ public class JornadaService {
             if (paso(sesion, idViaje) != Paso.EN_MARCHA) {
                 throw new PersistenciaException("Solo se puede pausar mientras el tramo esta en marcha.", null);
             }
-            registroDAO.registrar(sesion, idViaje, PAUSA_DESCANSO, LocalDateTime.now(ZONA),
+            registroDAO.registrar(sesion, idViaje, PAUSA_DESCANSO, LocalDateTime.now(zona()),
                     "Pausa de descanso");
             flotaDAO.cambiarEstadoViaje(sesion, idViaje, "PAUSADO");
             flotaDAO.cambiarEstadoOperador(sesion, viaje.idOperador(), "DESCANSO");
@@ -331,7 +334,7 @@ public class JornadaService {
             if (!"EN_CURSO".equals(viaje.estado()) || paso(sesion, idViaje) != Paso.EN_MARCHA) {
                 return calcularActual(sesion, idViaje);
             }
-            registroDAO.registrar(sesion, idViaje, PAUSA_DESCANSO, LocalDateTime.now(ZONA),
+            registroDAO.registrar(sesion, idViaje, PAUSA_DESCANSO, LocalDateTime.now(zona()),
                     "Pausa automatica: jornada maxima de conduccion completada");
             flotaDAO.cambiarEstadoViaje(sesion, idViaje, "PAUSADO");
             flotaDAO.cambiarEstadoOperador(sesion, viaje.idOperador(), "DESCANSO");
@@ -350,7 +353,7 @@ public class JornadaService {
             if (paso(sesion, idViaje) != Paso.EN_PAUSA) {
                 throw new PersistenciaException("Debe registrar una pausa (PAUSA_DESCANSO) antes de reanudar.", null);
             }
-            registroDAO.registrar(sesion, idViaje, REANUDAR, LocalDateTime.now(ZONA), "Reanudar el manejo");
+            registroDAO.registrar(sesion, idViaje, REANUDAR, LocalDateTime.now(zona()), "Reanudar el manejo");
             flotaDAO.cambiarEstadoViaje(sesion, idViaje, "EN_CURSO", false);
             flotaDAO.cambiarEstadoOperador(sesion, viaje.idOperador(), "EN_RUTA");
             flotaDAO.cambiarEstadoUnidad(sesion, viaje.idUnidad(), "EN_RUTA");
@@ -371,7 +374,7 @@ public class JornadaService {
                 throw new PersistenciaException(
                         "El viaje no tiene un tramo en marcha; primero debe iniciar o reanudar.", null);
             }
-            registroDAO.registrar(sesion, idViaje, CONFIRMAR_ENTREGA, LocalDateTime.now(ZONA),
+            registroDAO.registrar(sesion, idViaje, CONFIRMAR_ENTREGA, LocalDateTime.now(zona()),
                     "Entrega confirmada desde la cabina");
             flotaDAO.cambiarEstadoViaje(sesion, idViaje, "FINALIZADO", false);
 
@@ -409,7 +412,7 @@ public class JornadaService {
 
     private Resumen calcularActual(Session sesion, int idViaje) {
         FlotaDAO.FilaViaje viaje = datosViaje(sesion, idViaje);
-        return calcular(viaje, registroDAO.listarPorViaje(sesion, idViaje), LocalDateTime.now(ZONA));
+        return calcular(viaje, registroDAO.listarPorViaje(sesion, idViaje), LocalDateTime.now(zona()));
     }
 
     // ------------------------------------------------------------------ apoyo
