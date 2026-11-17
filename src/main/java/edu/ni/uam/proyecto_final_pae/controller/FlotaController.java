@@ -128,6 +128,7 @@ public class FlotaController {
     @FXML private Label lblEstadoClientes;
     @FXML private TabPane tabs;
 
+    @FXML private Button btnRefrescarFlota;
     @FXML private Button btnPanelAdmin;
     @FXML private Button btnReporte;
 
@@ -264,6 +265,9 @@ public class FlotaController {
                 return;
             }
             verificarSesion();
+            if (SesionActual.getUsuario() != null) {
+                actualizarDatosAutomaticamente();
+            }
         }));
         reloj.setCycleCount(Timeline.INDEFINITE);
         reloj.play();
@@ -318,10 +322,48 @@ public class FlotaController {
         if (!sesionAdmin()) {
             return;
         }
-        recargarUnidades();
-        recargarOperadores();
-        recargarClientes();
-        mensaje("Datos actualizados.");
+        try {
+            todasLasUnidades = unidadDAO.listar();
+            todosLosOperadores = operadorDAO.listar();
+            todosLosClientes = clienteDAO.listar();
+            aplicarFiltroUnidades();
+            aplicarFiltroOperadores();
+            aplicarFiltroClientes();
+            mostrarBotonRefrescar(false);
+            mensaje("Datos actualizados.");
+        } catch (PersistenciaException e) {
+            mostrarBotonRefrescar(true);
+            error("No se pudieron actualizar los datos", e);
+        }
+    }
+
+    private void actualizarDatosAutomaticamente() {
+        try {
+            List<Unidad> unidades = unidadDAO.listar();
+            List<Operador> operadores = operadorDAO.listar();
+            List<Cliente> clientes = clienteDAO.listar();
+            if (tablaUnidades.getSelectionModel().getSelectedItem() == null) {
+                todasLasUnidades = unidades;
+                aplicarFiltroUnidades();
+            }
+            if (tablaOperadores.getSelectionModel().getSelectedItem() == null) {
+                todosLosOperadores = operadores;
+                aplicarFiltroOperadores();
+            }
+            if (tablaClientes.getSelectionModel().getSelectedItem() == null) {
+                todosLosClientes = clientes;
+                aplicarFiltroClientes();
+            }
+            mostrarBotonRefrescar(false);
+        } catch (PersistenciaException e) {
+            mostrarBotonRefrescar(true);
+            mensaje("No se pudieron actualizar los datos. Use el botón para reintentar.");
+        }
+    }
+
+    private void mostrarBotonRefrescar(boolean mostrar) {
+        btnRefrescarFlota.setVisible(mostrar);
+        btnRefrescarFlota.setManaged(mostrar);
     }
 
     private void mensaje(String texto) {

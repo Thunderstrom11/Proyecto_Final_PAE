@@ -26,9 +26,10 @@
             <HBox spacing="10" alignment="CENTER_LEFT">
                 <Label text="Gestión de flota" styleClass="page-title"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Button fx:id="btnRefrescarFlota" styleClass="icon-button" onAction="#refrescarFlota">
+                <Button fx:id="btnRefrescarFlota" styleClass="icon-button" onAction="#refrescarFlota"
+                        visible="false" managed="false">
                     <graphic><FontIcon iconLiteral="fas-sync-alt" iconSize="18"/></graphic>
-                    <tooltip><Tooltip text="Actualizar los datos de flota."/></tooltip>
+                    <tooltip><Tooltip text="Reintentar la actualización automática de flota."/></tooltip>
                 </Button>
                 <Button fx:id="btnReporte" styleClass="icon-button" onAction="#abrirReporte">
                     <graphic><FontIcon iconLiteral="fas-chart-pie" iconSize="18"/></graphic>

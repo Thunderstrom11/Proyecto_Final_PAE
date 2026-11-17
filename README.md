@@ -14,7 +14,7 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 ## Información importante del entorno
 
 - **JDK:** el proyecto compila con **Java 17 o superior** (probado con JDK 21 y 25).
-- **Base de datos:** se utiliza **PostgreSQL 14+** como sistema gestor de base de datos; el esquema tiene **15 tablas**.
+- **Base de datos:** se utiliza **PostgreSQL 14+** como sistema gestor de base de datos; el esquema tiene **16 tablas**.
 - **Script de base de datos:** el repositorio incluye [`database/fleetroute_pro.sql`](database/fleetroute_pro.sql), con la creación de tablas, restricciones, triggers, índices, catálogos y datos de ejemplo.
 - **Extensión:** el script crea `pgcrypto` para generar los hashes BCrypt de los usuarios de demostración.
 - **Conexión a la base de datos:** se realiza mediante un archivo **`.env`**. Cada integrante mantiene su propio archivo `.env` en su equipo con sus credenciales locales de PostgreSQL (usuario, contraseña, puerto, etc.). Este archivo **no se sube al repositorio**.
@@ -54,12 +54,12 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 
 ## Integrantes
 
-| # | Estudiante |
-|---|------------|
-| 1 | Diego Marcello Chamendy Chow |
+| # | Estudiante                      |
+|---|---------------------------------|
+| 1 | Diego Marcello Chamendy Chow    |
 | 2 | Carlos Eduardo Rodríguez Flores |
-| 3 | Jose Salgado |
-| 4 | Roberto Fabio Tercero |
+| 3 | Jose Augusto Salgado Murillo    |
+| 4 | Roberto Fabio Tercero           |
 
 ---
 
@@ -92,11 +92,11 @@ Ambos roles inician sesión con credenciales almacenadas en la base de datos; la
 - **Control financiero:** registro y consulta de la tarifa cobrada por cada flete, por operador y por unidad.
 - **Gestión de unidades, operadores y cargas:** alta, consulta, actualización y baja.
 - **Gestión de clientes:** pestaña con todos los campos de `clientes` (empresa, contacto, teléfono, email, dirección y activo), con validaciones y bajas protegidas por integridad referencial.
-- **Panel administrativo:** cuentas de administradores y operadores, permisos de reportes, restablecimiento de contraseñas, catálogo mundial de países, ubicaciones editables con imagen de referencia y rutas con tiempo estimado.
+- **Panel administrativo:** cuentas de administradores y operadores, permisos de reportes, restablecimiento de contraseñas, países activos con buscador, ubicaciones editables con mapa satelital de solo lectura y rutas con tiempo estimado y precio sugerido. Incluye borrados masivos de cuentas filtradas, ubicaciones y rutas protegidos con la contraseña del administrador.
 - **Lugares exactos para viajes:** al elegir origen/destino se abre un selector con búsqueda Nominatim y mapa Leaflet. Se puede buscar una referencia, mover el mapa y hacer clic en el punto exacto (por ejemplo, una casa cercana); el nombre para guardar es editable. El lugar se guarda en `ubicaciones` con país, nombre, latitud y longitud, por lo que puede reutilizarse al buscar ese país. El botón **Google Maps** abre la ubicación en el navegador.
 - **Asistente de primera configuración:** en el primer arranque se capturan los datos de la empresa, la moneda con la que se muestran los cobros y se crea la cuenta de administrador, sin editar archivos ni buscar en la base de datos.
 
-> La pestaña Ubicaciones incluye una imagen de referencia de Centroamérica basada en Natural Earth, con los puntos de las ubicaciones registradas. Al hacer clic sobre la imagen se llenan las coordenadas del formulario.
+> La pestaña Ubicaciones incluye un mapa Leaflet satelital de solo lectura con los puntos de las ubicaciones registradas. Permite mover y ampliar el mapa, seleccionar un punto para centrarlo y ver su información; no permite crear ubicaciones haciendo clic en el mapa.
 > El selector de lugares exactos usa Leaflet con mosaicos de Esri y búsqueda Nominatim/OpenStreetMap; la búsqueda respeta el límite de 1 petición por segundo y requiere conexión a Internet.
 
 ### Módulo Operador (Cabina)
@@ -217,7 +217,7 @@ Proyecto_Final_PAE/
 
 ## Modelo de datos
 
-La base de datos `fleetroute_pro` tiene **15 tablas**: 5 catálogos, 4 maestros, 1 de configuración, 1 de acceso, 3 operativas y 1 bitácora. El esquema completo, las restricciones, los índices, los triggers y los datos de ejemplo están en [`database/fleetroute_pro.sql`](database/fleetroute_pro.sql).
+La base de datos `fleetroute_pro` tiene **16 tablas**. El esquema completo, las restricciones, los índices, los triggers y los datos de ejemplo están en [`database/fleetroute_pro.sql`](database/fleetroute_pro.sql).
 
 | Grupo | Tablas |
 |-------|--------|
@@ -232,15 +232,16 @@ La base de datos `fleetroute_pro` tiene **15 tablas**: 5 catálogos, 4 maestros,
 
 | Tabla | Campos principales | Función |
 |-------|--------------------|---------|
-| `empresa` | `id_empresa`, `nombre`, `ruc`, `telefono`, `email`, `direccion`, `moneda`, `fecha_configuracion` | Perfil de la empresa transportista; una fila creada por el asistente de primer arranque. |
+| `empresa` | `id_empresa`, `nombre`, `ruc`, `telefono`, `email`, `direccion`, `moneda`, `pais`, `zona_horaria`, `fecha_configuracion` | Perfil de la empresa transportista; una fila creada por el asistente de primer arranque. |
 | `clientes` | `id_cliente`, `nombre_empresa`, `contacto`, `telefono`, `email`, `direccion`, `activo`, `fecha_registro` | Catálogo de clientes para asociar cargas; se gestiona desde la pestaña Clientes. |
 | `ubicaciones` | `id_ubicacion`, `nombre`, `departamento`, `pais`, `categoria`, `color`, `latitud`, `longitud` | Catálogo maestro de orígenes y destinos; las coordenadas permiten estimar el tiempo con la fórmula de Haversine y `categoria`/`color` definen el icono del marcador. |
-| `unidades` | `id_unidad`, `numero_unidad`, `placas`, `modelo`, `capacidad_toneladas`, `id_estado_unidad`, `fecha_registro` | Camiones y estado operativo; capacidad opcional. |
-| `operadores` | `id_operador`, `cedula`, `nombre`, `telefono`, `horas_max_conduccion`, `horas_min_descanso`, `id_estado_operador`, `fecha_ingreso` | Choferes y reglas de descanso. |
+| `unidades` | `id_unidad`, `numero_unidad`, `placas`, `modelo`, `capacidad_toneladas`, `seguro_vencimiento`, `revision_vencimiento`, `id_estado_unidad`, `fecha_registro` | Camiones y estado operativo; capacidad y vencimientos opcionales. |
+| `operadores` | `id_operador`, `cedula`, `nombre`, `telefono`, `licencia_numero`, `licencia_categoria`, `licencia_vencimiento`, `contacto_emergencia`, `horas_max_conduccion`, `horas_min_descanso`, `id_estado_operador`, `fecha_ingreso` | Choferes, licencia y reglas de descanso. |
 | `usuarios` | `id_usuario`, `username`, `password_hash`, `rol`, `id_operador`, `activo`, `es_principal`, `puede_ver_reportes`, `fecha_creacion` | Acceso al sistema con rol `ADMIN` u `OPERADOR`; el administrador principal gestiona cuentas, permisos y contraseñas. |
 | `cargas` | `id_carga`, `numero_carga`, `descripcion`, `peso_toneladas`, `id_cliente`, `fecha_limite_cliente`, `id_estado_carga`, `fecha_creacion` | Envíos y SLA con el cliente. |
 | `viajes` | `id_viaje`, `id_unidad`, `id_operador`, `id_carga`, `origen`, `destino`, `id_viaje_previo`, `tiempo_estimado`, `cobro_viaje`, `fecha_inicio`, `fecha_fin`, `id_estado_viaje`, `fecha_creacion` | Ruta, cobro y encadenamiento. |
-| `rutas` | `id_ruta`, `id_origen`, `id_destino`, `tiempo_estimado_horas` | Tiempo configurado entre dos ubicaciones; se usa al crear viajes y es editable desde el panel administrativo. |
+| `paises_habilitados` | `id_pais_habilitado`, `nombre`, `fecha_activacion` | Países disponibles para crear ubicaciones; se administran con checkboxes desde el panel. |
+| `rutas` | `id_ruta`, `id_origen`, `id_destino`, `tiempo_estimado_horas`, `precio` | Tiempo y precio sugerido entre dos ubicaciones; se usan al crear viajes y son editables desde el panel administrativo. |
 | `registro_jornada` | `id_registro`, `id_viaje`, `num_evento`, `id_tipo_evento`, `fecha_hora`, `observacion` | Bitácora de eventos de la jornada. |
 
 ### Catálogos de estado
@@ -636,7 +637,7 @@ WHERE c2.numero_carga = 'C-DEMO-2' AND c1.numero_carga = 'C-DEMO-1'
 
 - **Documento de Requerimientos — FleetRoute Pro v1.0:** objetivo general, requerimientos funcionales y no funcionales, reglas de negocio y modelo relacional.
 - **README.md:** guía de instalación, configuración y uso del sistema.
-- **`database/fleetroute_pro.sql`:** 15 tablas, catálogos, restricciones, índices, triggers y datos de ejemplo.
+- **`database/fleetroute_pro.sql`:** 16 tablas, catálogos, restricciones, índices, triggers y datos de ejemplo.
 
 ---
 

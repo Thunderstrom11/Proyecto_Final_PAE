@@ -350,6 +350,19 @@
     -fx-icon-size: 18px;
 }
 
+.icon-button-danger {
+    -fx-background-color: #B42318;
+}
+
+.icon-button-danger:hover {
+    -fx-background-color: #912018;
+}
+
+.icon-button-danger .ikonli-font-icon {
+    -fx-icon-color: #1D4ED8;
+    -fx-icon-size: 18px;
+}
+
 /* Mapa de ubicaciones del panel administrativo. */
 .map-canvas {
     -fx-effect: dropshadow(gaussian, rgba(34, 58, 94, 0.18), 8, 0, 0, 2);
@@ -383,10 +396,33 @@
     -fx-icon-color: white;
 }
 
+/* El filtro activo conserva su color e icono legibles al pasar el cursor o mostrar el tooltip. */
+.filter-active:hover,
+.btn-secondary.filter-active:hover,
+.btn-primary.filter-active:hover {
+    -fx-background-color: #0B5C73;
+    -fx-text-fill: #FFFFFF;
+    -fx-border-color: #0B5C73;
+}
+
+.filter-active:hover .ikonli-font-icon {
+    -fx-icon-color: #FFFFFF;
+}
+
 .filter-toggle:selected {
     -fx-background-color: #223A5E;
     -fx-border-color: #223A5E;
     -fx-text-fill: #FFFFFF;
+}
+
+.filter-toggle:selected:hover {
+    -fx-background-color: #1B2F4C;
+    -fx-border-color: #1B2F4C;
+    -fx-text-fill: #FFFFFF;
+}
+
+.filter-toggle:selected:hover .ikonli-font-icon {
+    -fx-icon-color: #FFFFFF;
 }
 
 .filter-toggle .ikonli-font-icon {

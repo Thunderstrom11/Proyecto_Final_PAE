@@ -1,7 +1,9 @@
 package edu.ni.uam.proyecto_final_pae.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.dao.OperadorDAO;
+import edu.ni.uam.proyecto_final_pae.dao.PaisDAO;
 import edu.ni.uam.proyecto_final_pae.dao.RutaDAO;
 import edu.ni.uam.proyecto_final_pae.dao.UbicacionDAO;
 import edu.ni.uam.proyecto_final_pae.dao.UsuarioDAO;
@@ -16,24 +18,37 @@ import edu.ni.uam.proyecto_final_pae.util.ComboBuscador;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.ObservableSet;
+import javafx.collections.transformation.FilteredList;
+import javafx.concurrent.Worker;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.input.MouseEvent;
+import javafx.scene.control.cell.CheckBoxListCell;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
-import javafx.scene.text.Font;
-import javafx.scene.text.Text;
+import javafx.scene.web.WebEngine;
+import javafx.scene.web.WebView;
+import javafx.stage.Modality;
+import netscape.javascript.JSObject;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.text.Normalizer;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -45,15 +60,15 @@ import java.util.Optional;
  */
 public class AdminPanelController {
 
-    private static final double MAPA_LON_MIN = -103.0;
-    private static final double MAPA_LON_MAX = -73.0;
-    private static final double MAPA_LAT_MIN = 6.0;
-    private static final double MAPA_LAT_MAX = 18.73;
+    private static final String USER_AGENT =
+            "FleetRouteProAcademic/1.0 (contacto: estudiante-uam)";
 
     private final UsuarioDAO usuarioDAO = new UsuarioDAO();
     private final OperadorDAO operadorDAO = new OperadorDAO();
     private final UbicacionDAO ubicacionDAO = new UbicacionDAO();
     private final RutaDAO rutaDAO = new RutaDAO();
+    private final PaisDAO paisDAO = new PaisDAO();
+    private final ObjectMapper json = new ObjectMapper();
 
     // cuentas
     @FXML private TableView<Usuario> tablaCuentas;
@@ -94,11 +109,13 @@ public class AdminPanelController {
     @FXML private ComboBox<String> cmbPaisUbicacion;
     @FXML private TextField txtLatitud;
     @FXML private TextField txtLongitud;
-    @FXML private Canvas mapa;
-    private Image mapaImagen;
+    @FXML private StackPane contenedorMapaAdmin;
+    @FXML private Button btnPaises;
     @FXML private Button btnGuardarUbicacion;
     @FXML private Button btnActualizarUbicacion;
     @FXML private Button btnEliminarUbicacion;
+    private WebView mapa;
+    private boolean mapaListo;
 
     // rutas
     @FXML private TableView<Ruta> tablaRutas;
@@ -125,6 +142,7 @@ public class AdminPanelController {
     private String filtroRolCuenta = "Todos";
     private String filtroEstadoCuenta = "Todos";
     private List<String> paisesMundo = List.of();
+    private List<String> paisesActivos = List.of();
     private final ObservableList<String> paisesFiltrados = FXCollections.observableArrayList();
     private boolean ajustandoPais;
 
@@ -150,12 +168,12 @@ public class AdminPanelController {
         configurarRutas();
         txtBuscarUbicacion.textProperty().addListener((o, a, b) -> aplicarFiltroUbicaciones());
         txtBuscarRutaAdmin.textProperty().addListener((o, a, b) -> aplicarFiltroRutas());
-        cargarMapa();
+        crearMapa();
 
         try {
             ComboBuscador.configurar(cmbOperadorCuenta, operadorDAO.listar());
             paisesMundo = Listas.paises();
-            paisesFiltrados.setAll(paisesMundo);
+            cargarPaisesActivos();
             cmbPaisUbicacion.setItems(paisesFiltrados);
             cmbPaisUbicacion.setEditable(true);
             cmbPaisUbicacion.setValue(null);
@@ -456,8 +474,8 @@ public class AdminPanelController {
         tablaUbicaciones.getSelectionModel().selectedItemProperty().addListener((o, a, b) -> {
             if (b != null) {
                 llenarUbicacion(b);
+                centrarMapa(b);
             }
-            dibujarMapa();
         });
 
         BooleanBinding incompleta = Bindings.createBooleanBinding(
@@ -479,7 +497,7 @@ public class AdminPanelController {
                 return;
             }
             String filtro = normalizar(texto);
-            List<String> filtrados = paisesMundo.stream()
+            List<String> filtrados = paisesActivos.stream()
                     .filter(pais -> normalizar(pais).contains(filtro))
                     .toList();
             ajustandoPais = true;
@@ -502,7 +520,7 @@ public class AdminPanelController {
             String pais = cmbPaisUbicacion.getValue();
             if (pais != null && paisesMundo.contains(pais)) {
                 ajustandoPais = true;
-                paisesFiltrados.setAll(paisesMundo);
+                paisesFiltrados.setAll(sugerenciasPais(pais));
                 cmbPaisUbicacion.getEditor().setText(pais);
                 cmbPaisUbicacion.getEditor().positionCaret(pais.length());
                 ajustandoPais = false;
@@ -513,11 +531,105 @@ public class AdminPanelController {
 
     private void seleccionarPais(String pais) {
         ajustandoPais = true;
-        paisesFiltrados.setAll(paisesMundo);
+        paisesFiltrados.setAll(sugerenciasPais(pais));
         cmbPaisUbicacion.setValue(pais);
         cmbPaisUbicacion.getEditor().setText(pais == null ? "" : pais);
         cmbPaisUbicacion.getEditor().positionCaret(pais == null ? 0 : pais.length());
         ajustandoPais = false;
+    }
+
+    private void cargarPaisesActivos() {
+        paisesActivos = paisDAO.listarActivos();
+        if (paisesActivos.isEmpty()) {
+            paisesActivos = paisesMundo;
+        }
+        paisesFiltrados.setAll(sugerenciasPais(null));
+    }
+
+    private List<String> sugerenciasPais(String actual) {
+        List<String> sugerencias = new ArrayList<>(paisesActivos);
+        if (actual != null && !actual.isBlank() && !sugerencias.contains(actual)
+                && paisesMundo.contains(actual)) {
+            sugerencias.add(actual);
+        }
+        return sugerencias;
+    }
+
+    @FXML
+    private void abrirPaises() {
+        if (!sesionPrincipal()) {
+            return;
+        }
+        List<String> activos;
+        try {
+            activos = paisDAO.listarActivos();
+        } catch (PersistenciaException e) {
+            error("No se pudieron consultar los países activos", e);
+            return;
+        }
+        ObservableSet<String> seleccionados =
+                FXCollections.observableSet(new LinkedHashSet<>(activos));
+        FilteredList<String> filtrados =
+                new FilteredList<>(FXCollections.observableArrayList(Listas.paises()), p -> true);
+        ListView<String> lista = new ListView<>(filtrados);
+        lista.setPrefHeight(360);
+        lista.setCellFactory(CheckBoxListCell.forListView(pais -> {
+            SimpleBooleanProperty activo =
+                    new SimpleBooleanProperty(seleccionados.contains(pais));
+            activo.addListener((o, a, b) -> {
+                if (b) {
+                    seleccionados.add(pais);
+                } else {
+                    seleccionados.remove(pais);
+                }
+            });
+            return activo;
+        }));
+
+        TextField buscar = new TextField();
+        buscar.setPromptText("buscador");
+        buscar.textProperty().addListener((o, a, texto) -> {
+            String filtro = normalizar(texto);
+            filtrados.setPredicate(p -> filtro.isBlank() || normalizar(p).contains(filtro));
+        });
+        Label ayuda = new Label("Marque los países disponibles para crear ubicaciones. "
+                + "Los lugares existentes no se eliminan.");
+        ayuda.setWrapText(true);
+        VBox contenido = new VBox(8, ayuda, buscar, lista);
+        contenido.setPrefWidth(430);
+
+        ButtonType guardar = new ButtonType("Guardar", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelar = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
+        Dialog<ButtonType> dialogo = new Dialog<>();
+        dialogo.setTitle("Países activos");
+        dialogo.setHeaderText("Activar o desactivar países");
+        dialogo.getDialogPane().getButtonTypes().addAll(guardar, cancelar);
+        dialogo.getDialogPane().setContent(contenido);
+        if (lblEstado.getScene() != null) {
+            dialogo.initOwner(lblEstado.getScene().getWindow());
+            dialogo.initModality(Modality.WINDOW_MODAL);
+        }
+        Button botonGuardar = (Button) dialogo.getDialogPane().lookupButton(guardar);
+        botonGuardar.addEventFilter(ActionEvent.ACTION, evento -> {
+            if (seleccionados.isEmpty()) {
+                advertencia("Debe quedar al menos un país activo.");
+                evento.consume();
+            }
+        });
+
+        Optional<ButtonType> respuesta = dialogo.showAndWait();
+        if (respuesta.isEmpty() || respuesta.get() != guardar) {
+            return;
+        }
+        try {
+            String actual = cmbPaisUbicacion.getEditor().getText();
+            paisDAO.reemplazar(new ArrayList<>(seleccionados));
+            cargarPaisesActivos();
+            seleccionarPais(actual == null || actual.isBlank() ? null : actual);
+            lblEstado.setText("Países activos actualizados: " + seleccionados.size() + ".");
+        } catch (PersistenciaException e) {
+            error("No se pudieron guardar los países activos", e);
+        }
     }
 
     private String resolverPais() {
@@ -622,7 +734,6 @@ public class AdminPanelController {
         seleccionarPais(null);
         txtLatitud.clear();
         txtLongitud.clear();
-        dibujarMapa();
     }
 
     private Ubicacion construirUbicacion(Ubicacion ubicacion) {
@@ -667,7 +778,6 @@ public class AdminPanelController {
         aplicarFiltroUbicaciones();
         ComboBuscador.configurar(cmbOrigenRuta, ubicaciones);
         ComboBuscador.configurar(cmbDestinoRuta, ubicaciones);
-        dibujarMapa();
     }
 
     private void aplicarFiltroUbicaciones() {
@@ -680,6 +790,7 @@ public class AdminPanelController {
                 .toList();
         tablaUbicaciones.setItems(FXCollections.observableArrayList(visibles));
         tablaUbicaciones.refresh();
+        actualizarPuntosMapa(visibles);
     }
 
     @FXML
@@ -687,102 +798,259 @@ public class AdminPanelController {
         txtBuscarUbicacion.clear();
     }
 
-    private void cargarMapa() {
-        try (var flujo = getClass().getResourceAsStream(
-                "/edu/ni/uam/proyecto_final_pae/images/mapa-centroamerica.png")) {
-            if (flujo != null) {
-                mapaImagen = new Image(flujo);
-            }
-        } catch (Exception e) {
-            lblEstado.setText("No se pudo cargar la imagen de referencia del mapa.");
+    private void crearMapa() {
+        try {
+            Path html = prepararMapaLocal();
+            WebView web = new WebView();
+            this.mapa = web;
+            web.setContextMenuEnabled(false);
+            contenedorMapaAdmin.getChildren().add(web);
+            WebEngine motor = web.getEngine();
+            motor.setUserAgent(USER_AGENT);
+            motor.getLoadWorker().stateProperty().addListener((o, anterior, estado) -> {
+                if (estado == Worker.State.SUCCEEDED) {
+                    mapaListo = true;
+                    JSObject ventanaJs = (JSObject) motor.executeScript("window");
+                    ventanaJs.setMember("javaApp", this);
+                    ajustarLimitesMapa();
+                    actualizarPuntosMapa(tablaUbicaciones.getItems());
+                    centrarMapa(tablaUbicaciones.getSelectionModel().getSelectedItem());
+                }
+            });
+            motor.load(html.toUri().toString());
+        } catch (IOException e) {
+            lblEstado.setText("No se pudo preparar el mapa: " + e.getMessage());
         }
-        dibujarMapa();
     }
 
-    private void dibujarMapa() {
-        if (mapa == null) {
+    private void ajustarLimitesMapa() {
+        if (!mapaListo || mapa == null) {
             return;
         }
-        GraphicsContext g = mapa.getGraphicsContext2D();
-        double ancho = mapa.getWidth();
-        double alto = mapa.getHeight();
-        g.clearRect(0, 0, ancho, alto);
-        if (mapaImagen != null) {
-            g.drawImage(mapaImagen, 0, 0, ancho, alto);
-        } else {
-            g.setFill(Color.web("#D6EAF8"));
-            g.fillRect(0, 0, ancho, alto);
+        ejecutarMapa("limitarMundo()");
+    }
+
+    private void ejecutarMapa(String script) {
+        try {
+            mapa.getEngine().executeScript(script);
+        } catch (Exception e) {
+            lblEstado.setText("No se pudo ajustar el mapa.");
         }
+    }
 
-        Ubicacion seleccionada = tablaUbicaciones.getSelectionModel().getSelectedItem();
-        double puntoEtiquetaX = Double.NaN;
-        double puntoEtiquetaY = Double.NaN;
-        String nombreSeleccionado = null;
-
-        for (Ubicacion ubicacion : ubicaciones) {
+    private void actualizarPuntosMapa(List<Ubicacion> visibles) {
+        if (!mapaListo || mapa == null) {
+            return;
+        }
+        List<Map<String, Object>> puntos = new ArrayList<>();
+        for (Ubicacion ubicacion : visibles) {
             if (ubicacion.getLatitud() == null || ubicacion.getLongitud() == null) {
                 continue;
             }
-            double x = (ubicacion.getLongitud() - MAPA_LON_MIN) / (MAPA_LON_MAX - MAPA_LON_MIN) * ancho;
-            double y = (MAPA_LAT_MAX - ubicacion.getLatitud()) / (MAPA_LAT_MAX - MAPA_LAT_MIN) * alto;
-            if (x < 0 || x > ancho || y < 0 || y > alto) {
-                continue;
-            }
-            boolean activa = seleccionada != null
-                    && Objects.equals(seleccionada.getId(), ubicacion.getId());
-            double radio = activa ? 6 : 4;
-            g.setFill(Color.WHITE);
-            g.fillOval(x - radio - 1.5, y - radio - 1.5, radio * 2 + 3, radio * 2 + 3);
-            g.setFill(activa ? Color.web("#C2712C") : Color.web("#223A5E"));
-            g.fillOval(x - radio, y - radio, radio * 2, radio * 2);
-            if (activa) {
-                puntoEtiquetaX = x;
-                puntoEtiquetaY = y;
-                nombreSeleccionado = ubicacion.getNombre();
-            }
+            puntos.add(Map.of(
+                    "id", ubicacion.getId(),
+                    "lat", ubicacion.getLatitud(),
+                    "lng", ubicacion.getLongitud(),
+                    "nombre", ubicacion.getNombre(),
+                    "detalle", ubicacion.getDepartamento() + " · " + ubicacion.getPais(),
+                    "color", colorSeguro(ubicacion.getColor())));
         }
-
-        // La etiqueta se dibuja al final para que quede por encima de todos los puntos.
-        if (nombreSeleccionado != null) {
-            Font fuente = Font.font("Segoe UI", javafx.scene.text.FontWeight.BOLD, 12);
-            Text medida = new Text(nombreSeleccionado);
-            medida.setFont(fuente);
-            double anchoTexto = medida.getLayoutBounds().getWidth();
-            double anchoEtiqueta = anchoTexto + 12;
-            double altoEtiqueta = 19;
-            double etiquetaX = puntoEtiquetaX + 10;
-            if (etiquetaX + anchoEtiqueta > ancho - 4) {
-                etiquetaX = puntoEtiquetaX - anchoEtiqueta - 10;
-            }
-            double etiquetaY = puntoEtiquetaY - altoEtiqueta - 5;
-            if (etiquetaY < 4) {
-                etiquetaY = puntoEtiquetaY + 6;
-            }
-            g.setFill(Color.rgb(255, 255, 255, 0.96));
-            g.fillRoundRect(etiquetaX, etiquetaY, anchoEtiqueta, altoEtiqueta, 6, 6);
-            g.setStroke(Color.web("#223A5E"));
-            g.setLineWidth(0.9);
-            g.strokeRoundRect(etiquetaX, etiquetaY, anchoEtiqueta, altoEtiqueta, 6, 6);
-            g.setFill(Color.web("#223A5E"));
-            g.setFont(fuente);
-            g.fillText(nombreSeleccionado, etiquetaX + 6, etiquetaY + 14);
+        try {
+            mapa.getEngine().executeScript(
+                    "cargarPuntos(" + json.writeValueAsString(puntos) + ")");
+        } catch (Exception e) {
+            lblEstado.setText("No se pudieron actualizar los puntos del mapa.");
         }
     }
 
-    @FXML
-    private void clicMapa(MouseEvent evento) {
-        if (mapa == null || mapa.getWidth() <= 0) {
+    private void centrarMapa(Ubicacion ubicacion) {
+        if (!mapaListo || mapa == null || ubicacion == null
+                || ubicacion.getLatitud() == null || ubicacion.getLongitud() == null) {
             return;
         }
-        double x = Math.max(0, Math.min(mapa.getWidth(), evento.getX()));
-        double y = Math.max(0, Math.min(mapa.getHeight(), evento.getY()));
-        double longitud = MAPA_LON_MIN + (x / mapa.getWidth()) * (MAPA_LON_MAX - MAPA_LON_MIN);
-        double latitud = MAPA_LAT_MAX - (y / mapa.getHeight()) * (MAPA_LAT_MAX - MAPA_LAT_MIN);
-        txtLatitud.setText(String.format(Locale.ROOT, "%.5f", latitud));
-        txtLongitud.setText(String.format(Locale.ROOT, "%.5f", longitud));
-        lblEstado.setText("Coordenadas de la imagen: " + txtLatitud.getText() + ", "
-                + txtLongitud.getText() + ". Complete el formulario y guarde.");
+        mapa.getEngine().executeScript("centrar(" + ubicacion.getLatitud() + ","
+                + ubicacion.getLongitud() + ",14)");
     }
+
+    /** Invocado desde JavaScript al pulsar un marcador; solo selecciona, no crea puntos. */
+    public void seleccionarUbicacionMapa(int id) {
+        Platform.runLater(() -> tablaUbicaciones.getItems().stream()
+                .filter(ubicacion -> Objects.equals(ubicacion.getId(), id))
+                .findFirst()
+                .ifPresent(ubicacion -> {
+                    tablaUbicaciones.getSelectionModel().select(ubicacion);
+                    tablaUbicaciones.scrollTo(ubicacion);
+                }));
+    }
+
+    private String colorSeguro(String color) {
+        return color != null && color.matches("^#[0-9A-Fa-f]{6}$")
+                ? color : "#0891B2";
+    }
+
+    private Path prepararMapaLocal() throws IOException {
+        Path raiz = Files.createTempDirectory("fleetroute-admin-mapa-");
+        Path leaflet = raiz.resolve("leaflet");
+        Path imagenes = leaflet.resolve("images");
+        Files.createDirectories(imagenes);
+        raiz.toFile().deleteOnExit();
+        leaflet.toFile().deleteOnExit();
+        imagenes.toFile().deleteOnExit();
+        copiarRecurso("leaflet.css", leaflet.resolve("leaflet.css"));
+        copiarRecurso("leaflet.js", leaflet.resolve("leaflet.js"));
+        for (String imagen : List.of("marker-icon.png", "marker-icon-2x.png", "marker-shadow.png",
+                "layers.png", "layers-2x.png")) {
+            copiarRecurso("images/" + imagen, imagenes.resolve(imagen));
+        }
+        Path html = raiz.resolve("mapa.html");
+        Files.writeString(html, HTML_MAPA_ADMIN, StandardCharsets.UTF_8);
+        html.toFile().deleteOnExit();
+        return html;
+    }
+
+    private void copiarRecurso(String nombre, Path destino) throws IOException {
+        String ruta = "/edu/ni/uam/proyecto_final_pae/web/leaflet/" + nombre;
+        try (InputStream entrada = getClass().getResourceAsStream(ruta)) {
+            if (entrada == null) {
+                throw new IOException("Falta el recurso " + ruta);
+            }
+            Files.copy(entrada, destino, StandardCopyOption.REPLACE_EXISTING);
+            destino.toFile().deleteOnExit();
+        }
+    }
+
+    private static final String HTML_MAPA_ADMIN = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="UTF-8"/>
+              <link rel="stylesheet" href="leaflet/leaflet.css"/>
+              <style>
+                html, body { margin: 0; height: 100%; font-family: Segoe UI, sans-serif; }
+                #mapa { width: 100%; height: 100%; background: #D6EAF8; }
+                .leaflet-control-attribution { font-size: 9px; }
+                .leaflet-popup-content { font-size: 12px; }
+              </style>
+            </head>
+            <body>
+              <div id="mapa"></div>
+              <script>window.L_DISABLE_3D = true; /* El WebView de JavaFX no pinta bien translate3d. */</script>
+              <script src="leaflet/leaflet.js"></script>
+              <script>
+                L.Browser.any3d = false;
+                var MAX_SATELITE = 17;
+                var MAX_CALLE = 19;
+                var mapa = L.map('mapa', {
+                  zoomControl: true,
+                  zoomAnimation: false,
+                  fadeAnimation: false,
+                  markerZoomAnimation: false,
+                  minZoom: 3,
+                  maxZoom: MAX_SATELITE
+                }).setView([12.8, -85.5], 6);
+                var capaCalles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+                  maxZoom: MAX_CALLE,
+                  keepBuffer: 4,
+                  noWrap: true,
+                  attribution: 'Tiles &copy; Esri · Geocoding &copy; OpenStreetMap/Nominatim'
+                });
+                var capaSatelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                  maxZoom: MAX_CALLE,
+                  maxNativeZoom: MAX_SATELITE,
+                  keepBuffer: 4,
+                  noWrap: true,
+                  attribution: 'Tiles &copy; Esri · Geocoding &copy; OpenStreetMap/Nominatim'
+                }).addTo(mapa);
+                L.control.layers(
+                  { 'Calles': capaCalles, 'Satélite': capaSatelite },
+                  null,
+                  { position: 'topright', collapsed: true }
+                ).addTo(mapa);
+                mapa.on('baselayerchange', function (e) {
+                  if (e.name === 'Satélite') {
+                    mapa.setMaxZoom(MAX_SATELITE);
+                    if (mapa.getZoom() > MAX_SATELITE) { mapa.setZoom(MAX_SATELITE); }
+                  } else {
+                    mapa.setMaxZoom(MAX_CALLE);
+                  }
+                });
+                var capaPuntos = L.layerGroup().addTo(mapa);
+                var limitesPuntos = [];
+
+                function escapar(texto) {
+                  return String(texto == null ? '' : texto)
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                }
+
+                function colorSeguro(color) {
+                  return /^#[0-9A-Fa-f]{6}$/.test(color || '') ? color : '#0891B2';
+                }
+
+                function cargarPuntos(puntos) {
+                  capaPuntos.clearLayers();
+                  var limites = [];
+                  for (var i = 0; i < puntos.length; i += 1) {
+                    (function (p) {
+                      var marcador = L.circleMarker([p.lat, p.lng], {
+                        radius: 7,
+                        color: '#ffffff',
+                        weight: 2,
+                        fillColor: colorSeguro(p.color),
+                        fillOpacity: 0.95
+                      });
+                      marcador.bindPopup('<b>' + escapar(p.nombre) + '</b>' +
+                        (p.detalle ? '<br/>' + escapar(p.detalle) : ''));
+                      marcador.on('click', function () {
+                        if (window.javaApp) { window.javaApp.seleccionarUbicacionMapa(p.id); }
+                      });
+                      capaPuntos.addLayer(marcador);
+                      limites.push([p.lat, p.lng]);
+                    })(puntos[i]);
+                  }
+                  limitesPuntos = limites;
+                  setTimeout(ajustarVista, 180);
+                }
+
+                function ajustarVista() {
+                  mapa.invalidateSize();
+                  if (limitesPuntos.length === 1) {
+                    mapa.setView(limitesPuntos[0], 14);
+                  } else if (limitesPuntos.length > 1) {
+                    mapa.fitBounds(limitesPuntos, { padding: [28, 28], maxZoom: 10 });
+                  } else {
+                    mapa.setView([12.8, -85.5], 6);
+                  }
+                }
+
+                function limitarMundo() {
+                  var mundo = L.latLngBounds([-85, -180], [85, 180]);
+                  mapa.setMaxBounds(mundo);
+                  mapa.options.maxBoundsViscosity = 1.0;
+                  var zoomMinimo = mapa.getBoundsZoom(mundo, true);
+                  if (!isFinite(zoomMinimo) || zoomMinimo < 2) {
+                    zoomMinimo = 2;
+                  }
+                  zoomMinimo = Math.ceil(zoomMinimo);
+                  mapa.setMinZoom(zoomMinimo);
+                  if (mapa.getZoom() < zoomMinimo) {
+                    mapa.setZoom(zoomMinimo);
+                  }
+                }
+
+                function centrar(lat, lng, zoom) {
+                  mapa.setView([lat, lng], zoom || 14);
+                  setTimeout(function () { mapa.invalidateSize(); }, 150);
+                }
+
+                function reajustar() { mapa.invalidateSize(); }
+                window.addEventListener('resize', reajustar);
+                setTimeout(reajustar, 300);
+                setTimeout(reajustar, 900);
+              </script>
+            </body>
+            </html>
+            """;
 
     // ------------------------------------------------------------------ rutas
 
@@ -952,6 +1220,138 @@ public class AdminPanelController {
     @FXML
     private void limpiarBusquedaRuta() {
         txtBuscarRutaAdmin.clear();
+    }
+
+    // ------------------------------------------------------------------ borrados masivos
+
+    @FXML
+    private void eliminarCuentasFiltradas() {
+        if (!sesionPrincipal()) {
+            return;
+        }
+        List<Usuario> eliminables = tablaCuentas.getItems().stream()
+                .filter(cuenta -> cuenta.getRol() == RolUsuario.OPERADOR)
+                .filter(cuenta -> !Boolean.TRUE.equals(cuenta.getEsPrincipal()))
+                .toList();
+        if (eliminables.isEmpty()) {
+            advertencia("No hay cuentas de operador en el filtro actual.");
+            return;
+        }
+        if (!confirmarConPassword("Eliminar cuentas filtradas",
+                "Se eliminarán " + eliminables.size()
+                        + " cuenta(s) de operador del filtro actual. "
+                        + "Las cuentas de administrador se conservan.",
+                "Eliminar cuentas")) {
+            return;
+        }
+        try {
+            int total = usuarioDAO.eliminarCuentasOperador(
+                    eliminables.stream().map(Usuario::getId).toList());
+            limpiarCuenta();
+            cargarCuentas();
+            lblEstado.setText(total + " cuenta(s) eliminada(s).");
+        } catch (PersistenciaException e) {
+            error("No se pudieron eliminar las cuentas", e);
+        }
+    }
+
+    @FXML
+    private void eliminarTodasUbicaciones() {
+        if (!sesionPrincipal()) {
+            return;
+        }
+        if (ubicaciones.isEmpty()) {
+            advertencia("No hay ubicaciones registradas para eliminar.");
+            return;
+        }
+        if (!confirmarConPassword("Eliminar todas las ubicaciones",
+                "Se eliminarán TODAS las ubicaciones y las rutas configuradas. "
+                        + "Si existen viajes, la operación se cancelará para proteger el historial.",
+                "Eliminar ubicaciones")) {
+            return;
+        }
+        try {
+            int[] resultado = ubicacionDAO.eliminarTodas();
+            limpiarUbicacion();
+            limpiarRuta();
+            cargarUbicaciones();
+            cargarRutas();
+            lblEstado.setText("Eliminadas " + resultado[1] + " ubicación(es) y "
+                    + resultado[0] + " ruta(s).");
+        } catch (PersistenciaException e) {
+            error("No se pudieron eliminar las ubicaciones", e);
+        }
+    }
+
+    @FXML
+    private void eliminarTodasRutas() {
+        if (!sesionPrincipal()) {
+            return;
+        }
+        if (todasLasRutas.isEmpty()) {
+            advertencia("No hay rutas configuradas para eliminar.");
+            return;
+        }
+        if (!confirmarConPassword("Eliminar todas las rutas",
+                "Se eliminarán TODAS las rutas configuradas. No se puede deshacer.",
+                "Eliminar rutas")) {
+            return;
+        }
+        try {
+            int total = rutaDAO.eliminarTodas();
+            limpiarRuta();
+            cargarRutas();
+            lblEstado.setText(total + " ruta(s) eliminada(s).");
+        } catch (PersistenciaException e) {
+            error("No se pudieron eliminar las rutas", e);
+        }
+    }
+
+    private boolean confirmarConPassword(String titulo, String mensaje, String accion) {
+        PasswordField clave = new PasswordField();
+        clave.setPromptText("Contraseña del administrador");
+        Label aviso = new Label(mensaje);
+        aviso.setWrapText(true);
+        Label instruccion = new Label("Escriba su contraseña para confirmar:");
+        VBox contenido = new VBox(8, aviso, instruccion, clave);
+        contenido.setPrefWidth(420);
+
+        ButtonType ejecutar = new ButtonType(accion, ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelar = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
+        Alert alerta = new Alert(Alert.AlertType.CONFIRMATION, "", ejecutar, cancelar);
+        alerta.setTitle(titulo);
+        alerta.setHeaderText(titulo);
+        alerta.getDialogPane().setContent(contenido);
+        if (lblEstado.getScene() != null) {
+            alerta.initOwner(lblEstado.getScene().getWindow());
+            alerta.initModality(Modality.WINDOW_MODAL);
+        }
+        Button botonEjecutar = (Button) alerta.getDialogPane().lookupButton(ejecutar);
+        botonEjecutar.disableProperty().bind(clave.textProperty().isEmpty());
+
+        while (true) {
+            Optional<ButtonType> respuesta = alerta.showAndWait();
+            if (respuesta.isEmpty() || respuesta.get() != ejecutar) {
+                return false;
+            }
+            Usuario admin = SesionActual.getUsuario();
+            if (admin == null) {
+                return false;
+            }
+            String password = clave.getText() == null ? "" : clave.getText();
+            try {
+                Usuario validado = usuarioDAO.autenticar(admin.getUsername(), password);
+                if (validado != null && Objects.equals(validado.getId(), admin.getId())
+                        && validado.getRol() == RolUsuario.ADMIN) {
+                    return true;
+                }
+            } catch (PersistenciaException e) {
+                error("No se pudo validar la contraseña", e);
+                return false;
+            }
+            advertencia("Contraseña incorrecta.");
+            clave.clear();
+        }
     }
 
     // ------------------------------------------------------------------ apoyo

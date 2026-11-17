@@ -66,6 +66,7 @@ public class CabinaController {
     @FXML private Label lblSiguienteRuta;
     @FXML private Label lblSiguienteSla;
     @FXML private ListView<String> lstBitacora;
+    @FXML private Button btnActualizar;
     @FXML private Button btnIniciar;
     @FXML private Button btnPausar;
     @FXML private Button btnReanudar;
@@ -207,6 +208,7 @@ public class CabinaController {
             Optional<FlotaDAO.FilaViaje> viaje = flotaDAO.viajeDelOperador(operador.id());
             if (viaje.isEmpty()) {
                 idViaje = null;
+                mostrarBotonReintento(false);
                 mostrarVacio("El operador " + operador.nombre() + " no tiene viajes activos.");
                 return;
             }
@@ -222,10 +224,17 @@ public class CabinaController {
                 lblEstado.setText("Jornada máxima completada: pausa y descanso automáticos.");
             }
             pintar(resumen, eventos);
+            mostrarBotonReintento(false);
         } catch (PersistenciaException e) {
             idViaje = null;
+            mostrarBotonReintento(true);
             mostrarVacio("Error de persistencia: " + e.getMessage());
         }
+    }
+
+    private void mostrarBotonReintento(boolean mostrar) {
+        btnActualizar.setVisible(mostrar);
+        btnActualizar.setManaged(mostrar);
     }
 
     @FXML
