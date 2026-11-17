@@ -1,5 +1,6 @@
 package edu.ni.uam.proyecto_final_pae.dao;
 
+import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.config.Transaccion;
 import edu.ni.uam.proyecto_final_pae.model.Ubicacion;
 
@@ -61,5 +62,20 @@ public class UbicacionDAO extends GenericDAO<Ubicacion, Integer> {
                 .setMaxResults(1)
                 .getResultList());
         return lista.isEmpty() ? null : lista.get(0);
+    }
+
+    /** Elimina rutas y ubicaciones; no toca viajes, por eso exige que no existan. */
+    public int[] eliminarTodas() {
+        return Transaccion.ejecutar(sesion -> {
+            Long viajes = sesion.createQuery("select count(v) from Viaje v", Long.class)
+                    .getSingleResult();
+            if (viajes != null && viajes > 0) {
+                throw new PersistenciaException("No se pueden eliminar todas las ubicaciones: hay "
+                        + viajes + " viaje(s) que las usan. Elimine primero los viajes.", null);
+            }
+            int rutas = sesion.createMutationQuery("delete from Ruta").executeUpdate();
+            int ubicaciones = sesion.createMutationQuery("delete from Ubicacion").executeUpdate();
+            return new int[]{rutas, ubicaciones};
+        });
     }
 }

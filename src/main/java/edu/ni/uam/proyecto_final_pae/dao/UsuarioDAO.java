@@ -105,6 +105,25 @@ public class UsuarioDAO extends GenericDAO<Usuario, Integer> {
         actualizar(usuario);
     }
 
+    /** Elimina cuentas de operador; nunca elimina administradores ni la cuenta principal. */
+    public int eliminarCuentasOperador(List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return 0;
+        }
+        return Transaccion.ejecutar(sesion -> {
+            int eliminadas = 0;
+            for (Integer id : ids) {
+                Usuario usuario = sesion.find(Usuario.class, id);
+                if (usuario != null && usuario.getRol() == RolUsuario.OPERADOR
+                        && !Boolean.TRUE.equals(usuario.getEsPrincipal())) {
+                    sesion.remove(usuario);
+                    eliminadas++;
+                }
+            }
+            return eliminadas;
+        });
+    }
+
     /** true si ya existe un administrador activo (el asistente de primer arranque lo consulta). */
     public boolean existeAdministrador() {
         return Transaccion.consultar(sesion -> sesion.createQuery(

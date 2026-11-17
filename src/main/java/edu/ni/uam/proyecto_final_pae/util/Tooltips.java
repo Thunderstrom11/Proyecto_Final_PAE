@@ -17,8 +17,8 @@ public final class Tooltips {
     private static final Map<Node, Boolean> INSTALADOS = new ConcurrentHashMap<>();
 
     static {
-        POR_ID.put("btnRefrescarFlota", "Actualizar los datos de flota.");
-        POR_ID.put("btnActualizar", "Actualizar la cabina con los datos más recientes.");
+        POR_ID.put("btnActualizar", "Reintentar la actualización automática de la cabina.");
+        POR_ID.put("btnRefrescarFlota", "Reintentar la actualización automática de flota.");
         POR_ID.put("btnReporte", "Abrir el reporte financiero.");
         POR_ID.put("btnPanelAdmin", "Abrir el panel administrativo.");
         POR_ID.put("btnLimpiarBusquedaCuenta", "Limpiar la búsqueda de cuentas.");
@@ -49,6 +49,7 @@ public final class Tooltips {
         POR_ID.put("btnLimpiarCuentaForm", "Vaciar el formulario de cuentas.");
         POR_ID.put("btnLimpiarUbicacionForm", "Vaciar el formulario de ubicaciones.");
         POR_ID.put("btnLimpiarRutaForm", "Vaciar el formulario de rutas.");
+        POR_ID.put("btnPaises", "Activar o desactivar los países disponibles.");
         POR_ID.put("btnClave", "Cambiar la contraseña de la cuenta actual.");
 
         POR_TEXTO.put("Ingresar", "Validar las credenciales e iniciar sesión.");

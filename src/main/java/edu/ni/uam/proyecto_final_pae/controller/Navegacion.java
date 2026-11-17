@@ -85,11 +85,14 @@ public final class Navegacion {
                 controlador.mostrarMensaje(mensaje);
             }
             stage.setTitle("FleetRoute Pro — Iniciar sesión");
+            stage.setMaximized(false);
+            stage.setFullScreen(false);
             Scene scene = new Scene(root, LOGIN_ANCHO, LOGIN_ALTO);
             Tooltips.instalar(root);
             stage.setScene(scene);
             stage.setMinWidth(LOGIN_ANCHO);
             stage.setMinHeight(LOGIN_ALTO);
+            stage.sizeToScene();
             stage.centerOnScreen();
             registrar(stage);
             stage.show();
