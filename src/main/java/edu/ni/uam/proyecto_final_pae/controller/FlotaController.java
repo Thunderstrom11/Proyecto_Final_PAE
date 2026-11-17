@@ -19,10 +19,12 @@ import edu.ni.uam.proyecto_final_pae.security.SesionActual;
 import edu.ni.uam.proyecto_final_pae.util.Tooltips;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -56,6 +58,11 @@ public class FlotaController {
     private List<Unidad> todasLasUnidades = List.of();
     private List<Operador> todosLosOperadores = List.of();
     private List<Cliente> todosLosClientes = List.of();
+    private boolean cargandoFlota;
+
+    /** Copia de las tres listas leidas en el hilo de fondo. */
+    private record DatosFlota(List<Unidad> unidades, List<Operador> operadores, List<Cliente> clientes) {
+    }
 
     @FXML private TableView<Unidad> tablaUnidades;
     @FXML private TableColumn<Unidad, String> colNumeroUnidad;
@@ -322,43 +329,77 @@ public class FlotaController {
         if (!sesionAdmin()) {
             return;
         }
-        try {
-            todasLasUnidades = unidadDAO.listar();
-            todosLosOperadores = operadorDAO.listar();
-            todosLosClientes = clienteDAO.listar();
-            aplicarFiltroUnidades();
-            aplicarFiltroOperadores();
-            aplicarFiltroClientes();
-            mostrarBotonRefrescar(false);
-            mensaje("Datos actualizados.");
-        } catch (PersistenciaException e) {
-            mostrarBotonRefrescar(true);
-            error("No se pudieron actualizar los datos", e);
-        }
+        cargarFlotaEnSegundoPlano(true, true, true, true);
     }
 
     private void actualizarDatosAutomaticamente() {
-        try {
-            List<Unidad> unidades = unidadDAO.listar();
-            List<Operador> operadores = operadorDAO.listar();
-            List<Cliente> clientes = clienteDAO.listar();
-            if (tablaUnidades.getSelectionModel().getSelectedItem() == null) {
-                todasLasUnidades = unidades;
+        boolean unidadesLibres = tablaUnidades.getSelectionModel().getSelectedItem() == null;
+        boolean operadoresLibres = tablaOperadores.getSelectionModel().getSelectedItem() == null;
+        boolean clientesLibres = tablaClientes.getSelectionModel().getSelectedItem() == null;
+        cargarFlotaEnSegundoPlano(false, unidadesLibres, operadoresLibres, clientesLibres);
+    }
+
+    /**
+     * Consulta las tres listas en un hilo de fondo y publica el resultado en el hilo de JavaFX.
+     * Las consultas que se hacen desde la UI no bloquean el refresco de la ventana.
+     */
+    private void cargarFlotaEnSegundoPlano(boolean manual, boolean aplicarUnidades,
+                                            boolean aplicarOperadores, boolean aplicarClientes) {
+        if (cargandoFlota) {
+            return;
+        }
+        cargandoFlota = true;
+        if (manual) {
+            btnRefrescarFlota.setDisable(true);
+        }
+
+        Task<DatosFlota> tarea = new Task<>() {
+            @Override
+            protected DatosFlota call() {
+                return new DatosFlota(unidadDAO.listar(), operadorDAO.listar(), clienteDAO.listar());
+            }
+        };
+
+        tarea.setOnSucceeded(evento -> Platform.runLater(() -> {
+            DatosFlota datos = tarea.getValue();
+            if (aplicarUnidades) {
+                todasLasUnidades = datos.unidades();
                 aplicarFiltroUnidades();
             }
-            if (tablaOperadores.getSelectionModel().getSelectedItem() == null) {
-                todosLosOperadores = operadores;
+            if (aplicarOperadores) {
+                todosLosOperadores = datos.operadores();
                 aplicarFiltroOperadores();
             }
-            if (tablaClientes.getSelectionModel().getSelectedItem() == null) {
-                todosLosClientes = clientes;
+            if (aplicarClientes) {
+                todosLosClientes = datos.clientes();
                 aplicarFiltroClientes();
             }
             mostrarBotonRefrescar(false);
-        } catch (PersistenciaException e) {
+            if (manual) {
+                btnRefrescarFlota.setDisable(false);
+                mensaje("Datos actualizados.");
+            }
+            cargandoFlota = false;
+        }));
+
+        tarea.setOnFailed(evento -> Platform.runLater(() -> {
             mostrarBotonRefrescar(true);
-            mensaje("No se pudieron actualizar los datos. Use el botón para reintentar.");
-        }
+            if (manual) {
+                btnRefrescarFlota.setDisable(false);
+                Throwable causa = tarea.getException();
+                PersistenciaException error = causa instanceof PersistenciaException persistencia
+                        ? persistencia
+                        : new PersistenciaException("No se pudieron actualizar los datos", causa);
+                error("No se pudieron actualizar los datos", error);
+            } else {
+                mensaje("No se pudieron actualizar los datos. Use el botón para reintentar.");
+            }
+            cargandoFlota = false;
+        }));
+
+        Thread hilo = new Thread(tarea, "flota-carga");
+        hilo.setDaemon(true);
+        hilo.start();
     }
 
     private void mostrarBotonRefrescar(boolean mostrar) {
