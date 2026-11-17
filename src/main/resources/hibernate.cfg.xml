@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+<hibernate-configuration>
+    <session-factory>
+        <!-- Conexion de ejemplo. La URL, el usuario y la contraseña reales se sobrescriben desde .env. -->
+        <property name="hibernate.connection.driver_class">org.postgresql.Driver</property>
+        <property name="hibernate.connection.url">jdbc:postgresql://localhost:5432/fleetroute_pro</property>
+        <property name="hibernate.connection.username">postgres</property>
+        <property name="hibernate.connection.password">CAMBIAR_PASSWORD</property>
+
+        <!-- El esquema lo crea database/fleetroute_pro.sql; Hibernate solo valida que coincida. -->
+        <property name="hibernate.hbm2ddl.auto">validate</property>
+        <property name="hibernate.show_sql">false</property>
+        <property name="hibernate.format_sql">true</property>
+        <property name="hibernate.jdbc.time_zone">America/Managua</property>
+
+        <mapping class="edu.ni.uam.proyecto_final_pae.model.Carga"/>
+        <mapping class="edu.ni.uam.proyecto_final_pae.model.Cliente"/>
+        <mapping class="edu.ni.uam.proyecto_final_pae.model.Empresa"/>
+        <mapping class="edu.ni.uam.proyecto_final_pae.model.EstadoCarga"/>
+        <mapping class="edu.ni.uam.proyecto_final_pae.model.EstadoOperador"/>
+        <mapping class="edu.ni.uam.proyecto_final_pae.model.EstadoUnidad"/>
+        <mapping class="edu.ni.uam.proyecto_final_pae.model.EstadoViaje"/>
+        <mapping class="edu.ni.uam.proyecto_final_pae.model.Operador"/>
+        <mapping class="edu.ni.uam.proyecto_final_pae.model.RegistroJornada"/>
+        <mapping class="edu.ni.uam.proyecto_final_pae.model.Ruta"/>
+        <mapping class="edu.ni.uam.proyecto_final_pae.model.TipoEvento"/>
+        <mapping class="edu.ni.uam.proyecto_final_pae.model.Ubicacion"/>
+        <mapping class="edu.ni.uam.proyecto_final_pae.model.Unidad"/>
+        <mapping class="edu.ni.uam.proyecto_final_pae.model.Usuario"/>
+        <mapping class="edu.ni.uam.proyecto_final_pae.model.Viaje"/>
+    </session-factory>
+</hibernate-configuration>
