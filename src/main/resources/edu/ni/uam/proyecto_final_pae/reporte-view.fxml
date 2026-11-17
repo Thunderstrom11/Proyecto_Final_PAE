@@ -31,6 +31,15 @@
                 </Button>
                 <Label fx:id="lblTotales" style="-fx-font-weight: bold;"/>
             </HBox>
+            <HBox spacing="8" alignment="CENTER_LEFT" styleClass="actions-bar">
+                <Label text="Desde"/>
+                <DatePicker fx:id="dpDesde" prefWidth="140"/>
+                <Label text="Hasta"/>
+                <DatePicker fx:id="dpHasta" prefWidth="140"/>
+                <Button text="Limpiar fechas" styleClass="btn-ghost" onAction="#limpiarFechas">
+                    <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
+                </Button>
+            </HBox>
             <Label fx:id="lblEstado" text="Solo viajes finalizados." styleClass="status-label"/>
             <padding><Insets bottom="10"/></padding>
         </VBox>
