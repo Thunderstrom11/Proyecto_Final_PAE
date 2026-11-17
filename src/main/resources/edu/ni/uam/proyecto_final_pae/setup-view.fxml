@@ -29,6 +29,32 @@
     <ScrollPane fitToWidth="true" styleClass="form-scroll" VBox.vgrow="ALWAYS">
         <VBox spacing="10">
 
+            <VBox fx:id="pasoBase" spacing="7" styleClass="form-pane">
+                <padding>
+                    <Insets top="14" right="16" bottom="14" left="16"/>
+                </padding>
+                <Label text="Conexión y base de datos" styleClass="section-title">
+                    <graphic><FontIcon iconLiteral="fas-database"/></graphic>
+                </Label>
+                <Label styleClass="status-label" wrapText="true"
+                       text="Siga estos pasos en orden. 1. Si todavía no tiene PostgreSQL, instálelo desde postgresql.org/download. 2. Durante la instalación le pide una contraseña para el usuario postgres: anótela, porque es la que va aquí. 3. Deje el puerto 5432 a menos que lo haya cambiado a propósito. 4. Escriba la contraseña y pulse Probar conexión para revisar. 5. Pulse Siguiente y el sistema crea la base completa por usted."/>
+                <Label text="Servidor"/>
+                <TextField fx:id="txtBaseHost" promptText="localhost"/>
+                <Label text="Puerto"/>
+                <TextField fx:id="txtBasePuerto" promptText="5432"/>
+                <Label text="Usuario de PostgreSQL"/>
+                <TextField fx:id="txtBaseUsuario" promptText="postgres"/>
+                <Label text="Contraseña de PostgreSQL *"/>
+                <PasswordField fx:id="txtBasePassword"/>
+                <Label text="Nombre de la base de datos"/>
+                <TextField fx:id="txtBaseNombre" promptText="fleetroute_pro"/>
+                <Button fx:id="btnProbar" text="Probar conexión" maxWidth="Infinity" styleClass="btn-secondary" onAction="#probarConexion">
+                    <graphic><FontIcon iconLiteral="fas-plug"/></graphic>
+                </Button>
+                <Label fx:id="lblEstadoBase" wrapText="true" styleClass="status-label"
+                       text="Pulse Probar conexión para revisar el servidor y la base."/>
+            </VBox>
+
             <VBox fx:id="pasoEmpresa" spacing="7" styleClass="form-pane">
                 <padding>
                     <Insets top="14" right="16" bottom="14" left="16"/>

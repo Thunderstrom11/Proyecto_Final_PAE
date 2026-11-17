@@ -312,18 +312,20 @@ cd Proyecto_Final_PAE
 
 ### 2. Crear la base de datos
 
+**Opción recomendada — que la aplicación la cree por usted.** No hace falta tocar `psql` ni pgAdmin. Instale PostgreSQL, anote la contraseña que eligió para el usuario `postgres` durante la instalación y ejecute la aplicación. En el primer arranque el asistente abre el paso **Conexión y base de datos**: escriba esa contraseña y pulse Siguiente. El sistema crea la base si no existe, aplica el esquema completo si está vacía y guarda la conexión en `.env`. Si la base ya tiene tablas con datos, el asistente no la modifica. Las opciones de abajo quedan como alternativa manual para desarrollo.
+
 El script `database/fleetroute_pro.sql` crea las tablas, restricciones, índices, triggers, catálogos y datos de ejemplo. **Incluye `DROP TABLE`**, así que úsalo en desarrollo o haz un respaldo antes.
 
 > Hibernate está configurado con `hibernate.hbm2ddl.auto=validate`: el esquema debe existir y coincidir con el SQL. Esto evita que la aplicación cree una versión más débil sin los CHECK, índices, triggers o restricciones de unicidad.
 
-**Opción A — Línea de comandos (`psql`):**
+**Opción manual A — Línea de comandos (`psql`):**
 
 ```bash
 psql -U postgres -c "CREATE DATABASE fleetroute_pro;"
 psql -U postgres -d fleetroute_pro -v ON_ERROR_STOP=1 -f database/fleetroute_pro.sql
 ```
 
-**Opción B — pgAdmin:**
+**Opción manual B — pgAdmin:**
 
 1. Crear una base de datos llamada `fleetroute_pro`.
 2. Abrir la base de datos y ejecutar el contenido de `database/fleetroute_pro.sql` desde el Query Tool.
@@ -369,6 +371,8 @@ COMMIT;
 
 ### 3. Configurar las credenciales
 
+Si usó la opción recomendada, el asistente ya escribió el `.env` con la conexión que usted indicó y puede saltar al paso 4.
+
 Copia el archivo de ejemplo y renómbralo a `.env`:
 
 **Windows (CMD):**
@@ -401,16 +405,17 @@ mvn clean javafx:run
 
 ### 5. Primera ejecución (asistente de configuración)
 
-Si la tabla `empresa` aún no tiene datos, la aplicación abre un **asistente de configuración inicial** antes del login. Tiene pasos con barra de avance, botón Atrás y la opción de omitir los pasos opcionales:
+Si la base de datos no existe, está vacía o la tabla `empresa` aún no tiene datos, la aplicación abre un **asistente de configuración inicial** antes del login. Tiene pasos con barra de avance, botón Atrás y la opción de omitir los pasos opcionales:
 
-1. **Datos de la empresa:** nombre (obligatorio), RUC, teléfono, correo, dirección, país, zona horaria y moneda de los cobros. El país y la zona definen cómo se registran las horas y las fechas. Se guardan en la tabla `empresa`.
-2. **Cuenta de administrador:** solo si no existe ningún administrador activo. Pide usuario y contraseña (mínimo 8 caracteres, con confirmación) y la guarda con hash BCrypt.
-3. **Ubicaciones (opcional):** las 20 ubicaciones base de Centroamérica ya están cargadas; el paso permite agregar orígenes o destinos propios, con latitud y longitud opcionales.
-4. **Unidades (opcional):** número, placas, modelo, capacidad y los vencimientos del seguro y la revisión mecánica. Se crean en estado `DISPONIBLE`.
-5. **Operadores (opcional):** cédula, nombre, teléfono, licencia (número, categoría y vencimiento), contacto de emergencia y horas de manejo y descanso. A cada uno se le crea su cuenta de acceso (usuario = cédula) con la contraseña temporal `operador123!`, que el administrador puede restablecer desde el panel administrativo.
-6. **Clientes (opcional):** las empresas que contratan fletes, con contacto, teléfono, correo y dirección.
-7. **Tarifas por ruta (opcional):** origen, destino, horas y precio. Al crear un viaje, la ruta elegida propone el tiempo y el cobro.
-8. **Resumen:** muestra lo que se guardará y escribe todo en una sola transacción. Antes de operar conviene guardar un respaldo de la base.
+1. **Conexión y base de datos:** solo aparece cuando falta la base o el esquema. Pide servidor, puerto, usuario y contraseña de PostgreSQL, con instrucciones en orden para quien lo instala por primera vez. El botón Probar conexión explica en lenguaje claro qué se encontró. Al pulsar Siguiente el sistema crea la base si no existe, aplica el esquema completo si está vacía y guarda la conexión en `.env`. Una base que ya tiene tablas con datos nunca se modifica.
+2. **Datos de la empresa:** nombre (obligatorio), RUC, teléfono, correo, dirección, país, zona horaria y moneda de los cobros. El país y la zona definen cómo se registran las horas y las fechas. Se guardan en la tabla `empresa`.
+3. **Cuenta de administrador:** solo si no existe ningún administrador activo. Pide usuario y contraseña (mínimo 8 caracteres, con confirmación) y la guarda con hash BCrypt.
+4. **Ubicaciones (opcional):** las 20 ubicaciones base de Centroamérica ya están cargadas; el paso permite agregar orígenes o destinos propios, con latitud y longitud opcionales.
+5. **Unidades (opcional):** número, placas, modelo, capacidad y los vencimientos del seguro y la revisión mecánica. Se crean en estado `DISPONIBLE`.
+6. **Operadores (opcional):** cédula, nombre, teléfono, licencia (número, categoría y vencimiento), contacto de emergencia y horas de manejo y descanso. A cada uno se le crea su cuenta de acceso (usuario = cédula) con la contraseña temporal `operador123!`, que el administrador puede restablecer desde el panel administrativo.
+7. **Clientes (opcional):** las empresas que contratan fletes, con contacto, teléfono, correo y dirección.
+8. **Tarifas por ruta (opcional):** origen, destino, horas y precio. Al crear un viaje, la ruta elegida propone el tiempo y el cobro.
+9. **Resumen:** muestra lo que se guardará y escribe todo en una sola transacción. Antes de operar conviene guardar un respaldo de la base.
 
 Al terminar, el asistente entrega el control al login. En ejecuciones posteriores la aplicación va directo al login.
 
@@ -439,7 +444,7 @@ mvn test
 
 ## Datos de ejemplo
 
-El script inserta los catálogos y un conjunto mínimo de datos para probar el sistema:
+El script inserta los catálogos y un conjunto mínimo de datos para probar el sistema. Cuando la base la crea el asistente, los maestros y las cuentas de ejemplo no se insertan: el asistente los define con usted paso a paso.
 
 | Dato | Valor |
 |------|-------|

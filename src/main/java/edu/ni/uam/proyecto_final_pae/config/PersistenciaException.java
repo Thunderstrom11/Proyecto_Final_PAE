@@ -16,13 +16,13 @@ public class PersistenciaException extends RuntimeException {
             raiz = raiz.getCause();
         }
         String texto = raiz.getMessage() == null ? error.toString() : raiz.getMessage();
-        // PostgreSQL agrega lineas de contexto ("Where: ...") que no sirven al usuario.
+        // Omite las lineas de contexto de PostgreSQL.
         int corte = texto.indexOf("\n");
         String mensaje = corte > 0 ? texto.substring(0, corte) : texto;
         return new PersistenciaException(traducir(mensaje.replaceFirst("^ERROR:\\s*", "").trim()), error);
     }
 
-    /** Convierte los errores tecnicos de PostgreSQL en mensajes que el usuario puede entender. */
+    /** Convierte errores tecnicos de PostgreSQL en mensajes claros. */
     private static String traducir(String mensaje) {
         String texto = mensaje.toLowerCase(Locale.ROOT);
         if (texto.contains("uq_ubicacion")) {

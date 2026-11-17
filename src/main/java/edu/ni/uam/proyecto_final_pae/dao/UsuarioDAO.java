@@ -76,11 +76,7 @@ public class UsuarioDAO extends GenericDAO<Usuario, Integer> {
         return usuarios.isEmpty() ? null : usuarios.get(0);
     }
 
-    /**
-     * Crea la cuenta del operador usando su cédula como usuario.
-     * La contraseña temporal es fija y conocida por la administración para que pueda
-     * entregarla y luego cambiarla desde el panel; se guarda con hash BCrypt.
-     */
+    /** Crea la cuenta del operador con su cédula como usuario y contraseña temporal fija en BCrypt. */
     public String crearCuentaOperador(Operador operador) {
         if (operador == null || operador.getId() == null || existeCuentaOperador(operador.getId())) {
             return null;
