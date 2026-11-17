@@ -33,6 +33,8 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 - [Reglas de negocio](#reglas-de-negocio)
 - [Arquitectura del proyecto](#arquitectura-del-proyecto)
 - [Modelo de datos](#modelo-de-datos)
+- [Decisiones de diseño](#decisiones-de-diseño)
+- [Explicación del ORM y las transacciones](#explicación-del-orm-y-las-transacciones)
 - [Requisitos previos](#requisitos-previos)
 - [Instalación y ejecución](#instalación-y-ejecución)
 - [Datos de ejemplo](#datos-de-ejemplo)
@@ -40,6 +42,7 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 - [Flujo de uso](#flujo-de-uso)
 - [Módulo de jornada, cabina y monitor de flota](#módulo-de-jornada-cabina-y-monitor-de-flota)
 - [Solución de problemas](#solución-de-problemas)
+- [Evidencias](#evidencias)
 - [Documentación](#documentación)
 
 ---
@@ -193,6 +196,7 @@ El código sigue una arquitectura en capas con el patrón **DAO**, separando la 
 Proyecto_Final_PAE/
 ├── database/
 │   └── fleetroute_pro.sql      # Esquema, catálogos, triggers y datos de ejemplo
+├── evidencias/                 # Capturas de la entrega de Hibernate
 ├── src/
 │   ├── main/
 │   │   ├── java/edu/ni/uam/proyecto_final_pae/
@@ -202,9 +206,11 @@ Proyecto_Final_PAE/
 │   │   │   ├── model/          # Entidades y catálogos
 │   │   │   ├── security/       # Sesión y control de acceso
 │   │   │   └── service/        # Reglas de negocio
-│   │   └── resources/edu/ni/uam/proyecto_final_pae/
-│   │       ├── *.fxml          # Vistas FXML
-│   │       └── styles/         # Hojas de estilo CSS
+│   │   └── resources/
+│   │       ├── hibernate.cfg.xml   # Entidades registradas y configuración de Hibernate
+│   │       └── edu/ni/uam/proyecto_final_pae/
+│   │           ├── *.fxml          # Vistas FXML
+│   │           └── styles/         # Hojas de estilo CSS
 │   └── test/java/…             # Pruebas de JornadaService
 ├── .env.example                # Plantilla de variables de entorno
 ├── .env                        # Credenciales locales (NO se sube al repositorio)
@@ -212,6 +218,10 @@ Proyecto_Final_PAE/
 ├── pom.xml
 └── README.md
 ```
+
+### Configuración de Hibernate
+
+La configuración está en `src/main/resources/hibernate.cfg.xml`, con las entidades del paquete `model` registradas mediante `<mapping class="..."/>` y `hibernate.hbm2ddl.auto=validate`. [HibernateUtil.java](src/main/java/edu/ni/uam/proyecto_final_pae/config/HibernateUtil.java) carga ese archivo, sobrescribe la URL, el usuario y la contraseña desde el `.env` local de cada equipo y mantiene un único `SessionFactory`. El archivo publicado solo incluye credenciales de ejemplo con el placeholder `CAMBIAR_PASSWORD`.
 
 ---
 
@@ -278,6 +288,25 @@ La base de datos `fleetroute_pro` tiene **16 tablas**. El esquema completo, las 
 - **`trg_rj_num_evento`:** asigna `num_evento` de forma consecutiva por viaje. El aplicativo no necesita enviar ese valor; el trigger bloquea la fila del viaje para evitar duplicados en inserciones concurrentes.
 
 > `viajes.origen` y `viajes.destino` almacenan el ID de la ubicación, no texto libre. Esto permite validar el encadenamiento comparando IDs.
+
+---
+
+## Decisiones de diseño
+
+- **Cliente–Carga (1–N bidireccional):** `Cliente` expone la colección con `@OneToMany(mappedBy = "cliente", fetch = FetchType.LAZY)` y `Carga` es el lado dueño con `@ManyToOne` y `@JoinColumn(name = "id_cliente")`. El cliente es opcional en la carga. La relación se mantiene sincronizada con los métodos de ayuda `agregarCarga` y `quitarCarga` de `Cliente`.
+- **Sin cascade en Cliente–Carga:** el cliente y sus cargas tienen ciclos de vida independientes; eliminar un cliente no debe borrar cargas históricas. La integridad se protege con la clave foránea y las validaciones del panel.
+- **Usuario–Operador (@OneToOne):** la cuenta de acceso y el operador son entidades independientes; se enlazan solo desde `Usuario` con `@JoinColumn(name = "id_operador", unique = true)` y `@OneToOne(fetch = FetchType.LAZY)`. Tampoco se usa cascade: eliminar una cuenta no debe eliminar al operador ni su historial.
+- **Carga de datos:** los catálogos pequeños (`estado`) se cargan con `EAGER`; las relaciones de dominio se dejan `LAZY` y los DAO las resuelven con `JOIN FETCH` antes de cerrar la sesión (por ejemplo, `CargaDAO`, `ViajeDAO` y `UsuarioDAO`). Así se evita `LazyInitializationException` sin convertir todo el modelo a `EAGER`.
+
+## Explicación del ORM y las transacciones
+
+Un ORM como Hibernate permite trabajar con objetos Java y evita escribir SQL manual para cada operación; Hibernate traduce las entidades y el HQL al SQL del motor y convierte los tipos automáticamente.
+Una `Session` es una conversación corta con la base: se abre, se usa y se cierra con try-with-resources.
+Una `Transaction` agrupa una o más operaciones; si todo termina bien se hace commit y, si ocurre una excepción, se hace rollback para no dejar datos a medias.
+Los DAO abren la sesión y la transacción por cada operación, de modo que la interfaz no manipula conexiones directamente.
+Las relaciones `LAZY` no se cargan hasta que se accede a ellas; si la sesión ya se cerró, aparece `LazyInitializationException`.
+Para evitarlo, los DAO usan `JOIN FETCH` y traen la relación dentro de la misma consulta antes de cerrar la sesión.
+Así el proyecto mantiene un único `SessionFactory` y separa la persistencia de la interfaz JavaFX.
 
 ---
 
@@ -630,6 +659,34 @@ WHERE c2.numero_carga = 'C-DEMO-2' AND c1.numero_carga = 'C-DEMO-1'
 | `duplicate key value violates unique constraint "uq_rj_viaje_num"` | El trigger no está instalado o se insertaron números de evento repetidos. | Volver a ejecutar el script para crear `trg_rj_num_evento`; no enviar `num_evento`. |
 | `permission denied to create extension "pgcrypto"` | El usuario de PostgreSQL no puede crear extensiones. | Ejecutar `CREATE EXTENSION pgcrypto;` como superusuario o pedir permisos. |
 | `could not open extension control file ... pgcrypto` | Falta el paquete contrib de PostgreSQL. | Instalar `postgresql-contrib` o generar los hashes con la aplicación. |
+
+---
+
+## Evidencias
+
+### 01. Estructura del proyecto
+
+![Estructura del proyecto](evidencias/01-estructura-proyecto.png)
+
+### 02. DDL generado por Hibernate
+
+![DDL generado por Hibernate](evidencias/02-ddl-hibernate.png)
+
+Páginas complementarias: [página 2](evidencias/02-ddl-hibernate-p2.png) · [página 3](evidencias/02-ddl-hibernate-p3.png)
+
+La evidencia se generó con `hbm2ddl.auto=create` y `show_sql=true` sobre una base temporal vacía (`fleetroute_pro_ddl`); la base real se mantuvo con `validate` y la base temporal se eliminó después de la captura.
+
+### 03. Consultas HQL
+
+![Consultas HQL](evidencias/03-consultas-hql.png)
+
+### 04. Base de datos
+
+![Base de datos](evidencias/04-base-de-datos.png)
+
+### 05. Persistencia después de reiniciar
+
+![Persistencia después de reiniciar](evidencias/05-persistencia-reinicio.png)
 
 ---
 
