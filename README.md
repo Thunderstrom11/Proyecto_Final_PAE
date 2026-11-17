@@ -54,12 +54,12 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 
 ## Integrantes
 
-| # | Estudiante |
-|---|------------|
-| 1 | Diego Marcello Chamendy Chow |
+| # | Estudiante                      |
+|---|---------------------------------|
+| 1 | Diego Marcello Chamendy Chow    |
 | 2 | Carlos Eduardo Rodríguez Flores |
-| 3 | Jose Salgado |
-| 4 | Roberto Fabio Tercero |
+| 3 | Jose Augusto Salgado Murillo    |
+| 4 | Roberto Fabio Tercero           |
 
 ---
 

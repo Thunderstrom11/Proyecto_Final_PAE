@@ -27,6 +27,7 @@ import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.util.StringConverter;
 import netscape.javascript.JSObject;
 
 import java.awt.Desktop;
@@ -61,7 +62,9 @@ public class LugarPickerController {
             "FleetRouteProAcademic/1.0 (contacto: estudiante-uam)";
     private static final String COLOR_POR_DEFECTO = "#0891B2";
     private static final List<String> CATEGORIAS = List.of(
-            "Casa", "Negocio", "Bodega", "Oficina", "Otro");
+            "Casa", "Negocio", "Oficina", "Bodega", "Almacén", "Tienda",
+            "Fábrica", "Taller", "Gasolinera", "Restaurante", "Hotel",
+            "Hospital", "Escuela", "Aeropuerto", "Cliente", "Proveedor", "Otro");
     private static final List<OpcionColor> COLORES_UBICACION = List.of(
             new OpcionColor("Turquesa", "#0891B2"),
             new OpcionColor("Violeta", "#7C3AED"),
@@ -121,6 +124,7 @@ public class LugarPickerController {
     private boolean modoEdicion = true;
     private boolean ajustandoEstilo;
     private Resultado puntoPendiente;
+    private OpcionColor ultimoColorValido = COLORES_UBICACION.get(0);
     private int generacionBusqueda;
     private Stage ventana;
     private final PauseTransition esperaBusqueda =
@@ -169,9 +173,47 @@ public class LugarPickerController {
             cmbCategoria.setItems(FXCollections.observableArrayList(CATEGORIAS));
             cmbCategoria.setValue("Otro");
             cmbColor.setItems(FXCollections.observableArrayList(COLORES_UBICACION));
-            cmbColor.setValue(COLORES_UBICACION.get(0));
+            cmbColor.setEditable(true);
+            cmbColor.setPromptText("Elija un color o escriba #RRGGBB");
+            cmbColor.setConverter(new StringConverter<>() {
+                @Override
+                public String toString(OpcionColor item) {
+                    return item == null ? "" : item.toString();
+                }
+
+                @Override
+                public OpcionColor fromString(String texto) {
+                    String hex = normalizarHex(texto);
+                    if (hex != null) {
+                        return new OpcionColor("Personalizado", hex);
+                    }
+                    String buscado = normalizar(texto);
+                    return COLORES_UBICACION.stream()
+                            .filter(opcion -> normalizar(opcion.nombre()).equals(buscado)
+                                    || opcion.toString().equalsIgnoreCase(
+                                    texto == null ? "" : texto.trim()))
+                            .findFirst()
+                            .orElse(null);
+                }
+            });
+            cmbColor.setValue(ultimoColorValido);
             cmbCategoria.valueProperty().addListener((o, anterior, valor) -> actualizarEstiloSeleccion());
-            cmbColor.valueProperty().addListener((o, anterior, valor) -> actualizarEstiloSeleccion());
+            cmbColor.valueProperty().addListener((o, anterior, valor) -> {
+                if (valor != null) {
+                    ultimoColorValido = valor;
+                }
+                actualizarEstiloSeleccion();
+            });
+            cmbColor.getEditor().textProperty().addListener((o, anterior, texto) -> {
+                if (!ajustandoEstilo && normalizarHex(texto) != null) {
+                    actualizarEstiloSeleccion();
+                }
+            });
+            cmbColor.getEditor().focusedProperty().addListener((o, anterior, enfocado) -> {
+                if (!enfocado) {
+                    restaurarColorInvalido();
+                }
+            });
         }
         lista.setCellFactory(columna -> new ListCell<>() {
             @Override
@@ -192,6 +234,12 @@ public class LugarPickerController {
         lista.getSelectionModel().selectedItemProperty().addListener((o, a, b) -> {
             if (b != null) {
                 marcarSeleccion(b);
+            }
+        });
+        lista.setOnMouseClicked(evento -> {
+            Resultado seleccionado = lista.getSelectionModel().getSelectedItem();
+            if (seleccionado != null) {
+                centrarEn(seleccionado);
             }
         });
         txtBuscar.setOnAction(evento -> buscar());
@@ -318,14 +366,62 @@ public class LugarPickerController {
 
     private String colorSeguro(String color) {
         return color != null && color.matches("^#[0-9A-Fa-f]{6}$")
-                ? color : COLOR_POR_DEFECTO;
+                ? "#" + color.substring(1).toUpperCase(Locale.ROOT) : COLOR_POR_DEFECTO;
+    }
+
+    private String normalizarHex(String texto) {
+        if (texto == null) {
+            return null;
+        }
+        String limpio = texto.trim();
+        int separador = limpio.lastIndexOf('·');
+        if (separador >= 0) {
+            limpio = limpio.substring(separador + 1).trim();
+        }
+        if (limpio.startsWith("#")) {
+            limpio = limpio.substring(1);
+        }
+        return limpio.matches("(?i)[0-9a-f]{6}")
+                ? "#" + limpio.toUpperCase(Locale.ROOT) : null;
+    }
+
+    private String colorActual() {
+        String hex = normalizarHex(cmbColor.getEditor().getText());
+        if (hex != null) {
+            return hex;
+        }
+        OpcionColor actual = cmbColor.getValue();
+        return colorSeguro(actual == null ? ultimoColorValido.hex() : actual.hex());
+    }
+
+    private void restaurarColorInvalido() {
+        String texto = cmbColor.getEditor().getText();
+        if (normalizarHex(texto) != null) {
+            return;
+        }
+        String buscado = normalizar(texto);
+        boolean nombreValido = !buscado.isBlank() && COLORES_UBICACION.stream()
+                .anyMatch(opcion -> normalizar(opcion.nombre()).equals(buscado)
+                        || opcion.toString().equalsIgnoreCase(texto.trim()));
+        if (!nombreValido) {
+            ajustandoEstilo = true;
+            try {
+                cmbColor.setValue(ultimoColorValido);
+            } finally {
+                ajustandoEstilo = false;
+            }
+            if (texto != null && !texto.isBlank()) {
+                lblEstado.setText("Color no válido: use un color de la lista o un código #RRGGBB.");
+            }
+        }
     }
 
     private OpcionColor colorOpcion(String color) {
+        String hex = colorSeguro(color);
         return COLORES_UBICACION.stream()
-                .filter(opcion -> opcion.hex().equalsIgnoreCase(color))
+                .filter(opcion -> opcion.hex().equals(hex))
                 .findFirst()
-                .orElse(COLORES_UBICACION.get(0));
+                .orElseGet(() -> new OpcionColor("Personalizado", hex));
     }
 
     private void aplicarLimitesPais() {
@@ -455,11 +551,16 @@ public class LugarPickerController {
 
     /** Invocado desde JavaScript al hacer clic en un marcador de resultado de búsqueda. */
     public void seleccionarResultado(double latitud, double longitud) {
-        Platform.runLater(() -> lista.getItems().stream()
-                .filter(r -> Math.abs(r.latitud() - latitud) < 0.000001
-                        && Math.abs(r.longitud() - longitud) < 0.000001)
-                .findFirst()
-                .ifPresent(r -> lista.getSelectionModel().select(r)));
+        Platform.runLater(() -> {
+            lista.getItems().stream()
+                    .filter(r -> Math.abs(r.latitud() - latitud) < 0.000001
+                            && Math.abs(r.longitud() - longitud) < 0.000001)
+                    .findFirst()
+                    .ifPresent(r -> lista.getSelectionModel().select(r));
+            if (mapaListo && mapa != null) {
+                mapa.getEngine().executeScript("centrar(" + latitud + "," + longitud + ",14)");
+            }
+        });
     }
 
     private Path prepararMapaLocal() throws IOException {
@@ -569,10 +670,6 @@ public class LugarPickerController {
                         }
                         if (!resultados.isEmpty()) {
                             mostrarResultados(resultados, resultados.size() + " resultado(s).");
-                            if (mapaListo && mapa != null) {
-                                mapa.getEngine().executeScript("centrar(" + resultados.get(0).latitud() + ","
-                                        + resultados.get(0).longitud() + ",10)");
-                            }
                         } else {
                             mostrarResultados(List.of(), "No se encontraron lugares para esa búsqueda.");
                         }
@@ -725,6 +822,14 @@ public class LugarPickerController {
         btnConfirmar.setDisable(false);
         btnGoogle.setDisable(false);
         marcarSeleccionEnMapa(resultado);
+        centrarEn(resultado);
+    }
+
+    private void centrarEn(Resultado resultado) {
+        if (mapaListo && mapa != null && resultado != null) {
+            mapa.getEngine().executeScript("centrar(" + resultado.latitud() + ","
+                    + resultado.longitud() + ",14)");
+        }
     }
 
     private void marcarSeleccionEnMapa(Resultado resultado) {
@@ -732,11 +837,9 @@ public class LugarPickerController {
             return;
         }
         String categoria = cmbCategoria.getValue() == null ? "Otro" : cmbCategoria.getValue();
-        String color = cmbColor.getValue() == null
-                ? COLOR_POR_DEFECTO : cmbColor.getValue().hex();
         mapa.getEngine().executeScript("marcarConEstilo(" + resultado.latitud() + ","
                 + resultado.longitud() + ",'" + escapar(resultado.nombre()) + "','"
-                + escapar(categoria) + "','" + color + "')");
+                + escapar(categoria) + "','" + colorActual() + "')");
     }
 
     private void actualizarEstiloSeleccion() {
@@ -1109,8 +1212,7 @@ public class LugarPickerController {
         String departamento = resultado.departamento() == null
                 || resultado.departamento().isBlank() ? paisResultado : resultado.departamento();
         String categoria = cmbCategoria.getValue() == null ? "Otro" : cmbCategoria.getValue();
-        String color = cmbColor.getValue() == null
-                ? COLOR_POR_DEFECTO : cmbColor.getValue().hex();
+        String color = colorActual();
         try {
             if (resultado.guardada() != null) {
                 Ubicacion guardada = resultado.guardada();
@@ -1180,8 +1282,7 @@ public class LugarPickerController {
             return;
         }
         String categoria = cmbCategoria.getValue() == null ? "Otro" : cmbCategoria.getValue();
-        String color = cmbColor.getValue() == null
-                ? COLOR_POR_DEFECTO : cmbColor.getValue().hex();
+        String color = colorActual();
         if (!hayCambios(resultado.guardada(), nombre, categoria, color)) {
             setModoEdicion(false);
             lblEstado.setText("No hay cambios para guardar.");
@@ -1417,6 +1518,30 @@ public class LugarPickerController {
                     path = 'M3 10 12 4l9 6v10H3V10zm5 2v6h8v-6H8z';
                   } else if (categoria === 'Oficina') {
                     path = 'M4 3h16v18H4V3zm3 3v3h3V6H7zm7 0v3h3V6h-3zM7 11v3h3v-3H7zm7 0v3h3v-3h-3zM7 16v3h3v-3H7zm7 0v3h3v-3h-3z';
+                  } else if (categoria === 'Almacén') {
+                    path = 'M3 4h8v7H3V4zm10 0h8v7h-8V4zM3 13h8v7H3v-7zm10 0h8v7h-8v-7z';
+                  } else if (categoria === 'Tienda') {
+                    path = 'M4 4h16l2 5H2l2-5zm0 7h16v9H4v-9zm3 2v5h4v-5H7z';
+                  } else if (categoria === 'Fábrica') {
+                    path = 'M2 21V9l6 4V9l6 4V4h6v17H2z';
+                  } else if (categoria === 'Taller') {
+                    path = 'M14 3a5 5 0 0 0-4.9 6.2L3 15.3V21h5.7l6.1-6.1A5 5 0 1 0 14 3zm1 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4z';
+                  } else if (categoria === 'Gasolinera') {
+                    path = 'M4 2h10v20H4V2zm2 2v6h6V4H6zm11 0 3 3v11a2 2 0 0 1-4 0v-4h2v4a1 1 0 0 0 2 0V8l-3-3V4z';
+                  } else if (categoria === 'Restaurante') {
+                    path = 'M4 6h14v4a6 6 0 0 1-12 0V6zm2 2v2a4 4 0 0 0 8 0V8H6zm12-2h2v3a4 4 0 0 1-4 4v-2a2 2 0 0 0 2-2V6zM3 20h16v2H3v-2z';
+                  } else if (categoria === 'Hotel') {
+                    path = 'M3 7h2v6h14a2 2 0 0 1 2 2v5h-2v-2H5v2H3V7zm4 1a2 2 0 1 1 0 4 2 2 0 0 1 0-4z';
+                  } else if (categoria === 'Hospital') {
+                    path = 'M10 2h4v7h7v4h-7v7h-4v-7H3V9h7V2z';
+                  } else if (categoria === 'Escuela') {
+                    path = 'M12 3 2 8l10 5 10-5-10-5zm-6 8v5l6 3 6-3v-5l-6 3-6-3z';
+                  } else if (categoria === 'Aeropuerto') {
+                    path = 'M21 16v-2l-8-5V3a1 1 0 0 0-2 0v6l-8 5v2l8-2v5l-2 2v1l3-1 3 1v-1l-2-2v-5l8 2z';
+                  } else if (categoria === 'Cliente') {
+                    path = 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5z';
+                  } else if (categoria === 'Proveedor') {
+                    path = 'M2 5h11v9H2V5zm12 2h3l4 4v3h-7V7zM6 15a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm11 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4z';
                   }
                   return '<svg width="26" height="26" viewBox="0 0 24 24">'
                     + '<path d="' + path + '" fill="' + color

@@ -74,9 +74,13 @@
             </HBox>
             <HBox spacing="8" alignment="CENTER_LEFT">
                 <Label text="Icono" styleClass="field-label"/>
-                <ComboBox fx:id="cmbCategoria" prefWidth="150"/>
+                <ComboBox fx:id="cmbCategoria" prefWidth="170">
+                    <tooltip><Tooltip text="Elija el icono que identificará el lugar en el mapa."/></tooltip>
+                </ComboBox>
                 <Label text="Color" styleClass="field-label"/>
-                <ComboBox fx:id="cmbColor" prefWidth="190"/>
+                <ComboBox fx:id="cmbColor" prefWidth="220" promptText="Elija un color o escriba #RRGGBB">
+                    <tooltip><Tooltip text="Seleccione un color de la lista o escriba su código hexadecimal, por ejemplo #1D4ED8."/></tooltip>
+                </ComboBox>
             </HBox>
             <Label fx:id="lblSeleccion" text="Ningún lugar seleccionado." styleClass="status-label"/>
             <HBox spacing="8" alignment="CENTER_LEFT">
