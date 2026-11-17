@@ -5,15 +5,13 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.function.Function;
 
 /**
- * Inserta los catalogos y los maestros de ejemplo cuando las tablas estan vacias.
- * Reemplaza la seccion de datos de database/fleetroute_pro.sql para quien deja que Hibernate cree el esquema.
+ * Inserta los catalogos y las ubicaciones de ejemplo cuando las tablas estan vacias.
  * Es idempotente: solo agrega lo que falta.
- * Los usuarios NO se siembran aqui: los crea el asistente de primera configuracion o el script SQL.
+ * Los maestros (clientes, unidades, operadores) y los usuarios se cargan desde
+ * el asistente de configuracion o con el script SQL.
  */
 final class DatosIniciales {
 
@@ -53,29 +51,6 @@ final class DatosIniciales {
                 asegurarUbicacion(sesion, "David", "Chiriquí", "Panamá", 8.4333, -82.4333);
                 asegurarUbicacion(sesion, "Belmopán", "Cayo", "Belice", 17.2510, -88.7590);
                 asegurarUbicacion(sesion, "Ciudad de Belice", "Belice", "Belice", 17.5046, -88.1962);
-                if (total(sesion, Cliente.class) == 0) {
-                    sesion.persist(new Cliente("Cliente Demo"));
-                }
-                if (total(sesion, Unidad.class) == 0) {
-                    Unidad unidad = new Unidad();
-                    unidad.setNumeroUnidad("U-001");
-                    unidad.setPlacas("M 000001");
-                    unidad.setModelo("Modelo demo");
-                    unidad.setCapacidadToneladas(new BigDecimal("20.00"));
-                    unidad.setEstado(porNombre(sesion, EstadoUnidad.class, "DISPONIBLE"));
-                    sesion.persist(unidad);
-                }
-
-                if (total(sesion, Operador.class) == 0) {
-                    Operador demo = new Operador();
-                    demo.setCedula("001-000000-0001A");
-                    demo.setNombre("Operador Demo");
-                    demo.setHorasMaxConduccion(new BigDecimal("8.00"));
-                    demo.setHorasMinDescanso(new BigDecimal("8.00"));
-                    demo.setFechaIngreso(LocalDate.now());
-                    demo.setEstado(porNombre(sesion, EstadoOperador.class, "DISPONIBLE"));
-                    sesion.persist(demo);
-                }
                 asegurarAdminPrincipal(sesion);
                 tx.commit();
             } catch (RuntimeException e) {
@@ -96,11 +71,6 @@ final class DatosIniciales {
                 sesion.persist(nuevo.apply(nombre));
             }
         }
-    }
-
-    private static <T> T porNombre(Session sesion, Class<T> clase, String nombre) {
-        return sesion.createQuery("from " + clase.getSimpleName() + " c where c.nombre = :n", clase)
-                .setParameter("n", nombre).getSingleResult();
     }
 
     private static void asegurarUbicacion(Session sesion, String nombre, String departamento,
@@ -147,10 +117,5 @@ final class DatosIniciales {
                         "update Usuario u set u.esPrincipal = true, u.puedeVerReportes = true where u.id = :id")
                 .setParameter("id", id)
                 .executeUpdate();
-    }
-
-    private static long total(Session sesion, Class<?> clase) {
-        return sesion.createQuery("select count(e) from " + clase.getSimpleName() + " e", Long.class)
-                .getSingleResult();
     }
 }

@@ -320,6 +320,17 @@
     -fx-icon-size: 16px;
 }
 
+/* Asistente de primer arranque: barra de avance. */
+.progress-bar > .track {
+    -fx-background-color: #DDE6F2;
+    -fx-background-radius: 6;
+}
+
+.progress-bar > .bar {
+    -fx-background-color: #223A5E;
+    -fx-background-radius: 6;
+}
+
 /* Botones de icono de la barra superior (panel administrativo y reportes). */
 .icon-button {
     -fx-background-color: transparent;

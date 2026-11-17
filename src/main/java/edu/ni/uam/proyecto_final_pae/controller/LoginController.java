@@ -162,6 +162,7 @@ public class LoginController {
             intentosFallidos = 0;
             bloqueos = 0;
             SesionActual.iniciar(usuario);
+            edu.ni.uam.proyecto_final_pae.config.ZonaHoraria.recargar();
             if (usuario.getRol() == RolUsuario.ADMIN) {
                 abrirVista("flota-view.fxml", "FleetRoute Pro — Administración de flota");
             } else {
@@ -242,6 +243,8 @@ public class LoginController {
             Stage stage = (Stage) txtUsuario.getScene().getWindow();
             stage.setScene(new Scene(root, 980, 700));
             stage.setTitle(titulo);
+            stage.setMinWidth(900);
+            stage.setMinHeight(620);
             stage.setFullScreen(false);
             stage.setMaximized(true);
             Navegacion.registrar(stage);

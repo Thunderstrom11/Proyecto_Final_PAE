@@ -2,6 +2,7 @@ package edu.ni.uam.proyecto_final_pae.controller;
 
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.dao.FlotaDAO;
+import edu.ni.uam.proyecto_final_pae.dao.UsuarioDAO;
 import edu.ni.uam.proyecto_final_pae.model.RegistroJornada;
 import edu.ni.uam.proyecto_final_pae.model.RolUsuario;
 import edu.ni.uam.proyecto_final_pae.model.Usuario;
@@ -15,9 +16,13 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
+import javafx.scene.control.PasswordField;
+import javafx.scene.layout.GridPane;
 import javafx.util.Duration;
+import org.mindrot.jbcrypt.BCrypt;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -116,6 +121,66 @@ public class CabinaController {
         Navegacion.cerrarSesion(Navegacion.stageDe(btnSalir));
     }
 
+    @FXML
+    private void cambiarClave() {
+        Usuario usuario;
+        try {
+            usuario = SesionActual.requerir(RolUsuario.OPERADOR);
+        } catch (SecurityException e) {
+            advertencia(e.getMessage());
+            return;
+        }
+        Dialog<ButtonType> dialogo = new Dialog<>();
+        dialogo.setTitle("Cambiar contraseña");
+        dialogo.setHeaderText("Cuenta " + usuario.getUsername());
+        ButtonType guardar = new ButtonType("Guardar", ButtonBar.ButtonData.OK_DONE);
+        dialogo.getDialogPane().getButtonTypes().addAll(guardar, ButtonType.CANCEL);
+
+        PasswordField actual = new PasswordField();
+        actual.setPromptText("Contraseña actual");
+        PasswordField nueva = new PasswordField();
+        nueva.setPromptText("Nueva contraseña, mínimo 8");
+        PasswordField confirmar = new PasswordField();
+        confirmar.setPromptText("Repite la nueva");
+
+        GridPane panel = new GridPane();
+        panel.setHgap(8);
+        panel.setVgap(8);
+        panel.add(new Label("Actual"), 0, 0);
+        panel.add(actual, 1, 0);
+        panel.add(new Label("Nueva"), 0, 1);
+        panel.add(nueva, 1, 1);
+        panel.add(new Label("Confirmar"), 0, 2);
+        panel.add(confirmar, 1, 2);
+        dialogo.getDialogPane().setContent(panel);
+
+        Optional<ButtonType> respuesta = dialogo.showAndWait();
+        if (respuesta.isEmpty() || respuesta.get() != guardar) {
+            return;
+        }
+        String claveActual = actual.getText() == null ? "" : actual.getText();
+        String claveNueva = nueva.getText() == null ? "" : nueva.getText();
+        String claveConfirmar = confirmar.getText() == null ? "" : confirmar.getText();
+        try {
+            if (!BCrypt.checkpw(claveActual, usuario.getPasswordHash())) {
+                advertencia("La contraseña actual no es correcta.");
+                return;
+            }
+            if (claveNueva.length() < 8) {
+                advertencia("La nueva contraseña debe tener al menos 8 caracteres.");
+                return;
+            }
+            if (!claveNueva.equals(claveConfirmar)) {
+                advertencia("Las contraseñas nuevas no coinciden.");
+                return;
+            }
+            new UsuarioDAO().restablecerPassword(usuario, claveNueva);
+            advertencia("Contraseña actualizada.");
+        } catch (PersistenciaException e) {
+            advertencia("No se pudo cambiar la contraseña. " + e.getMessage());
+        }
+    }
+
     // ------------------------------------------------------------------ acciones
 
     @FXML
@@ -148,7 +213,7 @@ public class CabinaController {
             idViaje = viaje.get().idViaje();
             List<RegistroJornada> eventos = servicio.eventos(idViaje);
             JornadaService.Resumen resumen = JornadaService.calcular(
-                    viaje.get(), eventos, LocalDateTime.now(JornadaService.ZONA));
+                    viaje.get(), eventos, LocalDateTime.now(JornadaService.zona()));
             boolean finJornada = resumen.paso() == JornadaService.Paso.EN_MARCHA
                     && resumen.porcentajeManejo() >= 100;
             if (finJornada) {

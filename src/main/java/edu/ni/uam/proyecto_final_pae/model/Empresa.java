@@ -32,6 +32,12 @@ public class Empresa {
     @Column(name = "moneda", nullable = false, length = 3)
     private String moneda = "NIO";
 
+    @Column(name = "pais", nullable = false, length = 80)
+    private String pais = "Nicaragua";
+
+    @Column(name = "zona_horaria", nullable = false, length = 60)
+    private String zonaHoraria = "America/Managua";
+
     /** La llena la base de datos (DEFAULT NOW()). */
     @Column(name = "fecha_configuracion", insertable = false, updatable = false)
     private LocalDateTime fechaConfiguracion;
@@ -93,6 +99,22 @@ public class Empresa {
 
     public void setMoneda(String moneda) {
         this.moneda = moneda;
+    }
+
+    public String getPais() {
+        return pais;
+    }
+
+    public void setPais(String pais) {
+        this.pais = pais;
+    }
+
+    public String getZonaHoraria() {
+        return zonaHoraria;
+    }
+
+    public void setZonaHoraria(String zonaHoraria) {
+        this.zonaHoraria = zonaHoraria;
     }
 
     public LocalDateTime getFechaConfiguracion() {

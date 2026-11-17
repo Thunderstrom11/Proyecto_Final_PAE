@@ -2,6 +2,7 @@ package edu.ni.uam.proyecto_final_pae.dao;
 
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.config.Transaccion;
+import edu.ni.uam.proyecto_final_pae.config.ZonaHoraria;
 import edu.ni.uam.proyecto_final_pae.model.EstadoCarga;
 import edu.ni.uam.proyecto_final_pae.model.EstadoOperador;
 import edu.ni.uam.proyecto_final_pae.model.EstadoUnidad;
@@ -10,7 +11,6 @@ import org.hibernate.Session;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -34,8 +34,6 @@ import java.util.Optional;
  * </ul>
  */
 public class FlotaDAO {
-
-    private static final ZoneId ZONA = ZoneId.of("America/Managua");
 
     /**
      * Proyeccion comun: datos del viaje + unidad + operador + carga + origen/destino + estado.
@@ -180,7 +178,7 @@ public class FlotaDAO {
      */
     public void cambiarEstadoViaje(Session sesion, int idViaje, String nombreEstado, boolean marcarInicio) {
         EstadoViaje estado = catalogo(sesion, EstadoViaje.class, nombreEstado);
-        LocalDateTime ahora = LocalDateTime.now(ZONA);
+        LocalDateTime ahora = LocalDateTime.now(ZonaHoraria.actual());
         sesion.createMutationQuery("update Viaje v set v.estado = :estado where v.id = :id")
                 .setParameter("estado", estado)
                 .setParameter("id", idViaje)
@@ -230,6 +228,14 @@ public class FlotaDAO {
     /** Indica si el operador tiene algún viaje activo (excluyendo opcionalmente uno). */
     public boolean operadorTieneViajeActivo(int idOperador) {
         return Transaccion.consultar(sesion -> hayViajeActivo(sesion, "operador", idOperador, null));
+    }
+
+    /** Indica si el operador tiene viajes registrados, activos o del historial. */
+    public boolean operadorTieneViajes(int idOperador) {
+        return Transaccion.consultar(sesion -> sesion.createQuery(
+                        "select count(v) from Viaje v where v.operador.id = :id", Long.class)
+                .setParameter("id", idOperador)
+                .getSingleResult() > 0);
     }
 
     private static boolean hayViajeActivo(Session sesion, String campo, int id, Integer excluirIdViaje) {
@@ -333,7 +339,7 @@ public class FlotaDAO {
         if (valor == null) return null;
         if (valor instanceof LocalDateTime fecha) return fecha;
         if (valor instanceof java.sql.Timestamp timestamp) return timestamp.toLocalDateTime();
-        if (valor instanceof java.util.Date fecha) return LocalDateTime.ofInstant(fecha.toInstant(), ZONA);
+        if (valor instanceof java.util.Date fecha) return LocalDateTime.ofInstant(fecha.toInstant(), ZonaHoraria.actual());
         throw new IllegalStateException("Tipo de fecha no soportado: " + valor.getClass().getName());
     }
 }

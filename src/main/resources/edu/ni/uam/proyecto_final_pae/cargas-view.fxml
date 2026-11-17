@@ -76,13 +76,16 @@
                     <TableColumn fx:id="colPeso" text="Peso (t)" prefWidth="65"/>
                     <TableColumn fx:id="colCliente" text="Cliente" prefWidth="115"/>
                     <TableColumn fx:id="colLimite" text="Fecha límite" prefWidth="135"/>
-                    <TableColumn fx:id="colEstado" text="Estado" prefWidth="85"/>
+                    <TableColumn fx:id="colEstado" text="Estado" prefWidth="125"/>
                 </columns>
             </TableView>
         </VBox>
     </center>
 
     <right>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                    prefWidth="296" styleClass="form-scroll">
+            <content>
         <VBox spacing="8" prefWidth="280" styleClass="form-pane">
             <padding>
                 <Insets top="12" right="12" bottom="12" left="14"/>
@@ -123,5 +126,7 @@
                 <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
             </Button>
         </VBox>
+            </content>
+        </ScrollPane>
     </right>
 </BorderPane>

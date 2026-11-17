@@ -49,6 +49,7 @@ public final class Tooltips {
         POR_ID.put("btnLimpiarCuentaForm", "Vaciar el formulario de cuentas.");
         POR_ID.put("btnLimpiarUbicacionForm", "Vaciar el formulario de ubicaciones.");
         POR_ID.put("btnLimpiarRutaForm", "Vaciar el formulario de rutas.");
+        POR_ID.put("btnClave", "Cambiar la contraseña de la cuenta actual.");
 
         POR_TEXTO.put("Ingresar", "Validar las credenciales e iniciar sesión.");
         POR_TEXTO.put("Administrador", "Entrar con una cuenta de administrador.");
@@ -81,7 +82,8 @@ public final class Tooltips {
         POR_TEXTO.put("Ver en Google Maps", "Abrir la ubicación en Google Maps.");
         POR_TEXTO.put("Cancelar", "Cerrar sin guardar cambios.");
         POR_TEXTO.put("Confirmar lugar", "Guardar el lugar seleccionado y volver a Viajes.");
-        POR_TEXTO.put("Finalizar entrega", "Marcar el viaje seleccionado como entregado.");
+        POR_TEXTO.put("Finalizar entrega", "Solo los viajes en curso se pueden finalizar. Si está en pausa, el operador debe reanudar primero.");
+        POR_TEXTO.put("Limpiar fechas", "Quitar el rango de fechas y calcular sobre toda la historia.");
         POR_TEXTO.put("Iniciar trayecto", "Iniciar el viaje asignado.");
         POR_TEXTO.put("Pausa", "Pausar el viaje actual.");
         POR_TEXTO.put("Reanudar", "Reanudar el viaje pausado.");

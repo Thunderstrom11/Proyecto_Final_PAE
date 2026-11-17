@@ -161,6 +161,9 @@
                         </VBox>
                     </center>
                     <right>
+                        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                                    prefWidth="316" styleClass="form-scroll">
+                            <content>
                         <VBox spacing="8" prefWidth="300" styleClass="form-pane">
                             <padding><Insets top="12" right="12" bottom="12" left="14"/></padding>
                             <Label text="Nombre de la ubicación *"/>
@@ -195,6 +198,8 @@
                                 <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
                             </Button>
                         </VBox>
+                            </content>
+                        </ScrollPane>
                     </right>
                 </BorderPane>
             </Tab>
@@ -216,14 +221,18 @@
                             </HBox>
                             <TableView fx:id="tablaRutas" VBox.vgrow="ALWAYS">
                                 <columns>
-                                    <TableColumn fx:id="colRutaOrigen" text="Origen" prefWidth="220"/>
-                                    <TableColumn fx:id="colRutaDestino" text="Destino" prefWidth="220"/>
-                                    <TableColumn fx:id="colRutaHoras" text="Tiempo estimado" prefWidth="140"/>
+                                    <TableColumn fx:id="colRutaOrigen" text="Origen" prefWidth="200"/>
+                                    <TableColumn fx:id="colRutaDestino" text="Destino" prefWidth="200"/>
+                                    <TableColumn fx:id="colRutaHoras" text="Tiempo estimado" prefWidth="120"/>
+                                    <TableColumn fx:id="colRutaPrecio" text="Precio" prefWidth="110"/>
                                 </columns>
                             </TableView>
                         </VBox>
                     </center>
                     <right>
+                        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                                    prefWidth="316" styleClass="form-scroll">
+                            <content>
                         <VBox spacing="8" prefWidth="300" styleClass="form-pane">
                             <padding><Insets top="12" right="12" bottom="12" left="14"/></padding>
                             <Label text="Origen *"/>
@@ -232,6 +241,8 @@
                             <ComboBox fx:id="cmbDestinoRuta" maxWidth="Infinity"/>
                             <Label text="Tiempo estimado en horas *"/>
                             <TextField fx:id="txtHorasRuta" promptText="6.50"/>
+                            <Label text="Precio sugerido (opcional)"/>
+                            <TextField fx:id="txtPrecioRuta" promptText="1800.00"/>
                             <Separator/>
                             <Button fx:id="btnGuardarRuta" text="Guardar ruta" maxWidth="Infinity"
                                     styleClass="btn-primary" onAction="#guardarRuta">
@@ -250,6 +261,8 @@
                                 <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
                             </Button>
                         </VBox>
+                            </content>
+                        </ScrollPane>
                     </right>
                 </BorderPane>
             </Tab>

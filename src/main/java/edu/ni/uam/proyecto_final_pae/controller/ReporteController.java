@@ -37,6 +37,8 @@ public class ReporteController {
     @FXML private TableColumn<Object[], String> colUniTotal;
     @FXML private Label lblEstado;
     @FXML private Label lblTotales;
+    @FXML private javafx.scene.control.DatePicker dpDesde;
+    @FXML private javafx.scene.control.DatePicker dpHasta;
 
     @FXML
     private void initialize() {
@@ -55,6 +57,10 @@ public class ReporteController {
         colUniNumero.setCellValueFactory(c -> new SimpleStringProperty(String.valueOf(c.getValue()[0])));
         colUniViajes.setCellValueFactory(c -> new SimpleStringProperty(String.valueOf(c.getValue()[1])));
         colUniTotal.setCellValueFactory(c -> new SimpleStringProperty(dinero(c.getValue()[2])));
+        tablaOperadores.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        tablaUnidades.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        dpDesde.valueProperty().addListener((o, a, b) -> calcular());
+        dpHasta.valueProperty().addListener((o, a, b) -> calcular());
         calcular();
     }
 
@@ -78,9 +84,17 @@ public class ReporteController {
             lblTotales.setText("");
             return;
         }
+        java.time.LocalDate desdeDia = dpDesde.getValue();
+        java.time.LocalDate hastaDia = dpHasta.getValue();
+        if (desdeDia != null && hastaDia != null && desdeDia.isAfter(hastaDia)) {
+            lblEstado.setText("La fecha desde no puede ser posterior a la fecha hasta.");
+            return;
+        }
+        java.time.LocalDateTime desde = desdeDia == null ? null : desdeDia.atStartOfDay();
+        java.time.LocalDateTime hasta = hastaDia == null ? null : hastaDia.atTime(23, 59, 59);
         try {
-            List<Object[]> operadores = viajeDAO.totalFacturadoPorOperador();
-            List<Object[]> unidades = viajeDAO.totalFacturadoPorUnidad();
+            List<Object[]> operadores = viajeDAO.totalFacturadoPorOperador(desde, hasta);
+            List<Object[]> unidades = viajeDAO.totalFacturadoPorUnidad(desde, hasta);
             tablaOperadores.setItems(FXCollections.observableArrayList(operadores));
             tablaOperadores.refresh();
             tablaUnidades.setItems(FXCollections.observableArrayList(unidades));
@@ -104,6 +118,12 @@ public class ReporteController {
     }
 
     @FXML
+    private void limpiarFechas() {
+        dpDesde.setValue(null);
+        dpHasta.setValue(null);
+    }
+
+    @FXML
     private void cerrar() {
         Stage stage = (Stage) lblEstado.getScene().getWindow();
         stage.close();
@@ -121,7 +141,13 @@ public class ReporteController {
             case "HNL" -> "L";
             case "PAB" -> "B/.";
             case "MXN" -> "MX$";
-            default -> moneda;
+            default -> {
+                try {
+                    yield java.util.Currency.getInstance(moneda).getSymbol(Locale.forLanguageTag("es"));
+                } catch (RuntimeException e) {
+                    yield moneda;
+                }
+            }
         };
         return simbolo + " " + texto;
     }

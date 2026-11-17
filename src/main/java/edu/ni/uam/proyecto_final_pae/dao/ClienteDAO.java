@@ -22,4 +22,11 @@ public class ClienteDAO extends GenericDAO<Cliente, Integer> {
                 sesion.createQuery("from Cliente c where c.activo = true order by c.nombreEmpresa", Cliente.class)
                         .getResultList());
     }
+
+    public boolean existeNombreEmpresa(String nombre) {
+        return Transaccion.consultar(sesion -> sesion.createQuery(
+                        "select count(c) from Cliente c where lower(c.nombreEmpresa) = lower(:n)", Long.class)
+                .setParameter("n", nombre)
+                .getSingleResult() > 0);
+    }
 }

@@ -112,6 +112,9 @@
                         </VBox>
                     </center>
                     <right>
+                        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                                    prefWidth="306" styleClass="form-scroll">
+                            <content>
                         <VBox spacing="8" prefWidth="290" styleClass="form-pane">
                             <padding>
                                 <Insets top="12" right="12" bottom="12" left="14"/>
@@ -125,7 +128,7 @@
                             <Label text="Capacidad en toneladas (opcional)"/>
                             <TextField fx:id="txtCapacidad" promptText="30.00"/>
                             <Label text="Estado *"/>
-                            <ComboBox fx:id="cmbEstadoUnidad" maxWidth="Infinity"/>
+                            <ComboBox fx:id="cmbEstadoUnidad" promptText="Seleccione estado" maxWidth="Infinity"/>
                             <Separator/>
                             <Button fx:id="btnGuardarUnidad" text="Guardar nueva" maxWidth="Infinity"
                                     styleClass="btn-primary" onAction="#guardarUnidad">
@@ -144,6 +147,8 @@
                                 <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
                             </Button>
                         </VBox>
+                            </content>
+                        </ScrollPane>
                     </right>
                 </BorderPane>
             </Tab>
@@ -191,7 +196,7 @@
                                    styleClass="status-label"/>
                             <TableView fx:id="tablaOperadores" VBox.vgrow="ALWAYS">
                                 <columns>
-                                    <TableColumn fx:id="colCedula" text="Cédula" prefWidth="105"/>
+                                    <TableColumn fx:id="colCedula" text="Cédula" prefWidth="120"/>
                                     <TableColumn fx:id="colNombreOperador" text="Nombre" prefWidth="135"/>
                                     <TableColumn fx:id="colTelefono" text="Teléfono" prefWidth="85"/>
                                     <TableColumn fx:id="colHorasMax" text="Máx. conducción (horas)" prefWidth="145"/>
@@ -202,6 +207,9 @@
                         </VBox>
                     </center>
                     <right>
+                        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                                    prefWidth="296" styleClass="form-scroll">
+                            <content>
                         <VBox spacing="8" prefWidth="280" styleClass="form-pane">
                             <padding>
                                 <Insets top="12" right="12" bottom="12" left="14"/>
@@ -217,7 +225,7 @@
                             <Label text="Horas mínimas de descanso *"/>
                             <TextField fx:id="txtHorasMin" promptText="8.00"/>
                             <Label text="Estado *"/>
-                            <ComboBox fx:id="cmbEstadoOperador" maxWidth="Infinity"/>
+                            <ComboBox fx:id="cmbEstadoOperador" promptText="Seleccione estado" maxWidth="Infinity"/>
                             <Separator/>
                             <Button fx:id="btnGuardarOperador" text="Guardar nuevo" maxWidth="Infinity"
                                     styleClass="btn-primary" onAction="#guardarOperador">
@@ -236,6 +244,8 @@
                                 <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
                             </Button>
                         </VBox>
+                            </content>
+                        </ScrollPane>
                     </right>
                 </BorderPane>
             </Tab>
@@ -287,6 +297,9 @@
                         </VBox>
                     </center>
                     <right>
+                        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                                    prefWidth="306" styleClass="form-scroll">
+                            <content>
                         <VBox spacing="8" prefWidth="290" styleClass="form-pane">
                             <padding>
                                 <Insets top="12" right="12" bottom="12" left="14"/>
@@ -320,6 +333,8 @@
                                 <graphic><FontIcon iconLiteral="fas-eraser"/></graphic>
                             </Button>
                         </VBox>
+                            </content>
+                        </ScrollPane>
                     </right>
                 </BorderPane>
             </Tab>

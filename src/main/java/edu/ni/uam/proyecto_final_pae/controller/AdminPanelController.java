@@ -11,6 +11,7 @@ import edu.ni.uam.proyecto_final_pae.model.Ruta;
 import edu.ni.uam.proyecto_final_pae.model.Ubicacion;
 import edu.ni.uam.proyecto_final_pae.model.Usuario;
 import edu.ni.uam.proyecto_final_pae.security.SesionActual;
+import edu.ni.uam.proyecto_final_pae.util.Listas;
 import edu.ni.uam.proyecto_final_pae.util.ComboBuscador;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -106,9 +107,11 @@ public class AdminPanelController {
     @FXML private TableColumn<Ruta, String> colRutaOrigen;
     @FXML private TableColumn<Ruta, String> colRutaDestino;
     @FXML private TableColumn<Ruta, String> colRutaHoras;
+    @FXML private TableColumn<Ruta, String> colRutaPrecio;
     @FXML private ComboBox<Ubicacion> cmbOrigenRuta;
     @FXML private ComboBox<Ubicacion> cmbDestinoRuta;
     @FXML private TextField txtHorasRuta;
+    @FXML private TextField txtPrecioRuta;
     @FXML private Button btnGuardarRuta;
     @FXML private Button btnActualizarRuta;
     @FXML private Button btnEliminarRuta;
@@ -151,7 +154,7 @@ public class AdminPanelController {
 
         try {
             ComboBuscador.configurar(cmbOperadorCuenta, operadorDAO.listar());
-            paisesMundo = paisesDelMundo();
+            paisesMundo = Listas.paises();
             paisesFiltrados.setAll(paisesMundo);
             cmbPaisUbicacion.setItems(paisesFiltrados);
             cmbPaisUbicacion.setEditable(true);
@@ -789,6 +792,9 @@ public class AdminPanelController {
         colRutaHoras.setCellValueFactory(c -> new SimpleStringProperty(
                 c.getValue().getTiempoEstimadoHoras() == null ? "—"
                         : c.getValue().getTiempoEstimadoHoras().stripTrailingZeros().toPlainString() + " h"));
+        colRutaPrecio.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().getPrecio() == null ? "—"
+                        : c.getValue().getPrecio().stripTrailingZeros().toPlainString()));
 
         tablaRutas.getSelectionModel().selectedItemProperty().addListener((o, a, b) -> {
             if (b != null) {
@@ -796,6 +802,8 @@ public class AdminPanelController {
                 cmbDestinoRuta.setValue(b.getDestino());
                 txtHorasRuta.setText(b.getTiempoEstimadoHoras() == null ? ""
                         : b.getTiempoEstimadoHoras().stripTrailingZeros().toPlainString());
+                txtPrecioRuta.setText(b.getPrecio() == null ? ""
+                        : b.getPrecio().stripTrailingZeros().toPlainString());
             }
         });
 
@@ -889,6 +897,7 @@ public class AdminPanelController {
         cmbOrigenRuta.setValue(null);
         cmbDestinoRuta.setValue(null);
         txtHorasRuta.clear();
+        txtPrecioRuta.clear();
     }
 
     private Ruta construirRuta() {
@@ -909,7 +918,19 @@ public class AdminPanelController {
         if (horas.signum() <= 0 || horas.compareTo(new BigDecimal("999")) > 0) {
             throw new IllegalArgumentException("Las horas deben ser mayores a 0 y menores a 999.");
         }
-        return new Ruta(origen, destino, horas);
+        BigDecimal precio = null;
+        String textoPrecio = txtPrecioRuta.getText() == null ? "" : txtPrecioRuta.getText().trim();
+        if (!textoPrecio.isEmpty()) {
+            try {
+                precio = new BigDecimal(textoPrecio.replace(',', '.'));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("El precio debe ser un número, por ejemplo 1800.00.");
+            }
+            if (precio.signum() <= 0) {
+                throw new IllegalArgumentException("El precio debe ser mayor que 0.");
+            }
+        }
+        return new Ruta(origen, destino, horas, precio);
     }
 
     private void cargarRutas() {
@@ -947,16 +968,6 @@ public class AdminPanelController {
             lblEstado.setText(e.getMessage());
             return false;
         }
-    }
-
-    private List<String> paisesDelMundo() {
-        Locale espanol = Locale.forLanguageTag("es");
-        return java.util.Arrays.stream(Locale.getISOCountries())
-                .map(codigo -> new Locale("", codigo).getDisplayCountry(espanol))
-                .filter(nombre -> nombre != null && !nombre.isBlank())
-                .distinct()
-                .sorted(String.CASE_INSENSITIVE_ORDER)
-                .toList();
     }
 
     private String requerido(TextField campo, String nombre, int maximo) {

@@ -159,6 +159,7 @@ Además:
 - La fecha límite del cliente no puede ser anterior a la fecha actual; se valida con el trigger `trg_carga_fecha_limite`.
 - La alerta de descanso se activa al superar el **80 %** de las horas máximas de conducción; al llegar al **100 %** la cabina registra una pausa automática y empieza a acumular descanso. Una pausa manual puede reanudarse sin esperar el total de horas.
 - La alerta de SLA se activa cuando la proyección de llegada supera la fecha límite del cliente.
+- Un operador con viajes registrados no se puede eliminar. Al eliminar un operador sin viajes, su cuenta de acceso se elimina en la misma operación.
 
 ### Restricciones aplicadas en PostgreSQL
 
@@ -400,12 +401,18 @@ mvn clean javafx:run
 
 ### 5. Primera ejecución (asistente de configuración)
 
-Si la tabla `empresa` aún no tiene datos, la aplicación abre un **asistente de configuración inicial** antes del login:
+Si la tabla `empresa` aún no tiene datos, la aplicación abre un **asistente de configuración inicial** antes del login. Tiene pasos con barra de avance, botón Atrás y la opción de omitir los pasos opcionales:
 
-1. **Datos de la empresa:** nombre (obligatorio), RUC, teléfono, correo y dirección. Se guardan en la tabla `empresa` y el nombre aparece en el login y en la pantalla de administración.
-2. **Usuario administrador:** solo si no existe ningún administrador activo. Pide usuario, contraseña (mínimo 8 caracteres, con confirmación), moneda de la empresa y guarda la contraseña con hash BCrypt. Si la base ya tiene un administrador (por ejemplo, el `admin` del script), este paso se omite.
+1. **Datos de la empresa:** nombre (obligatorio), RUC, teléfono, correo, dirección, país, zona horaria y moneda de los cobros. El país y la zona definen cómo se registran las horas y las fechas. Se guardan en la tabla `empresa`.
+2. **Cuenta de administrador:** solo si no existe ningún administrador activo. Pide usuario y contraseña (mínimo 8 caracteres, con confirmación) y la guarda con hash BCrypt.
+3. **Ubicaciones (opcional):** las 20 ubicaciones base de Centroamérica ya están cargadas; el paso permite agregar orígenes o destinos propios, con latitud y longitud opcionales.
+4. **Unidades (opcional):** número, placas, modelo, capacidad y los vencimientos del seguro y la revisión mecánica. Se crean en estado `DISPONIBLE`.
+5. **Operadores (opcional):** cédula, nombre, teléfono, licencia (número, categoría y vencimiento), contacto de emergencia y horas de manejo y descanso. A cada uno se le crea su cuenta de acceso (usuario = cédula) con la contraseña temporal `operador123!`, que el administrador puede restablecer desde el panel administrativo.
+6. **Clientes (opcional):** las empresas que contratan fletes, con contacto, teléfono, correo y dirección.
+7. **Tarifas por ruta (opcional):** origen, destino, horas y precio. Al crear un viaje, la ruta elegida propone el tiempo y el cobro.
+8. **Resumen:** muestra lo que se guardará y escribe todo en una sola transacción. Antes de operar conviene guardar un respaldo de la base.
 
-Al guardar, el asistente entrega el control al login. En ejecuciones posteriores la aplicación va directo al login.
+Al terminar, el asistente entrega el control al login. En ejecuciones posteriores la aplicación va directo al login.
 
 > El login pide elegir **Administrador** u **Operador** y valida que el rol elegido coincida con el de la cuenta en la base de datos. Las contraseñas nunca se muestran ni se guardan en texto plano.
 
@@ -483,17 +490,18 @@ DB_PASSWORD=tu_contrasena
 3. Crear un viaje asignando una unidad disponible, un operador y una carga.
 4. Pre-asignar el siguiente viaje validando que el origen coincida con el destino actual.
 5. Supervisar el monitor de flota en vivo y las alertas de fatiga/SLA.
-6. Consultar el cobro de cada viaje y el total facturado por operador y por unidad.
+6. Consultar el cobro de cada viaje y el total facturado por operador y por unidad, con filtro por rango de fechas.
 
 ### Operador
 
-1. Iniciar sesión eligiendo la opción **Operador** (demo: `operador` / `operador123!`). La cabina muestra **solo el operador vinculado a ese usuario**; no hay selector libre de operadores.
+1. Iniciar sesión eligiendo la opción **Operador** (demo: `operador` / `Operador123!`). La cabina muestra **solo el operador vinculado a ese usuario**; no hay selector libre de operadores.
 2. Presionar `INICIAR TRAYECTO` para comenzar el registro de la jornada.
 3. Registrar pausas de descanso y reanudar el manejo; el sistema acumula los tiempos y muestra cuánto descanso falta.
 4. Presionar `CONFIRMAR ENTREGA` al finalizar el viaje; el botón solo se habilita con un tramo en marcha.
 5. Si existe un viaje encadenado, se activa automáticamente en la cabina; si no, la unidad y el operador vuelven a estado **Disponible**.
 6. La sesión expira tras **15 minutos de inactividad**; también se puede cerrar con el botón **Cerrar sesión**.
 7. Tras **3 intentos fallidos** de inicio de sesión, el acceso se bloquea durante **30 segundos**. Si se fallan otros **3 intentos** después de ese bloqueo, la aplicación se cierra.
+8. Cambiar la contraseña temporal desde el botón **Cambiar contraseña** de la cabina.
 
 > Si un operador no puede entrar, verifique que exista un registro en `usuarios` con `rol = 'OPERADOR'` y su `id_operador` asociado. El usuario demo `operador` está vinculado a **Operador Demo**.
 

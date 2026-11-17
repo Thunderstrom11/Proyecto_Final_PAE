@@ -26,4 +26,18 @@ public class UnidadDAO extends GenericDAO<Unidad, Integer> {
                         + "where e.nombre = :estado order by u.numeroUnidad",
                 Unidad.class).setParameter("estado", "DISPONIBLE").getResultList());
     }
+
+    public boolean existeNumero(String numero) {
+        return Transaccion.consultar(sesion -> sesion.createQuery(
+                        "select count(u) from Unidad u where lower(u.numeroUnidad) = lower(:numero)", Long.class)
+                .setParameter("numero", numero)
+                .getSingleResult() > 0);
+    }
+
+    public boolean existePlacas(String placas) {
+        return Transaccion.consultar(sesion -> sesion.createQuery(
+                        "select count(u) from Unidad u where lower(u.placas) = lower(:placas)", Long.class)
+                .setParameter("placas", placas)
+                .getSingleResult() > 0);
+    }
 }

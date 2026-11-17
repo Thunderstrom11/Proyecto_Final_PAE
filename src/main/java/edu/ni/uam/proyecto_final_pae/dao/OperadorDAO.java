@@ -27,6 +27,18 @@ public class OperadorDAO extends GenericDAO<Operador, Integer> {
                 Operador.class).setParameter("estado", "DISPONIBLE").getResultList());
     }
 
+    /** Elimina el operador junto con su cuenta de acceso en una sola transaccion. */
+    public void eliminarConCuenta(Integer idOperador) {
+        Transaccion.ejecutar(sesion -> {
+            sesion.createMutationQuery("delete from Usuario u where u.operador.id = :id")
+                    .setParameter("id", idOperador)
+                    .executeUpdate();
+            sesion.createMutationQuery("delete from Operador o where o.id = :id")
+                    .setParameter("id", idOperador)
+                    .executeUpdate();
+        });
+    }
+
     /** La cédula es única: se valida antes de guardar para dar un mensaje claro. */
     public boolean existeCedula(String cedula, Integer idExcluir) {
         return Transaccion.consultar(sesion -> {
