@@ -15,30 +15,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Consultas HQL de viajes para la cabina del operador y el monitor de flota (Persona 4).
- *
- * <p><b>Consulta HQL #2 de este modulo (la asignada a Persona 4):</b>
- * {@link #viajesActivos()} devuelve los viajes activos con su unidad, operador y carga.</p>
- *
- * <p>Las entidades {@code Viaje}, {@code Unidad} y {@code Operador} las aportan las ramas de
- * Persona 3 y Persona 2, por eso aqui se consultan por HQL (texto) y el resultado se lee como
- * {@code Object[]}. Si esas ramas usan otros nombres de atributo, se corrigen <b>solo</b> en
- * este archivo. Nombres esperados:</p>
- * <ul>
- *   <li>Viaje: {@code id}, {@code unidad}, {@code operador}, {@code carga}, {@code origen},
- *       {@code destino}, {@code tiempoEstimado}, {@code estado}, {@code viajePrevio}</li>
- *   <li>Unidad: {@code id}, {@code numeroUnidad}, {@code estado}</li>
- *   <li>Operador: {@code id}, {@code nombre}, {@code estado}, {@code horasMaxConduccion},
- *       {@code horasMinDescanso}</li>
- * </ul>
- */
+/** Consultas HQL de viajes para la cabina del operador y el monitor de flota. */
 public class FlotaDAO {
 
-    /**
-     * Proyeccion comun: datos del viaje + unidad + operador + carga + origen/destino + estado.
-     * Los dos ultimos campos son los limites de jornada del operador (RF-07/RF-08).
-     */
+    /** Proyeccion comun de viaje, unidad, operador, carga y limites de jornada (RF-07/RF-08). */
     private static final String PROYECCION = """
             select v.id, u.numeroUnidad, u.id, o.nombre, o.id, c.numeroCarga,
                    c.fechaLimiteCliente, v.tiempoEstimado,
@@ -77,7 +57,7 @@ public class FlotaDAO {
             Double longitudDestino) {
     }
 
-    /** Operador para el selector de la cabina (mientras el login de Persona 2 no este integrado). */
+    /** Operador para el selector de la cabina. */
     public record Opcion(int id, String nombre) {
         @Override
         public String toString() {
@@ -85,10 +65,7 @@ public class FlotaDAO {
         }
     }
 
-    /**
-     * CONSULTA HQL #2 (Persona 4): viajes activos con su unidad, operador y carga,
-     * ordenados por el SLA mas cercano.
-     */
+    /** Viajes activos con su unidad, operador y carga, ordenados por el SLA mas cercano. */
     public List<FilaViaje> viajesActivos() {
         return Transaccion.consultar(sesion -> mapear(sesion.createQuery(
                         PROYECCION + " where ev.nombre in " + ESTADOS_ACTIVOS

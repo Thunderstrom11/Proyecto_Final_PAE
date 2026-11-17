@@ -18,7 +18,7 @@ import java.util.jar.JarFile;
 
 public final class HibernateUtil {
 
-    /** Paquete donde viven las clases @Entity. Se detectan solas: nadie tiene que registrarlas aqui. */
+    /** Paquete de las clases @Entity; se detectan automaticamente. */
     private static final String PAQUETE_MODELO = "edu.ni.uam.proyecto_final_pae.model";
 
     private static SessionFactory factory;

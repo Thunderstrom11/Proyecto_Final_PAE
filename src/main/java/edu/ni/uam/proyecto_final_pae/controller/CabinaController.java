@@ -261,7 +261,7 @@ public class CabinaController {
         ejecutar(servicio::confirmarEntrega);
     }
 
-    /** Ejecuta una accion de la cabina y refresca la pantalla; el error se muestra al usuario. */
+    /** Ejecuta una accion de la cabina, refresca la pantalla y muestra los errores. */
     private void ejecutar(IntFunction<JornadaService.Resumen> accion) {
         if (SesionActual.getUsuario() == null) {
             advertencia("Debe iniciar sesión como operador.");

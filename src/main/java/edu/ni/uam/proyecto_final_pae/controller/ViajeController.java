@@ -670,7 +670,7 @@ public class ViajeController {
         }
     }
 
-    /** Actualiza el cobro sugerido sin pisar un valor que el usuario haya escrito. */
+    /** Actualiza el cobro sugerido sin pisar el valor escrito a mano. */
     private void aplicarCobroSugerido(java.math.BigDecimal precio) {
         String nuevo = precio == null ? null : precio.stripTrailingZeros().toPlainString();
         String actual = txtCobro.getText() == null ? null : txtCobro.getText().trim();

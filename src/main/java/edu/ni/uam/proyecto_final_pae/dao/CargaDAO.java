@@ -19,11 +19,7 @@ public class CargaDAO extends GenericDAO<Carga, Integer> {
                 Carga.class).getResultList());
     }
 
-    /**
-     * Consulta HQL #1 (relaciona Carga, Cliente y EstadoCarga):
-     * cargas en estado PENDIENTE con su cliente, ordenadas por fecha limite (SLA mas cercano primero).
-     * La usa el planificador de viajes (P3).
-     */
+    /** Cargas PENDIENTE con su cliente, ordenadas por fecha limite (SLA mas cercano primero). */
     public List<Carga> listarPendientes() {
         return Transaccion.consultar(sesion -> sesion.createQuery(
                 "select c from Carga c "

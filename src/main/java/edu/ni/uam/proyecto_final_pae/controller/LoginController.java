@@ -92,7 +92,7 @@ public class LoginController {
         lblMensaje.setText(mensaje);
     }
 
-    /** Enter en el usuario pasa el foco a la contraseña en lugar de intentar ingresar. */
+    /** Enter en el campo de usuario pasa el foco a la contraseña. */
     @FXML
     private void siguienteCampo() {
         txtPassword.requestFocus();
