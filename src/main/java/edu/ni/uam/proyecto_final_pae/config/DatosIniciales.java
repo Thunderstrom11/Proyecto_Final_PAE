@@ -51,6 +51,7 @@ final class DatosIniciales {
                 asegurarUbicacion(sesion, "David", "Chiriquí", "Panamá", 8.4333, -82.4333);
                 asegurarUbicacion(sesion, "Belmopán", "Cayo", "Belice", 17.2510, -88.7590);
                 asegurarUbicacion(sesion, "Ciudad de Belice", "Belice", "Belice", 17.5046, -88.1962);
+                asegurarPaisesActivos(sesion);
                 asegurarAdminPrincipal(sesion);
                 tx.commit();
             } catch (RuntimeException e) {
@@ -91,6 +92,28 @@ final class DatosIniciales {
                     .setParameter("n", nombre)
                     .setParameter("d", departamento)
                     .executeUpdate();
+        }
+    }
+
+    /** Si es la primera vez, activa los países que ya tienen ubicaciones registradas. */
+    private static void asegurarPaisesActivos(Session sesion) {
+        Long total = sesion.createQuery(
+                        "select count(p) from PaisHabilitado p", Long.class)
+                .getSingleResult();
+        if (total > 0) {
+            return;
+        }
+        java.util.List<String> paises = sesion.createQuery(
+                        "select distinct u.pais from Ubicacion u order by u.pais", String.class)
+                .getResultList();
+        if (paises.isEmpty()) {
+            sesion.persist(new PaisHabilitado("Nicaragua"));
+            return;
+        }
+        for (String pais : paises) {
+            if (pais != null && !pais.isBlank()) {
+                sesion.persist(new PaisHabilitado(pais));
+            }
         }
     }
 

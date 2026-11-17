@@ -124,6 +124,12 @@ CREATE TABLE ubicaciones (
     CONSTRAINT uq_ubicacion UNIQUE (nombre, departamento, pais)
 );
 
+CREATE TABLE paises_habilitados (
+    id_pais_habilitado SERIAL PRIMARY KEY,
+    nombre             VARCHAR(80) NOT NULL UNIQUE,
+    fecha_activacion   TIMESTAMP   NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE rutas (
     id_ruta               SERIAL PRIMARY KEY,
     id_origen             INT NOT NULL,
@@ -467,6 +473,10 @@ INSERT INTO ubicaciones (nombre, departamento) VALUES
     ('Matagalpa',  'Matagalpa'),
     ('Chinandega', 'Chinandega'),
     ('Rivas',      'Rivas');
+
+INSERT INTO paises_habilitados (nombre)
+SELECT DISTINCT pais FROM ubicaciones
+ON CONFLICT (nombre) DO NOTHING;
 
 INSERT INTO clientes (nombre_empresa, contacto, telefono, email)
 VALUES ('Cliente Demo', 'Contacto Demo', '0000-0000', 'demo@fleetroute.local');

@@ -23,8 +23,10 @@
             <HBox spacing="10" alignment="CENTER_LEFT" styleClass="actions-bar">
                 <Label text="Operador:"/>
                 <Label fx:id="lblOperadorSesion" text="—" styleClass="field-label"/>
-                <Button fx:id="btnActualizar" text="Actualizar" styleClass="btn-secondary" onAction="#refrescar">
+                <Button fx:id="btnActualizar" text="Reintentar" styleClass="btn-secondary"
+                        onAction="#refrescar" visible="false" managed="false">
                     <graphic><FontIcon iconLiteral="fas-sync-alt"/></graphic>
+                    <tooltip><Tooltip text="Volver a intentar la actualización automática."/></tooltip>
                 </Button>
                 <Label fx:id="lblEstado" text="Cabina lista." styleClass="status-label"/>
                 <Label fx:id="lblActualizado" text="" styleClass="status-label"/>

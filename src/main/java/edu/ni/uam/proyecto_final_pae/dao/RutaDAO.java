@@ -40,4 +40,10 @@ public class RutaDAO extends GenericDAO<Ruta, Integer> {
         }
         return buscar(origen.getId(), destino.getId());
     }
+
+    public int eliminarTodas() {
+        return Transaccion.<Integer>ejecutar(sesion -> {
+            return sesion.createMutationQuery("delete from Ruta").executeUpdate();
+        });
+    }
 }
