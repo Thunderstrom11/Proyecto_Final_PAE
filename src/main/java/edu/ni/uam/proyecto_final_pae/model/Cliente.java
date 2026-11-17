@@ -113,6 +113,18 @@ public class Cliente {
         return cargas;
     }
 
+    /** Anade la carga a la coleccion y sincroniza el lado propietario. */
+    public void agregarCarga(Carga carga) {
+        cargas.add(carga);
+        carga.setCliente(this);
+    }
+
+    /** Quita la carga de la coleccion y limpia la relacion inversa. */
+    public void quitarCarga(Carga carga) {
+        cargas.remove(carga);
+        carga.setCliente(null);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
