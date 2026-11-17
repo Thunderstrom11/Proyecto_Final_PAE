@@ -24,6 +24,7 @@
         <mapping class="edu.ni.uam.proyecto_final_pae.model.EstadoUnidad"/>
         <mapping class="edu.ni.uam.proyecto_final_pae.model.EstadoViaje"/>
         <mapping class="edu.ni.uam.proyecto_final_pae.model.Operador"/>
+        <mapping class="edu.ni.uam.proyecto_final_pae.model.PaisHabilitado"/>
         <mapping class="edu.ni.uam.proyecto_final_pae.model.RegistroJornada"/>
         <mapping class="edu.ni.uam.proyecto_final_pae.model.Ruta"/>
         <mapping class="edu.ni.uam.proyecto_final_pae.model.TipoEvento"/>
