@@ -2,6 +2,7 @@ package edu.ni.uam.proyecto_final_pae.controller;
 
 import edu.ni.uam.proyecto_final_pae.config.GeoUtil;
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
+import edu.ni.uam.proyecto_final_pae.config.PreparadorBase;
 import edu.ni.uam.proyecto_final_pae.config.Transaccion;
 import edu.ni.uam.proyecto_final_pae.dao.ClienteDAO;
 import edu.ni.uam.proyecto_final_pae.dao.OperadorDAO;
@@ -21,6 +22,7 @@ import edu.ni.uam.proyecto_final_pae.model.Unidad;
 import edu.ni.uam.proyecto_final_pae.model.Usuario;
 import edu.ni.uam.proyecto_final_pae.util.ComboBuscador;
 import edu.ni.uam.proyecto_final_pae.util.Listas;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -49,7 +51,7 @@ import java.util.Optional;
  */
 public class SetupController {
 
-    private enum Paso { EMPRESA, ADMIN, UBICACIONES, UNIDADES, OPERADORES, CLIENTES, TARIFAS, RESUMEN }
+    private enum Paso { BASE, EMPRESA, ADMIN, UBICACIONES, UNIDADES, OPERADORES, CLIENTES, TARIFAS, RESUMEN }
 
     private static final Map<String, String> ZONA_POR_PAIS = Map.ofEntries(
             Map.entry("Nicaragua", "America/Managua"),
@@ -84,6 +86,15 @@ public class SetupController {
     @FXML private ProgressBar barraAvance;
     @FXML private Label lblPaso;
     @FXML private Label lblAyuda;
+
+    @FXML private VBox pasoBase;
+    @FXML private TextField txtBaseHost;
+    @FXML private TextField txtBasePuerto;
+    @FXML private TextField txtBaseUsuario;
+    @FXML private PasswordField txtBasePassword;
+    @FXML private TextField txtBaseNombre;
+    @FXML private Button btnProbar;
+    @FXML private Label lblEstadoBase;
 
     @FXML private VBox pasoEmpresa;
     @FXML private TextField txtNombre;
@@ -187,14 +198,26 @@ public class SetupController {
         cmbTarifaOrigen.valueProperty().addListener((o, a, b) -> sugerirTarifa());
         cmbTarifaDestino.valueProperty().addListener((o, a, b) -> sugerirTarifa());
 
-        try {
-            crearAdmin = !usuarioDAO.existeAdministrador();
-        } catch (PersistenciaException e) {
-            lblMensaje.setText("No hay conexión con la base de datos: " + e.getMessage());
-            btnSiguiente.setDisable(true);
-            return;
-        }
+        PreparadorBase.Conexion guardada = PreparadorBase.actual();
+        txtBaseHost.setText(guardada.host());
+        txtBasePuerto.setText(String.valueOf(guardada.puerto()));
+        txtBaseUsuario.setText(guardada.usuario());
+        txtBasePassword.setText(guardada.password());
+        txtBaseNombre.setText(guardada.base());
 
+        try {
+            construirPasos();
+        } catch (PersistenciaException e) {
+            pasos.clear();
+            pasos.add(Paso.BASE);
+            lblMensaje.setText("Todavía no hay una base de datos lista. Complete este primer paso y el sistema la crea por usted.");
+        }
+        mostrarPaso();
+    }
+
+    private void construirPasos() {
+        crearAdmin = !usuarioDAO.existeAdministrador();
+        pasos.clear();
         pasos.add(Paso.EMPRESA);
         if (crearAdmin) {
             pasos.add(Paso.ADMIN);
@@ -205,7 +228,6 @@ public class SetupController {
         pasos.add(Paso.CLIENTES);
         pasos.add(Paso.TARIFAS);
         pasos.add(Paso.RESUMEN);
-        mostrarPaso();
     }
 
     // ------------------------------------------------------------------ navegación
@@ -232,6 +254,7 @@ public class SetupController {
         lblMensaje.setText("");
         try {
             switch (pasos.get(indice)) {
+                case BASE -> prepararBase();
                 case EMPRESA -> {
                     empresa = construirEmpresa();
                     indice++;
@@ -255,6 +278,8 @@ public class SetupController {
 
     private void mostrarPaso() {
         Paso actual = pasos.get(indice);
+        pasoBase.setVisible(actual == Paso.BASE);
+        pasoBase.setManaged(actual == Paso.BASE);
         pasoEmpresa.setVisible(actual == Paso.EMPRESA);
         pasoEmpresa.setManaged(actual == Paso.EMPRESA);
         pasoAdmin.setVisible(actual == Paso.ADMIN);
@@ -276,7 +301,7 @@ public class SetupController {
         lblAyuda.setText(ayuda(actual));
         barraAvance.setProgress((indice + 1.0) / pasos.size());
         btnAtras.setDisable(indice == 0);
-        boolean opcional = actual != Paso.EMPRESA && actual != Paso.RESUMEN
+        boolean opcional = actual != Paso.BASE && actual != Paso.EMPRESA && actual != Paso.RESUMEN
                 && !(actual == Paso.ADMIN && crearAdmin);
         btnOmitir.setVisible(opcional);
         btnOmitir.setManaged(opcional);
@@ -291,6 +316,7 @@ public class SetupController {
 
     private String titulo(Paso paso) {
         return switch (paso) {
+            case BASE -> "Conexión y base de datos";
             case EMPRESA -> "Datos de la empresa";
             case ADMIN -> "Cuenta de administrador";
             case UBICACIONES -> "Ubicaciones";
@@ -304,6 +330,7 @@ public class SetupController {
 
     private String ayuda(Paso paso) {
         return switch (paso) {
+            case BASE -> "El sistema guarda todo en PostgreSQL. Si no lo tiene, instálelo desde postgresql.org/download y anote la contraseña que eligió para el usuario postgres. Escriba esa contraseña aquí y pulse Siguiente: el sistema crea la base, las tablas y los catálogos por usted.";
             case EMPRESA -> "Con estos datos aparece la empresa en el sistema. El país y la zona horaria definen cómo se registran las horas. La moneda se usa para mostrar los cobros.";
             case ADMIN -> "Esta cuenta maneja el sistema completo. La contraseña se guarda cifrada con BCrypt.";
             case UBICACIONES -> "Vienen cargadas 20 ubicaciones de ejemplo de Centroamérica. Puedes usarlas o agregar las tuyas. Este paso es opcional.";
@@ -314,6 +341,84 @@ public class SetupController {
             case TARIFAS -> "El tiempo y el precio de las rutas que más usas. Al crear un viaje se proponen solos, y siempre puedes cambiarlos.";
             case RESUMEN -> "Revisa lo que se va a guardar. Si algo no cuadra, vuelve atrás.";
         };
+    }
+
+    // ------------------------------------------------------------------ base de datos
+
+    @FXML
+    private void probarConexion() {
+        lblMensaje.setText("");
+        PreparadorBase.Conexion conexion;
+        try {
+            conexion = leerConexion();
+        } catch (IllegalArgumentException e) {
+            lblMensaje.setText(e.getMessage());
+            return;
+        }
+        lblEstadoBase.setText("Revisando el servidor y la base...");
+        btnProbar.setDisable(true);
+        Task<PreparadorBase.Estado> tarea = new Task<>() {
+            @Override
+            protected PreparadorBase.Estado call() {
+                return PreparadorBase.revisar(conexion);
+            }
+        };
+        tarea.setOnSucceeded(evento -> {
+            btnProbar.setDisable(false);
+            lblEstadoBase.setText(tarea.getValue().detalle());
+        });
+        tarea.setOnFailed(evento -> {
+            btnProbar.setDisable(false);
+            lblEstadoBase.setText("No se pudo revisar la conexión.");
+            lblMensaje.setText(tarea.getException().getMessage());
+        });
+        new Thread(tarea, "probar-base").start();
+    }
+
+    private void prepararBase() {
+        PreparadorBase.Conexion conexion = leerConexion();
+        btnSiguiente.setDisable(true);
+        btnProbar.setDisable(true);
+        lblMensaje.setText("");
+        Task<String> tarea = new Task<>() {
+            @Override
+            protected String call() {
+                return PreparadorBase.preparar(conexion, this::updateMessage);
+            }
+        };
+        lblEstadoBase.textProperty().bind(tarea.messageProperty());
+        tarea.setOnSucceeded(evento -> {
+            lblEstadoBase.textProperty().unbind();
+            lblEstadoBase.setText(tarea.getValue());
+            btnSiguiente.setDisable(false);
+            btnProbar.setDisable(false);
+            construirPasos();
+            indice = 0;
+            mostrarPaso();
+        });
+        tarea.setOnFailed(evento -> {
+            lblEstadoBase.textProperty().unbind();
+            lblEstadoBase.setText("No se pudo preparar la base. Corrija los datos y vuelva a intentar.");
+            lblMensaje.setText(tarea.getException().getMessage());
+            btnSiguiente.setDisable(false);
+            btnProbar.setDisable(false);
+        });
+        new Thread(tarea, "preparar-base").start();
+    }
+
+    private PreparadorBase.Conexion leerConexion() {
+        String host = requerido(txtBaseHost, "El servidor", 120);
+        String puertoTexto = requerido(txtBasePuerto, "El puerto", 5);
+        int puerto;
+        try {
+            puerto = Integer.parseInt(puertoTexto);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("El puerto debe ser un número, por defecto 5432.");
+        }
+        String usuario = requerido(txtBaseUsuario, "El usuario de PostgreSQL", 60);
+        String password = txtBasePassword.getText() == null ? "" : txtBasePassword.getText();
+        String base = requerido(txtBaseNombre, "El nombre de la base", 63);
+        return new PreparadorBase.Conexion(host, puerto, usuario, password, base);
     }
 
     // ------------------------------------------------------------------ empresa y admin

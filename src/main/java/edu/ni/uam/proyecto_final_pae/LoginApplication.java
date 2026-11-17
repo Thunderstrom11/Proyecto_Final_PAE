@@ -27,7 +27,11 @@ public class LoginApplication extends Application {
                 alto = 700;
             }
         } catch (PersistenciaException e) {
-            // Sin base de datos: el login muestra el error de conexión.
+            // Sin base de datos o sin esquema: el asistente la crea desde el primer paso.
+            vista = "setup-view.fxml";
+            titulo = "Configuración inicial";
+            ancho = 580;
+            alto = 700;
         }
         FXMLLoader fxmlLoader = new FXMLLoader(LoginApplication.class.getResource(vista));
         Scene scene = new Scene(fxmlLoader.load(), ancho, alto);

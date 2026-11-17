@@ -4,26 +4,74 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 // Lee las credenciales desde el archivo .env ubicado en la raiz del proyecto.
 final class Entorno {
 
-    private static final Map<String, String> VALORES = cargar();
+    private static Map<String, String> VALORES = cargar();
 
     private Entorno() {
     }
 
     static String requerido(String clave) {
+        String valor = opcional(clave);
+        if (valor == null) {
+            throw new IllegalStateException("Falta la variable " + clave + " en el archivo .env");
+        }
+        return valor;
+    }
+
+    static String opcional(String clave) {
         String valor = VALORES.get(clave);
         if (valor == null || valor.isBlank()) {
             valor = System.getenv(clave);
         }
-        if (valor == null || valor.isBlank()) {
-            throw new IllegalStateException("Falta la variable " + clave + " en el archivo .env");
+        return valor == null || valor.isBlank() ? null : valor.trim();
+    }
+
+    static synchronized void recargar() {
+        VALORES = cargar();
+    }
+
+    /** Guarda las claves en el .env existente (o lo crea) conservando las demas lineas. */
+    static synchronized void guardar(Map<String, String> nuevos) {
+        Path archivo = ubicar();
+        if (archivo == null) {
+            archivo = Path.of(System.getProperty("user.dir")).toAbsolutePath().resolve(".env");
         }
-        return valor.trim();
+        List<String> lineas = new ArrayList<>();
+        if (Files.isRegularFile(archivo)) {
+            try {
+                lineas.addAll(Files.readAllLines(archivo, StandardCharsets.UTF_8));
+            } catch (IOException e) {
+                throw new IllegalStateException("No se pudo leer el archivo .env", e);
+            }
+        }
+        for (Map.Entry<String, String> entrada : nuevos.entrySet()) {
+            String prefijo = entrada.getKey() + "=";
+            boolean reemplazada = false;
+            for (int i = 0; i < lineas.size(); i++) {
+                String limpia = lineas.get(i).strip();
+                if (limpia.startsWith(prefijo) || limpia.startsWith("export " + prefijo)) {
+                    lineas.set(i, prefijo + entrada.getValue());
+                    reemplazada = true;
+                    break;
+                }
+            }
+            if (!reemplazada) {
+                lineas.add(prefijo + entrada.getValue());
+            }
+        }
+        try {
+            Files.write(archivo, lineas, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new IllegalStateException("No se pudo guardar el archivo .env en " + archivo, e);
+        }
+        recargar();
     }
 
     private static Map<String, String> cargar() {
