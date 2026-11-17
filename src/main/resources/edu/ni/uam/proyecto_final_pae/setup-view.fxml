@@ -8,21 +8,28 @@
 
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="edu.ni.uam.proyecto_final_pae.controller.SetupController"
-      alignment="CENTER" spacing="10" prefWidth="500" prefHeight="720">
+      spacing="10" prefWidth="580" prefHeight="700">
     <stylesheets>
         <URL value="@styles/fleetroute.css"/>
     </stylesheets>
     <padding>
-        <Insets top="22" right="34" bottom="22" left="34"/>
+        <Insets top="18" right="28" bottom="18" left="28"/>
     </padding>
 
     <Label text="FleetRoute Pro" styleClass="page-title"/>
     <Label text="Configuración inicial · primer arranque" styleClass="status-label"/>
-    <Separator/>
+
+    <ProgressBar fx:id="barraAvance" maxWidth="Infinity" progress="0"/>
+
+    <VBox spacing="2">
+        <Label fx:id="lblPaso" text="Paso 1" styleClass="field-label"/>
+        <Label fx:id="lblAyuda" wrapText="true" styleClass="status-label"/>
+    </VBox>
 
     <ScrollPane fitToWidth="true" styleClass="form-scroll" VBox.vgrow="ALWAYS">
         <VBox spacing="10">
-            <VBox spacing="7" styleClass="form-pane">
+
+            <VBox fx:id="pasoEmpresa" spacing="7" styleClass="form-pane">
                 <padding>
                     <Insets top="14" right="16" bottom="14" left="16"/>
                 </padding>
@@ -39,18 +46,22 @@
                 <TextField fx:id="txtEmail" promptText="info@empresa.com"/>
                 <Label text="Dirección"/>
                 <TextField fx:id="txtDireccion" promptText="Managua, Nicaragua"/>
+                <Label text="País de la empresa *"/>
+                <ComboBox fx:id="cmbEmpresaPais" maxWidth="Infinity"/>
+                <Label text="Zona horaria *"/>
+                <ComboBox fx:id="cmbZona" maxWidth="Infinity"/>
                 <Label text="Moneda de la empresa *"/>
                 <ComboBox fx:id="cmbMoneda" maxWidth="Infinity"/>
             </VBox>
 
-            <VBox fx:id="panelAdmin" spacing="7" styleClass="form-pane">
+            <VBox fx:id="pasoAdmin" spacing="7" styleClass="form-pane">
                 <padding>
                     <Insets top="14" right="16" bottom="14" left="16"/>
                 </padding>
-                <Label text="Usuario administrador" styleClass="section-title">
+                <Label text="Cuenta de administrador" styleClass="section-title">
                     <graphic><FontIcon iconLiteral="fas-user-shield"/></graphic>
                 </Label>
-                <Label text="Cree la cuenta con la que entrará a la oficina. Guarde bien la contraseña: se almacena con hash BCrypt."
+                <Label text="Con esta cuenta se maneja todo el sistema. Guarde bien la contraseña: se almacena cifrada con BCrypt."
                        styleClass="status-label" wrapText="true"/>
                 <Label text="Usuario *"/>
                 <TextField fx:id="txtUsuario" promptText="admin"/>
@@ -59,12 +70,210 @@
                 <Label text="Confirmar contraseña *"/>
                 <PasswordField fx:id="txtConfirmar"/>
             </VBox>
+
+            <VBox fx:id="pasoUbicaciones" spacing="7" styleClass="form-pane">
+                <padding>
+                    <Insets top="14" right="16" bottom="14" left="16"/>
+                </padding>
+                <Label text="Ubicaciones" styleClass="section-title">
+                    <graphic><FontIcon iconLiteral="fas-map-marker-alt"/></graphic>
+                </Label>
+                <Label text="Vienen cargadas 20 ubicaciones de ejemplo de Centroamérica. Puedes usarlas o agregar las tuyas. Este paso es opcional."
+                       styleClass="status-label" wrapText="true"/>
+                <Label text="Nombre *"/>
+                <TextField fx:id="txtUbicNombre" promptText="Puerto Sandino"/>
+                <Label text="Departamento *"/>
+                <TextField fx:id="txtUbicDepartamento" promptText="León"/>
+                <Label text="País *"/>
+                <ComboBox fx:id="cmbUbicPais" maxWidth="Infinity"/>
+                <HBox spacing="8">
+                    <VBox spacing="4" HBox.hgrow="ALWAYS">
+                        <Label text="Latitud (opcional)"/>
+                        <TextField fx:id="txtUbicLat" promptText="12.1364"/>
+                    </VBox>
+                    <VBox spacing="4" HBox.hgrow="ALWAYS">
+                        <Label text="Longitud (opcional)"/>
+                        <TextField fx:id="txtUbicLon" promptText="-86.2514"/>
+                    </VBox>
+                </HBox>
+                <Button text="Agregar ubicación" maxWidth="Infinity" styleClass="btn-secondary" onAction="#agregarUbicacion">
+                    <graphic><FontIcon iconLiteral="fas-plus"/></graphic>
+                </Button>
+                <ListView fx:id="listaUbicaciones" prefHeight="100"/>
+                <Button fx:id="btnQuitarUbicacion" text="Quitar seleccionada" maxWidth="Infinity"
+                        styleClass="btn-ghost" onAction="#quitarUbicacion">
+                    <graphic><FontIcon iconLiteral="fas-minus"/></graphic>
+                </Button>
+            </VBox>
+
+            <VBox fx:id="pasoUnidades" spacing="7" styleClass="form-pane">
+                <padding>
+                    <Insets top="14" right="16" bottom="14" left="16"/>
+                </padding>
+                <Label text="Unidades de la flota" styleClass="section-title">
+                    <graphic><FontIcon iconLiteral="fas-truck"/></graphic>
+                </Label>
+                <Label text="Los camiones con los que va a trabajar la empresa. Quedan disponibles para asignar viajes."
+                       styleClass="status-label" wrapText="true"/>
+                <Label text="N.º de unidad *"/>
+                <TextField fx:id="txtUnidadNumero" promptText="U-001"/>
+                <Label text="Placas *"/>
+                <TextField fx:id="txtUnidadPlacas" promptText="M 000001"/>
+                <Label text="Modelo *"/>
+                <TextField fx:id="txtUnidadModelo" promptText="Volvo FH16"/>
+                <Label text="Capacidad en toneladas (opcional)"/>
+                <TextField fx:id="txtUnidadCapacidad" promptText="30.00"/>
+                <HBox spacing="8">
+                    <VBox spacing="4" HBox.hgrow="ALWAYS">
+                        <Label text="Seguro vence (opcional)"/>
+                        <DatePicker fx:id="dpSeguro" maxWidth="Infinity"/>
+                    </VBox>
+                    <VBox spacing="4" HBox.hgrow="ALWAYS">
+                        <Label text="Revisión vence (opcional)"/>
+                        <DatePicker fx:id="dpRevision" maxWidth="Infinity"/>
+                    </VBox>
+                </HBox>
+                <Button text="Agregar unidad" maxWidth="Infinity" styleClass="btn-secondary" onAction="#agregarUnidad">
+                    <graphic><FontIcon iconLiteral="fas-plus"/></graphic>
+                </Button>
+                <ListView fx:id="listaUnidades" prefHeight="100"/>
+                <Button fx:id="btnQuitarUnidad" text="Quitar seleccionada" maxWidth="Infinity"
+                        styleClass="btn-ghost" onAction="#quitarUnidad">
+                    <graphic><FontIcon iconLiteral="fas-minus"/></graphic>
+                </Button>
+            </VBox>
+
+            <VBox fx:id="pasoOperadores" spacing="7" styleClass="form-pane">
+                <padding>
+                    <Insets top="14" right="16" bottom="14" left="16"/>
+                </padding>
+                <Label text="Operadores" styleClass="section-title">
+                    <graphic><FontIcon iconLiteral="fas-id-badge"/></graphic>
+                </Label>
+                <Label text="Cada operador recibe su cuenta de acceso: usuario igual a la cédula y contraseña temporal operador123!, que puedes cambiar después. Puedes omitir este paso."
+                       styleClass="status-label" wrapText="true"/>
+                <Label text="Cédula *"/>
+                <TextField fx:id="txtOpCedula" promptText="001-000000-0001A"/>
+                <Label text="Nombre completo *"/>
+                <TextField fx:id="txtOpNombre" promptText="Juan Pérez"/>
+                <Label text="Teléfono"/>
+                <TextField fx:id="txtOpTelefono" promptText="8888-0000"/>
+                <Label text="Licencia de conducir"/>
+                <HBox spacing="8">
+                    <TextField fx:id="txtLicenciaNumero" promptText="Número" HBox.hgrow="ALWAYS"/>
+                    <TextField fx:id="txtLicenciaCategoria" promptText="Categoría" prefWidth="110"/>
+                </HBox>
+                <Label text="Vencimiento de la licencia"/>
+                <DatePicker fx:id="dpLicenciaVencimiento" maxWidth="Infinity"/>
+                <Label text="Contacto de emergencia"/>
+                <TextField fx:id="txtContactoEmergencia" promptText="Nombre y teléfono"/>
+                <HBox spacing="8">
+                    <VBox spacing="4" HBox.hgrow="ALWAYS">
+                        <Label text="Horas máx. de manejo *"/>
+                        <TextField fx:id="txtOpHorasMax" promptText="8.00"/>
+                    </VBox>
+                    <VBox spacing="4" HBox.hgrow="ALWAYS">
+                        <Label text="Horas mín. de descanso *"/>
+                        <TextField fx:id="txtOpHorasMin" promptText="8.00"/>
+                    </VBox>
+                </HBox>
+                <Button text="Agregar operador" maxWidth="Infinity" styleClass="btn-secondary" onAction="#agregarOperador">
+                    <graphic><FontIcon iconLiteral="fas-plus"/></graphic>
+                </Button>
+                <ListView fx:id="listaOperadores" prefHeight="100"/>
+                <Button fx:id="btnQuitarOperador" text="Quitar seleccionado" maxWidth="Infinity"
+                        styleClass="btn-ghost" onAction="#quitarOperador">
+                    <graphic><FontIcon iconLiteral="fas-minus"/></graphic>
+                </Button>
+            </VBox>
+
+            <VBox fx:id="pasoClientes" spacing="7" styleClass="form-pane">
+                <padding>
+                    <Insets top="14" right="16" bottom="14" left="16"/>
+                </padding>
+                <Label text="Clientes" styleClass="section-title">
+                    <graphic><FontIcon iconLiteral="fas-address-book"/></graphic>
+                </Label>
+                <Label text="Las empresas que contratan fletes. Puedes cargar las primeras ahora y completar el resto después."
+                       styleClass="status-label" wrapText="true"/>
+                <Label text="Nombre de la empresa *"/>
+                <TextField fx:id="txtClienteNombre" promptText="Comercial La Fe"/>
+                <Label text="Contacto"/>
+                <TextField fx:id="txtClienteContacto" promptText="Persona de contacto"/>
+                <Label text="Teléfono"/>
+                <TextField fx:id="txtClienteTelefono" promptText="2222-3333"/>
+                <Label text="Correo electrónico"/>
+                <TextField fx:id="txtClienteEmail" promptText="cliente@empresa.com"/>
+                <Label text="Dirección"/>
+                <TextField fx:id="txtClienteDireccion" promptText="Managua, Nicaragua"/>
+                <Button text="Agregar cliente" maxWidth="Infinity" styleClass="btn-secondary" onAction="#agregarCliente">
+                    <graphic><FontIcon iconLiteral="fas-plus"/></graphic>
+                </Button>
+                <ListView fx:id="listaClientes" prefHeight="100"/>
+                <Button fx:id="btnQuitarCliente" text="Quitar seleccionado" maxWidth="Infinity"
+                        styleClass="btn-ghost" onAction="#quitarCliente">
+                    <graphic><FontIcon iconLiteral="fas-minus"/></graphic>
+                </Button>
+            </VBox>
+
+            <VBox fx:id="pasoTarifas" spacing="7" styleClass="form-pane">
+                <padding>
+                    <Insets top="14" right="16" bottom="14" left="16"/>
+                </padding>
+                <Label text="Tarifas por ruta" styleClass="section-title">
+                    <graphic><FontIcon iconLiteral="fas-route"/></graphic>
+                </Label>
+                <Label text="El tiempo y el precio de las rutas que más usas. Al crear un viaje se proponen solos, y siempre puedes cambiarlos."
+                       styleClass="status-label" wrapText="true"/>
+                <Label text="Origen *"/>
+                <ComboBox fx:id="cmbTarifaOrigen" maxWidth="Infinity"/>
+                <Label text="Destino *"/>
+                <ComboBox fx:id="cmbTarifaDestino" maxWidth="Infinity"/>
+                <HBox spacing="8">
+                    <VBox spacing="4" HBox.hgrow="ALWAYS">
+                        <Label text="Horas de viaje *"/>
+                        <TextField fx:id="txtTarifaHoras" promptText="6.50"/>
+                    </VBox>
+                    <VBox spacing="4" HBox.hgrow="ALWAYS">
+                        <Label text="Precio *"/>
+                        <TextField fx:id="txtTarifaPrecio" promptText="1800.00"/>
+                    </VBox>
+                </HBox>
+                <Button text="Agregar tarifa" maxWidth="Infinity" styleClass="btn-secondary" onAction="#agregarTarifa">
+                    <graphic><FontIcon iconLiteral="fas-plus"/></graphic>
+                </Button>
+                <ListView fx:id="listaTarifas" prefHeight="100"/>
+                <Button fx:id="btnQuitarTarifa" text="Quitar seleccionada" maxWidth="Infinity"
+                        styleClass="btn-ghost" onAction="#quitarTarifa">
+                    <graphic><FontIcon iconLiteral="fas-minus"/></graphic>
+                </Button>
+            </VBox>
+
+            <VBox fx:id="pasoResumen" spacing="7" styleClass="form-pane">
+                <padding>
+                    <Insets top="14" right="16" bottom="14" left="16"/>
+                </padding>
+                <Label text="Resumen y confirmación" styleClass="section-title">
+                    <graphic><FontIcon iconLiteral="fas-check-circle"/></graphic>
+                </Label>
+                <Label fx:id="lblResumen" wrapText="true"/>
+            </VBox>
+
         </VBox>
     </ScrollPane>
 
-    <Button fx:id="btnGuardar" text="Guardar y continuar" maxWidth="Infinity"
-            styleClass="btn-primary" onAction="#guardar">
-        <graphic><FontIcon iconLiteral="fas-check"/></graphic>
-    </Button>
     <Label fx:id="lblMensaje" textFill="#B42318" wrapText="true"/>
+
+    <HBox spacing="8" alignment="CENTER_LEFT">
+        <Button fx:id="btnAtras" text="Atrás" styleClass="btn-secondary" onAction="#atras">
+            <graphic><FontIcon iconLiteral="fas-arrow-left"/></graphic>
+        </Button>
+        <Button fx:id="btnOmitir" text="Omitir este paso" styleClass="btn-ghost" onAction="#omitir">
+            <graphic><FontIcon iconLiteral="fas-forward"/></graphic>
+        </Button>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button fx:id="btnSiguiente" text="Siguiente" styleClass="btn-primary" onAction="#siguiente">
+            <graphic><FontIcon iconLiteral="fas-arrow-right"/></graphic>
+        </Button>
+    </HBox>
 </VBox>

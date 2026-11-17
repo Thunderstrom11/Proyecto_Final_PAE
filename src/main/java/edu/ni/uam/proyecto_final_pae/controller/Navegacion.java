@@ -9,6 +9,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -55,6 +56,18 @@ public final class Navegacion {
         return stage != null && stage.isShowing();
     }
 
+    /** Si ya hay una ventana abierta con ese título, la trae al frente en vez de duplicarla. */
+    public static boolean enfocarVentana(String titulo) {
+        for (Stage ventana : VENTANAS) {
+            if (ventana.isShowing() && titulo.equals(ventana.getTitle())) {
+                ventana.toFront();
+                ventana.requestFocus();
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static void abrirLogin(Stage stage) {
         abrirLogin(stage, null);
     }
@@ -75,6 +88,8 @@ public final class Navegacion {
             Scene scene = new Scene(root, LOGIN_ANCHO, LOGIN_ALTO);
             Tooltips.instalar(root);
             stage.setScene(scene);
+            stage.setMinWidth(LOGIN_ANCHO);
+            stage.setMinHeight(LOGIN_ALTO);
             stage.centerOnScreen();
             registrar(stage);
             stage.show();

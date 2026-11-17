@@ -23,8 +23,8 @@ public class LoginApplication extends Application {
             if (!new EmpresaDAO().configurada()) {
                 vista = "setup-view.fxml";
                 titulo = "Configuración inicial";
-                ancho = 500;
-                alto = 720;
+                ancho = 580;
+                alto = 700;
             }
         } catch (PersistenciaException e) {
             // Sin base de datos: el login muestra el error de conexión.
@@ -34,6 +34,8 @@ public class LoginApplication extends Application {
         Tooltips.instalar(scene.getRoot());
         stage.setTitle("FleetRoute Pro — " + titulo);
         stage.setScene(scene);
+        stage.setMinWidth(Math.min(ancho, 560));
+        stage.setMinHeight(620);
         stage.show();
     }
 
