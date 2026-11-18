@@ -74,8 +74,12 @@ public class FlotaController {
     private Timeline reloj;
     private Timeline relojTunel;
     private Process procesoTunel;
+    private Process procesoApi;
     private String enlaceTunel;
     private String estadoTunel = "Sin conexión";
+    private String errorConexion;
+    private boolean apiIniciadaPorApp;
+    private volatile boolean iniciandoConexion;
     private final HttpClient httpCliente = HttpClient.newBuilder()
             .connectTimeout(java.time.Duration.ofSeconds(2))
             .build();
@@ -452,7 +456,7 @@ public class FlotaController {
 
     @FXML
     private void salir() {
-        detenerTunel();
+        detenerServicios();
         Navegacion.cerrarSesion(Navegacion.stageDe(btnSalir));
     }
 
@@ -465,14 +469,16 @@ public class FlotaController {
         relojTunel.play();
         Platform.runLater(() -> {
             if (btnSalir.getScene() != null) {
-                ((Stage) btnSalir.getScene().getWindow()).setOnCloseRequest(evento -> detenerTunel());
+                ((Stage) btnSalir.getScene().getWindow()).setOnCloseRequest(evento -> detenerServicios());
             }
         });
     }
 
     @FXML
     private void alternarConexion() {
-        if (procesoTunel != null && procesoTunel.isAlive()) {
+        if (iniciandoConexion) {
+            detenerServicios();
+        } else if (procesoTunel != null && procesoTunel.isAlive()) {
             detenerTunel();
         } else {
             iniciarTunel();
@@ -480,7 +486,7 @@ public class FlotaController {
     }
 
     private void iniciarTunel() {
-        if (procesoTunel != null && procesoTunel.isAlive()) {
+        if (iniciandoConexion || (procesoTunel != null && procesoTunel.isAlive())) {
             return;
         }
         String ejecutable = buscarCloudflared();
@@ -488,6 +494,121 @@ public class FlotaController {
             pintarConexion(Color.web("#B8860B"), "cloudflared no está instalado", "Iniciar Conexión");
             return;
         }
+        iniciandoConexion = true;
+        errorConexion = null;
+        if (relojTunel != null) {
+            relojTunel.play();
+        }
+        pintarConexion(Color.web("#B8860B"), "Iniciando API…", "Detener Conexión");
+        Thread preparacion = new Thread(() -> prepararConexion(ejecutable), "fleetroute-api-tunel");
+        preparacion.setDaemon(true);
+        preparacion.start();
+    }
+
+    private void prepararConexion(String ejecutable) {
+        String error = asegurarApi();
+        if (!iniciandoConexion) {
+            return;
+        }
+        if (error != null) {
+            Platform.runLater(() -> {
+                iniciandoConexion = false;
+                errorConexion = error;
+                detenerApiPropia();
+                pintarConexion(Color.web("#B8860B"), error, "Iniciar Conexión");
+            });
+            return;
+        }
+        Platform.runLater(() -> {
+            if (!iniciandoConexion) {
+                return;
+            }
+            iniciandoConexion = false;
+            lanzarTunel(ejecutable);
+        });
+    }
+
+    /** Comprueba la API y la arranca desde api-operador/target si es necesario. */
+    private String asegurarApi() {
+        if (apiSaludable()) {
+            return null;
+        }
+        Path jar = buscarJarApi();
+        if (jar == null) {
+            return "Falta api-operador/target/api-operador-0.0.1-SNAPSHOT.jar. Compile la API.";
+        }
+        if (procesoApi == null || !procesoApi.isAlive()) {
+            try {
+                Path apiDir = jar.getParent().getParent();
+                Path javaExe = Path.of(System.getProperty("java.home"), "bin", "java.exe");
+                ProcessBuilder builder = new ProcessBuilder(
+                        javaExe.toString(), "-jar", jar.toAbsolutePath().toString());
+                builder.directory(apiDir.toFile());
+                builder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+                builder.redirectError(ProcessBuilder.Redirect.DISCARD);
+                procesoApi = builder.start();
+                apiIniciadaPorApp = true;
+            } catch (IOException e) {
+                procesoApi = null;
+                apiIniciadaPorApp = false;
+                return "No se pudo iniciar la API: " + e.getMessage();
+            }
+        }
+        for (int intento = 0; intento < 30 && iniciandoConexion; intento++) {
+            if (apiSaludable()) {
+                return null;
+            }
+            if (procesoApi == null || !procesoApi.isAlive()) {
+                return "La API se cerró durante el arranque. Revise el puerto 8080.";
+            }
+            try {
+                Thread.sleep(700);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return "El arranque de la conexión fue interrumpido.";
+            }
+        }
+        return iniciandoConexion
+                ? "La API no respondió a tiempo. Revise /api/salud y el puerto 8080."
+                : null;
+    }
+
+    private boolean apiSaludable() {
+        try {
+            HttpRequest solicitud = HttpRequest.newBuilder(URI.create("http://localhost:8080/api/salud"))
+                    .timeout(java.time.Duration.ofSeconds(2))
+                    .GET()
+                    .build();
+            return httpCliente.send(solicitud, HttpResponse.BodyHandlers.discarding())
+                    .statusCode() == 200;
+        } catch (IOException | InterruptedException e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            return false;
+        }
+    }
+
+    private Path buscarJarApi() {
+        Path directorio = Path.of(System.getProperty("user.dir")).toAbsolutePath();
+        for (int nivel = 0; nivel < 5 && directorio != null; nivel++, directorio = directorio.getParent()) {
+            Path jar = directorio.resolve("api-operador")
+                    .resolve("target")
+                    .resolve("api-operador-0.0.1-SNAPSHOT.jar");
+            if (Files.isRegularFile(jar)) {
+                return jar;
+            }
+            if ("api-operador".equals(String.valueOf(directorio.getFileName()))) {
+                jar = directorio.resolve("target").resolve("api-operador-0.0.1-SNAPSHOT.jar");
+                if (Files.isRegularFile(jar)) {
+                    return jar;
+                }
+            }
+        }
+        return null;
+    }
+
+    private void lanzarTunel(String ejecutable) {
         try {
             ProcessBuilder builder = new ProcessBuilder(
                     ejecutable,
@@ -507,7 +628,8 @@ public class FlotaController {
             lector.start();
         } catch (IOException e) {
             procesoTunel = null;
-            pintarConexion(Color.web("#B8860B"), "No se pudo iniciar cloudflared", "Iniciar Conexión");
+            errorConexion = "No se pudo iniciar cloudflared";
+            pintarConexion(Color.web("#B8860B"), errorConexion, "Iniciar Conexión");
         }
     }
 
@@ -543,6 +665,7 @@ public class FlotaController {
                     Platform.runLater(() -> {
                         if (procesoTunel == proceso) {
                             enlaceTunel = url;
+                            errorConexion = null;
                             pintarConexion(Color.web("#1B7F3B"), url, "Detener Conexión");
                         }
                     });
@@ -561,12 +684,20 @@ public class FlotaController {
     }
 
     private void actualizarEstadoTunel() {
+        if (iniciandoConexion) {
+            pintarConexion(Color.web("#B8860B"), "Iniciando API…", "Detener Conexión");
+            return;
+        }
         if (procesoTunel == null || !procesoTunel.isAlive()) {
             if (procesoTunel != null) {
                 procesoTunel = null;
                 enlaceTunel = null;
             }
-            pintarConexion(Color.web("#B42318"), "Sin conexión", "Iniciar Conexión");
+            if (errorConexion != null) {
+                pintarConexion(Color.web("#B8860B"), errorConexion, "Iniciar Conexión");
+            } else {
+                pintarConexion(Color.web("#B42318"), "Sin conexión", "Iniciar Conexión");
+            }
             return;
         }
         if (enlaceTunel == null || enlaceTunel.isBlank()) {
@@ -596,6 +727,8 @@ public class FlotaController {
     }
 
     private void detenerTunel() {
+        iniciandoConexion = false;
+        errorConexion = null;
         if (relojTunel != null) {
             relojTunel.stop();
         }
@@ -607,6 +740,19 @@ public class FlotaController {
         if (btnConexion != null) {
             pintarConexion(Color.web("#B42318"), "Sin conexión", "Iniciar Conexión");
         }
+    }
+
+    private void detenerServicios() {
+        detenerTunel();
+        detenerApiPropia();
+    }
+
+    private void detenerApiPropia() {
+        if (apiIniciadaPorApp && procesoApi != null) {
+            procesoApi.destroy();
+        }
+        procesoApi = null;
+        apiIniciadaPorApp = false;
     }
 
     private void pintarConexion(Color color, String texto, String textoBoton) {
