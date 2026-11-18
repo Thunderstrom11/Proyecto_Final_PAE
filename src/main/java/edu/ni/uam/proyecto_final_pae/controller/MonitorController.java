@@ -187,7 +187,7 @@ public class MonitorController {
         cmbEstadoOperadores.valueProperty().addListener((o, a, b) -> aplicarFiltroOperadores());
         txtFiltroOperadores.textProperty().addListener((o, a, b) -> aplicarFiltroOperadores());
 
-        reloj = new Timeline(new KeyFrame(Duration.seconds(5), evento -> {
+        reloj = new Timeline(new KeyFrame(Duration.seconds(2), evento -> {
             if (!Navegacion.vistaVisible(lblEstado)) {
                 reloj.stop();
                 return;
@@ -197,11 +197,6 @@ public class MonitorController {
         reloj.setCycleCount(Timeline.INDEFINITE);
         reloj.play();
         refrescarAutomatico();
-    }
-
-    @FXML
-    private void cerrarSesion() {
-        Navegacion.cerrarSesion(Navegacion.stageDe(lblEstado));
     }
 
     @FXML

@@ -241,10 +241,10 @@ public class LoginController {
             Parent root = loader.load();
             Tooltips.instalar(root);
             Stage stage = (Stage) txtUsuario.getScene().getWindow();
-            stage.setScene(new Scene(root, 980, 700));
+            stage.setScene(new Scene(root, 1180, 760));
             stage.setTitle(titulo);
-            stage.setMinWidth(900);
-            stage.setMinHeight(620);
+            stage.setMinWidth(980);
+            stage.setMinHeight(680);
             stage.setFullScreen(false);
             stage.setMaximized(true);
             Navegacion.registrar(stage);

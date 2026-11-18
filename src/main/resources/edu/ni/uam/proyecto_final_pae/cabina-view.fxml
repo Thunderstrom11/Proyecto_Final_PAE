@@ -9,7 +9,7 @@
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="edu.ni.uam.proyecto_final_pae.controller.CabinaController"
             styleClass="cabina-root"
-            prefWidth="980" prefHeight="700">
+            prefWidth="1180" prefHeight="760">
     <stylesheets>
         <URL value="@styles/fleetroute.css"/>
     </stylesheets>
@@ -31,6 +31,10 @@
                 <Label fx:id="lblEstado" text="Cabina lista." styleClass="status-label"/>
                 <Label fx:id="lblActualizado" text="" styleClass="status-label"/>
                 <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="btnAlerta" text="Alerta" styleClass="btn-alert" onAction="#enviarAlerta">
+                    <graphic><FontIcon iconLiteral="fas-exclamation-triangle"/></graphic>
+                    <tooltip><Tooltip text="Enviar una alerta a los administradores con la ubicación y el viaje actual."/></tooltip>
+                </Button>
                 <Button fx:id="btnClave" text="Cambiar contraseña" styleClass="btn-ghost" onAction="#cambiarClave">
                     <graphic><FontIcon iconLiteral="fas-key"/></graphic>
                 </Button>
@@ -45,56 +49,62 @@
     </top>
 
     <center>
-        <BorderPane>
-            <center>
-                <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
-                            styleClass="form-scroll">
-                    <content>
-                <VBox spacing="8" styleClass="form-pane">
-                    <padding>
-                        <Insets top="14" right="14" bottom="14" left="14"/>
-                    </padding>
-                    <Label fx:id="lblViaje" text="Sin viaje asignado" styleClass="section-title"/>
-                    <Label fx:id="lblRuta" text="—"/>
-                    <Label fx:id="lblSla" text="—" wrapText="true" styleClass="status-label"/>
-                    <Separator/>
-                    <GridPane hgap="30" vgap="6">
-                        <VBox spacing="2" GridPane.columnIndex="0" GridPane.rowIndex="0">
-                            <Label text="Manejo acumulado" styleClass="metric-label"/>
-                            <Label fx:id="lblManejo" text="0 h 00 min" styleClass="metric-value"/>
-                        </VBox>
-                        <VBox spacing="2" GridPane.columnIndex="1" GridPane.rowIndex="0">
-                            <Label text="Descanso restante" styleClass="metric-label"/>
-                            <Label fx:id="lblDescanso" text="0 h 00 min" styleClass="metric-value"/>
-                        </VBox>
-                        <VBox spacing="2" GridPane.columnIndex="2" GridPane.rowIndex="0">
-                            <Label text="Paso de la jornada" styleClass="metric-label"/>
-                            <Label fx:id="lblPaso" text="—" styleClass="metric-value"/>
-                        </VBox>
-                    </GridPane>
-                    <Separator/>
-                    <Label fx:id="lblSemaforo" text="Sin datos" styleClass="semaphore-chip"/>
-                    <Label fx:id="lblMensaje" text="—" wrapText="true" styleClass="status-label"/>
-                    <Separator/>
-                    <Label text="Siguiente asignación" styleClass="section-title"/>
-                    <Label fx:id="lblSiguienteCarga" text="Sin siguiente asignación" styleClass="metric-value"/>
-                    <Label fx:id="lblSiguienteRuta" text="—" wrapText="true" styleClass="status-label"/>
-                    <Label fx:id="lblSiguienteSla" text="—" wrapText="true" styleClass="status-label"/>
-                </VBox>
-                    </content>
-                </ScrollPane>
-            </center>
+        <HBox spacing="12" alignment="TOP_LEFT">
+            <VBox spacing="7" styleClass="form-pane" prefWidth="285" minWidth="260" maxWidth="310"
+                  maxHeight="Infinity">
+                <padding>
+                    <Insets top="14" right="14" bottom="14" left="14"/>
+                </padding>
+                <Label text="Viaje activo" styleClass="field-label"/>
+                <Label fx:id="lblViaje" text="Sin viaje asignado" styleClass="section-title" wrapText="true"/>
+                <Label fx:id="lblRuta" text="—" wrapText="true"/>
+                <Label fx:id="lblSla" text="—" wrapText="true" styleClass="status-label"/>
+                <Separator/>
 
-            <right>
-                <VBox spacing="6" prefWidth="300" styleClass="form-pane">
-                    <padding>
-                        <Insets top="14" right="14" bottom="14" left="14"/>
-                    </padding>
-                    <Label text="Bitácora de eventos" styleClass="field-label"/>
-                    <ListView fx:id="lstBitacora" VBox.vgrow="ALWAYS"/>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Label text="Manejo acumulado" styleClass="metric-label"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="lblManejo" text="0 h 00 min" styleClass="metric-value cabina-metric"/>
+                </HBox>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Label text="Descanso restante" styleClass="metric-label"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="lblDescanso" text="0 h 00 min" styleClass="metric-value cabina-metric"/>
+                </HBox>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Label text="Paso de la jornada" styleClass="metric-label"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="lblPaso" text="—" styleClass="metric-value cabina-metric"/>
+                </HBox>
+
+                <Separator/>
+                <Label fx:id="lblSemaforo" text="Sin datos" styleClass="semaphore-chip" wrapText="true"/>
+                <Label fx:id="lblMensaje" text="—" wrapText="true" styleClass="status-label"/>
+
+                <Separator/>
+                <Label text="Siguiente asignación" styleClass="field-label"/>
+                <Label fx:id="lblSiguienteCarga" text="Sin siguiente asignación"
+                       styleClass="metric-value cabina-metric" wrapText="true"/>
+                <Label fx:id="lblSiguienteRuta" text="—" wrapText="true" styleClass="status-label"/>
+                <Label fx:id="lblSiguienteSla" text="—" wrapText="true" styleClass="status-label"/>
+            </VBox>
+
+            <StackPane HBox.hgrow="ALWAYS" minWidth="460" minHeight="320" maxHeight="Infinity"
+                       styleClass="map-panel">
+                <VBox alignment="CENTER" spacing="10" maxWidth="520">
+                    <FontIcon iconLiteral="fas-map-marked-alt" styleClass="map-placeholder-icon"/>
+                    <Label text="Mapa de navegación" styleClass="map-placeholder-title"/>
+                    <Label fx:id="lblMapaRuta" text="Sin ruta activa"
+                           styleClass="map-placeholder-route" wrapText="true" textAlignment="CENTER"/>
+                    <Label text="Aquí se mostrará el trayecto del viaje y el acceso a la navegación."
+                           styleClass="map-placeholder-hint" wrapText="true" textAlignment="CENTER"/>
+                    <HBox alignment="CENTER" spacing="8">
+                        <Label text="Google Maps" styleClass="map-badge"/>
+                        <Label text="Ruta del viaje" styleClass="map-badge"/>
+                    </HBox>
                 </VBox>
-            </right>
-        </BorderPane>
+            </StackPane>
+        </HBox>
     </center>
 
     <bottom>

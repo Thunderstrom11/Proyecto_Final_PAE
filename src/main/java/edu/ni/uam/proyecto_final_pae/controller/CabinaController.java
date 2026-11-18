@@ -10,7 +10,6 @@ import edu.ni.uam.proyecto_final_pae.security.SesionActual;
 import edu.ni.uam.proyecto_final_pae.service.JornadaService;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
-import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -18,7 +17,6 @@ import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
 import javafx.scene.control.PasswordField;
 import javafx.scene.layout.GridPane;
 import javafx.util.Duration;
@@ -40,7 +38,6 @@ import java.util.function.IntFunction;
 public class CabinaController {
 
     private static final DateTimeFormatter FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-    private static final DateTimeFormatter HORA_EVENTO = DateTimeFormatter.ofPattern("dd/MM HH:mm:ss");
     private static final DateTimeFormatter HORA_CORTA = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     private static final String ESTILO_NEUTRO =
@@ -65,8 +62,9 @@ public class CabinaController {
     @FXML private Label lblSiguienteCarga;
     @FXML private Label lblSiguienteRuta;
     @FXML private Label lblSiguienteSla;
-    @FXML private ListView<String> lstBitacora;
+    @FXML private Label lblMapaRuta;
     @FXML private Button btnActualizar;
+    @FXML private Button btnAlerta;
     @FXML private Button btnIniciar;
     @FXML private Button btnPausar;
     @FXML private Button btnReanudar;
@@ -120,6 +118,53 @@ public class CabinaController {
     @FXML
     private void salir() {
         Navegacion.cerrarSesion(Navegacion.stageDe(btnSalir));
+    }
+
+    @FXML
+    private void enviarAlerta() {
+        Usuario usuario;
+        try {
+            usuario = SesionActual.requerir(RolUsuario.OPERADOR);
+        } catch (SecurityException e) {
+            advertencia(e.getMessage());
+            return;
+        }
+        if (usuario.getOperador() == null) {
+            advertencia("El usuario no tiene un operador asociado.");
+            return;
+        }
+
+        try {
+            Optional<FlotaDAO.FilaViaje> viaje = flotaDAO.viajeDelOperador(usuario.getOperador().getId());
+            if (viaje.isEmpty()) {
+                advertencia("No hay un viaje activo para asociar a la alerta.");
+                return;
+            }
+
+            ButtonType enviar = new ButtonType("Enviar alerta", ButtonBar.ButtonData.OK_DONE);
+            Alert confirmacion = new Alert(Alert.AlertType.CONFIRMATION,
+                    "Se notificará al administrador con tu ubicación, hora, viaje y unidad.",
+                    enviar, ButtonType.CANCEL);
+            confirmacion.setHeaderText("¿Enviar alerta de emergencia?");
+            if (confirmacion.showAndWait().orElse(ButtonType.CANCEL) != enviar) {
+                return;
+            }
+
+            FlotaDAO.FilaViaje datos = viaje.get();
+            String ubicacion = "Origen: " + texto(datos.origen());
+            new edu.ni.uam.proyecto_final_pae.dao.AlertaOperadorDAO().registrar(
+                    datos.idViaje(),
+                    datos.idOperador(),
+                    datos.idUnidad(),
+                    datos.latitudOrigen(),
+                    datos.longitudOrigen(),
+                    ubicacion,
+                    "Alerta enviada desde la cabina de escritorio");
+            lblEstado.setText("Alerta enviada al administrador.");
+            advertencia("La alerta fue enviada y guardada para administración.");
+        } catch (PersistenciaException e) {
+            advertencia("No se pudo enviar la alerta: " + e.getMessage());
+        }
     }
 
     @FXML
@@ -220,10 +265,9 @@ public class CabinaController {
                     && resumen.porcentajeManejo() >= 100;
             if (finJornada) {
                 resumen = servicio.pausarPorFinJornada(idViaje);
-                eventos = servicio.eventos(idViaje);
                 lblEstado.setText("Jornada máxima completada: pausa y descanso automáticos.");
             }
-            pintar(resumen, eventos);
+            pintar(resumen);
             mostrarBotonReintento(false);
         } catch (PersistenciaException e) {
             idViaje = null;
@@ -298,9 +342,10 @@ public class CabinaController {
 
     // ------------------------------------------------------------------ pintado
 
-    private void pintar(JornadaService.Resumen resumen, List<RegistroJornada> eventos) {
+    private void pintar(JornadaService.Resumen resumen) {
         FlotaDAO.FilaViaje viaje = resumen.viaje();
 
+        lblMapaRuta.setText(viaje.origen() + "  →  " + viaje.destino());
         lblViaje.setText("Viaje #" + viaje.idViaje() + "   ·   Carga " + texto(viaje.numeroCarga()));
         lblRuta.setText("Ruta: " + texto(viaje.origen()) + "  →  " + texto(viaje.destino())
                 + "        Unidad: " + texto(viaje.numeroUnidad()));
@@ -327,11 +372,6 @@ public class CabinaController {
             }
         }
         mostrarSiguiente(viaje.idViaje());
-
-        List<String> bitacora = eventos.stream()
-                .map(this::lineaBitacora)
-                .toList();
-        lstBitacora.setItems(FXCollections.observableArrayList(bitacora));
 
         btnIniciar.setDisable(resumen.paso() != JornadaService.Paso.SIN_INICIAR);
         btnPausar.setDisable(resumen.paso() != JornadaService.Paso.EN_MARCHA);
@@ -370,6 +410,7 @@ public class CabinaController {
 
     private void mostrarVacio(String mensaje) {
         lblViaje.setText("Sin viaje asignado");
+        lblMapaRuta.setText("Sin ruta activa");
         lblRuta.setText("—");
         lblSla.setText("—");
         lblManejo.setText("0 h 00 min");
@@ -381,17 +422,11 @@ public class CabinaController {
         lblSiguienteCarga.setText("Sin siguiente asignación");
         lblSiguienteRuta.setText("—");
         lblSiguienteSla.setText("—");
-        lstBitacora.getItems().clear();
         btnIniciar.setDisable(true);
         btnPausar.setDisable(true);
         btnReanudar.setDisable(true);
         btnConfirmar.setDisable(true);
         lblSugerencia.setText("Las acciones se habilitarán cuando el operador tenga un viaje activo.");
-    }
-
-    private String lineaBitacora(RegistroJornada registro) {
-        return "#" + registro.getNumEvento() + "   " + registro.getTipoEvento().getNombre()
-                + (registro.getFechaHora() == null ? "" : "   " + registro.getFechaHora().format(HORA_EVENTO));
     }
 
     // ------------------------------------------------------------------ apoyo

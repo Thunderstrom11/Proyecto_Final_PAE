@@ -2,6 +2,7 @@
 
 ![Java](https://img.shields.io/badge/Java-17%2B-orange)
 ![JavaFX](https://img.shields.io/badge/JavaFX-21%2B-blue)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?logo=springboot&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14%2B-336791?logo=postgresql&logoColor=white)
 ![Maven](https://img.shields.io/badge/Maven-3.9%2B-C71A36?logo=apachemaven&logoColor=white)
 
@@ -14,11 +15,13 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 ## Información importante del entorno
 
 - **JDK:** el proyecto compila con **Java 17 o superior** (probado con JDK 21 y 25).
-- **Base de datos:** se utiliza **PostgreSQL 14+** como sistema gestor de base de datos; el esquema tiene **16 tablas**.
+- **Base de datos:** se utiliza **PostgreSQL 14+** como sistema gestor de base de datos; el esquema tiene **17 tablas**.
 - **Script de base de datos:** el repositorio incluye [`database/fleetroute_pro.sql`](database/fleetroute_pro.sql), con la creación de tablas, restricciones, triggers, índices, catálogos y datos de ejemplo.
 - **Extensión:** el script crea `pgcrypto` para generar los hashes BCrypt de los usuarios de demostración.
 - **Conexión a la base de datos:** se realiza mediante un archivo **`.env`**. Cada integrante mantiene su propio archivo `.env` en su equipo con sus credenciales locales de PostgreSQL (usuario, contraseña, puerto, etc.). Este archivo **no se sube al repositorio**.
 - **Archivo de ejemplo:** se incluye **`.env.example`** como plantilla. Cualquier persona que descargue el proyecto debe copiarlo, renombrarlo a `.env` y colocar en él sus propias credenciales.
+- **API y cabina web:** el módulo `api-operador/` publica la API REST y la vista web del operador en `http://localhost:8080`. Usa la misma base PostgreSQL y requiere `OPENROUTESERVICE_API_KEY` para la navegación turn-by-turn.
+- **Acceso desde otros dispositivos:** se puede publicar con Cloudflare Quick Tunnel. La app de escritorio incluye el botón **Iniciar Conexión** en la vista de flota para controlar el túnel y copiar su enlace.
 
 ---
 
@@ -37,6 +40,7 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 - [Explicación del ORM y las transacciones](#explicación-del-orm-y-las-transacciones)
 - [Requisitos previos](#requisitos-previos)
 - [Instalación y ejecución](#instalación-y-ejecución)
+- [API y cabina web del operador](#api-y-cabina-web-del-operador)
 - [Datos de ejemplo](#datos-de-ejemplo)
 - [Variables de entorno](#variables-de-entorno)
 - [Flujo de uso](#flujo-de-uso)
@@ -72,12 +76,16 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 |------------|------------|
 | Lenguaje base | Java 17+ (probado con JDK 21 y 25) |
 | Interfaz gráfica | JavaFX + FXML |
+| Cabina web | HTML, CSS y JavaScript · MapLibre GL JS |
+| API REST | Spring Boot 4.1 · Spring Web MVC · Spring JDBC |
+| Navegación web | OpenRouteService Directions API |
 | Acceso a datos | Hibernate ORM 6 (JDBC por debajo) · Patrón DAO |
 | Base de datos | PostgreSQL |
 | Gestión de dependencias | Maven |
-| Configuración | Archivo `.env` (variables de conexión) |
-| Seguridad | Contraseñas con hash BCrypt y acceso por rol |
-| Arquitectura | Capas: Vista → Servicios → DAO → Modelo |
+| Configuración | Archivo `.env` (variables de conexión y ORS) |
+| Seguridad | Contraseñas con hash BCrypt, sesiones Bearer y acceso por rol |
+| Acceso externo | Cloudflare Quick Tunnel (HTTP/2 sobre TCP) |
+| Arquitectura | Capas: Vista → Servicios → DAO → Modelo; API por capas |
 
 > **Nota de stack:** la rúbrica de entrega exige mapeo ORM con JPA y operaciones de persistencia con Hibernate. Por eso el acceso a datos se implementa con Hibernate ORM sobre el driver JDBC de PostgreSQL, manteniendo el patrón DAO.
 
@@ -96,6 +104,8 @@ Ambos roles inician sesión con credenciales almacenadas en la base de datos; la
 - **Gestión de unidades, operadores y cargas:** alta, consulta, actualización y baja.
 - **Gestión de clientes:** pestaña con todos los campos de `clientes` (empresa, contacto, teléfono, email, dirección y activo), con validaciones y bajas protegidas por integridad referencial.
 - **Panel administrativo:** cuentas de administradores y operadores, permisos de reportes, restablecimiento de contraseñas, países activos con buscador, ubicaciones editables con mapa satelital de solo lectura y rutas con tiempo estimado y precio sugerido. Incluye borrados masivos de cuentas filtradas, ubicaciones y rutas protegidos con la contraseña del administrador.
+- **Alertas de operador:** pestaña **Alertas** con la ubicación, fecha y hora, operador, viaje/carga, unidad, mensaje y estado de cada emergencia enviada desde la cabina de escritorio o web.
+- **Túnel de administración:** botón **Iniciar Conexión** junto a **Cerrar sesión**. Arranca y detiene un Cloudflare Quick Tunnel, muestra un punto de estado (rojo, amarillo o verde) y el enlace público debajo del botón.
 - **Lugares exactos para viajes:** al elegir origen/destino se abre un selector con búsqueda Nominatim y mapa Leaflet. Se puede buscar una referencia, mover el mapa y hacer clic en el punto exacto (por ejemplo, una casa cercana); el nombre para guardar es editable. El lugar se guarda en `ubicaciones` con país, nombre, latitud y longitud, por lo que puede reutilizarse al buscar ese país. El botón **Google Maps** abre la ubicación en el navegador.
 - **Asistente de primera configuración:** en el primer arranque se capturan los datos de la empresa, la moneda con la que se muestran los cobros y se crea la cuenta de administrador, sin editar archivos ni buscar en la base de datos.
 
@@ -108,6 +118,7 @@ Ambos roles inician sesión con credenciales almacenadas en la base de datos; la
 - **Cronómetro digital:** horas conducidas y descanso acumulado en tiempo real.
 - **Controles rápidos:** `INICIAR TRAYECTO`, `PAUSA`, `REANUDAR` y `CONFIRMAR ENTREGA`.
 - **Panel de siguiente asignación:** vista previa de la carga encadenada que se activará al finalizar el viaje actual.
+- **Cabina web:** misma lógica de jornada, alertas y cambio de contraseña desde el navegador; mapa inclinado MapLibre con seguimiento del vehículo, ruta real de OpenRouteService e indicaciones turn-by-turn. Consulta el panel cada 5 segundos y mantiene la sesión activa hasta 24 horas desde el último uso.
 
 ---
 
@@ -189,11 +200,24 @@ El código sigue una arquitectura en capas con el patrón **DAO**, separando la 
 | **DAO** | Operaciones CRUD y consultas contra PostgreSQL (`ViajeDAO`, `OperadorDAO`, `CargaDAO`, `UsuarioDAO`, `ClienteDAO`, `UbicacionDAO`, entre otros). |
 | **Modelo** | Clases de dominio: `Unidad`, `Operador`, `Carga`, `Viaje`, `RegistroJornada`, `Usuario`, `Cliente`, `Ubicacion`. |
 | **Configuración** | `HibernateUtil`, transacciones y carga de variables desde el archivo `.env`. |
+| **API REST** | `api-operador/`: controladores, servicios, seguridad con sesiones Bearer, acceso JDBC y validación de solicitudes. |
+| **Cabina web** | Recursos estáticos servidos por Spring Boot: login real, panel del operador, mapa MapLibre, ruta ORS, alertas y cambio de contraseña. |
 
 ### Estructura del repositorio
 
 ```text
 Proyecto_Final_PAE/
+├── api-operador/               # API REST y cabina web del operador
+│   ├── src/main/java/com/fleetroute/api/
+│   │   ├── config/             # Seguridad, interceptor y manejo de errores
+│   │   ├── controller/         # Endpoints REST
+│   │   ├── dto/                # Contratos de entrada y salida
+│   │   ├── security/           # Sesiones Bearer y límite de intentos
+│   │   └── service/            # Jornada, panel, rutas, alertas y autenticación
+│   ├── src/main/resources/
+│   │   ├── static/             # index.html, app.js, styles.css y favicon
+│   │   └── application.properties
+│   └── src/test/               # Pruebas de cálculo y parseo de rutas
 ├── database/
 │   └── fleetroute_pro.sql      # Esquema, catálogos, triggers y datos de ejemplo
 ├── evidencias/                 # Capturas de la entrega de Hibernate
@@ -227,15 +251,15 @@ La configuración está en `src/main/resources/hibernate.cfg.xml`, con las entid
 
 ## Modelo de datos
 
-La base de datos `fleetroute_pro` tiene **16 tablas**. El esquema completo, las restricciones, los índices, los triggers y los datos de ejemplo están en [`database/fleetroute_pro.sql`](database/fleetroute_pro.sql).
+La base de datos `fleetroute_pro` tiene **17 tablas**. El esquema completo, las restricciones, los índices, los triggers y los datos de ejemplo están en [`database/fleetroute_pro.sql`](database/fleetroute_pro.sql).
 
 | Grupo | Tablas |
 |-------|--------|
 | Catálogos | `cat_estado_unidad`, `cat_estado_operador`, `cat_estado_carga`, `cat_estado_viaje`, `cat_tipo_evento` |
 | Maestros | `clientes`, `ubicaciones`, `unidades`, `operadores` |
-| Configuración | `empresa` |
+| Configuración | `empresa`, `paises_habilitados` |
 | Acceso | `usuarios` |
-| Operativas | `cargas`, `viajes`, `rutas` |
+| Operativas | `cargas`, `viajes`, `rutas`, `alertas_operador` |
 | Bitácora | `registro_jornada` |
 
 ### Tablas principales
@@ -253,6 +277,7 @@ La base de datos `fleetroute_pro` tiene **16 tablas**. El esquema completo, las 
 | `paises_habilitados` | `id_pais_habilitado`, `nombre`, `fecha_activacion` | Países disponibles para crear ubicaciones; se administran con checkboxes desde el panel. |
 | `rutas` | `id_ruta`, `id_origen`, `id_destino`, `tiempo_estimado_horas`, `precio` | Tiempo y precio sugerido entre dos ubicaciones; se usan al crear viajes y son editables desde el panel administrativo. |
 | `registro_jornada` | `id_registro`, `id_viaje`, `num_evento`, `id_tipo_evento`, `fecha_hora`, `observacion` | Bitácora de eventos de la jornada. |
+| `alertas_operador` | `id_alerta`, `id_viaje`, `id_operador`, `id_unidad`, `latitud`, `longitud`, `ubicacion`, `mensaje`, `fecha_hora`, `atendida` | Emergencias enviadas desde la cabina de escritorio o web; se consultan y marcan como atendidas en el panel administrativo. |
 
 ### Catálogos de estado
 
@@ -314,9 +339,11 @@ Así el proyecto mantiene un único `SessionFactory` y separa la persistencia de
 
 | Herramienta | Versión mínima | Notas |
 |-------------|----------------|-------|
-| JDK | **17 o superior** (probado con 21 y 25) | Debe estar configurado como SDK del proyecto. |
-| Maven | 3.9 o superior | Gestiona JavaFX, Hibernate y el driver JDBC de PostgreSQL. |
+| JDK | **17 o superior** para escritorio; **21 o superior** para la API (probado con 21 y 25) | Debe estar configurado como SDK del proyecto. |
+| Maven | 3.9 o superior | Gestiona JavaFX, Hibernate, Spring Boot y el driver JDBC de PostgreSQL. |
 | PostgreSQL | 14 o superior | Servicio activo en `localhost:5432` (o el puerto configurado); probado con PostgreSQL 18.4. |
+| Cuenta de OpenRouteService | Gratuita | Solo para la navegación turn-by-turn de la cabina web; se configura en `.env`. |
+| Cloudflare Tunnel (opcional) | Última versión | Necesario solo para publicar la cabina fuera de la red local. |
 | Git | Cualquier versión reciente | Para clonar el repositorio. |
 | IDE (opcional) | IntelliJ IDEA / Eclipse | Recomendado para desarrollo y depuración. |
 
@@ -386,6 +413,22 @@ CREATE TABLE IF NOT EXISTS rutas (
     CONSTRAINT uq_ruta_origen_destino UNIQUE (id_origen, id_destino),
     CONSTRAINT ck_ruta_distinta CHECK (id_origen <> id_destino)
 );
+
+CREATE TABLE IF NOT EXISTS alertas_operador (
+    id_alerta      SERIAL PRIMARY KEY,
+    id_viaje       INT NOT NULL REFERENCES viajes (id_viaje) ON DELETE CASCADE,
+    id_operador    INT NOT NULL REFERENCES operadores (id_operador) ON DELETE RESTRICT,
+    id_unidad      INT NOT NULL REFERENCES unidades (id_unidad) ON DELETE RESTRICT,
+    latitud        DOUBLE PRECISION,
+    longitud       DOUBLE PRECISION,
+    ubicacion      VARCHAR(200),
+    mensaje        VARCHAR(300),
+    fecha_hora     TIMESTAMP NOT NULL DEFAULT NOW(),
+    atendida       BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE INDEX IF NOT EXISTS idx_alertas_fecha    ON alertas_operador (fecha_hora DESC);
+CREATE INDEX IF NOT EXISTS idx_alertas_atendida ON alertas_operador (atendida);
 
 UPDATE usuarios
    SET es_principal = TRUE,
@@ -472,6 +515,130 @@ mvn test
 
 ---
 
+## API y cabina web del operador
+
+El módulo `api-operador/` es una aplicación Spring Boot que publica la API REST y la cabina web en `http://localhost:8080`. Usa la misma base `fleetroute_pro` que la aplicación de escritorio y **no crea ni modifica el esquema**: primero debe existir la base y haberse aplicado `database/fleetroute_pro.sql`.
+
+La aplicación de escritorio y la API pueden ejecutarse al mismo tiempo porque comparten la base. Para evitar condiciones de carrera, no ejecutes acciones de jornada sobre el mismo viaje desde ambas interfaces a la vez.
+
+### Requisitos y configuración
+
+- JDK **21 o superior** para compilar y ejecutar la API.
+- Base de datos creada y accesible con las credenciales del `.env`.
+- Una clave gratuita de **OpenRouteService** para calcular la ruta y las indicaciones turn-by-turn.
+
+Agrega la clave al `.env` de la raíz del proyecto:
+
+```env
+DB_URL=jdbc:postgresql://localhost:5432/fleetroute_pro
+DB_USER=postgres
+DB_PASSWORD=tu_contrasena
+OPENROUTESERVICE_API_KEY=tu_clave_de_openrouteservice
+```
+
+`application.properties` importa automáticamente `./.env` o `../.env`, por lo que la API puede arrancar desde `api-operador` sin exportar las variables a mano. Nunca subas el `.env` al repositorio ni compartas la clave ORS. Si la clave se filtra, revócala y genera otra.
+
+### Compilar y ejecutar
+
+```bash
+cd api-operador
+./mvnw spring-boot:run
+```
+
+En Windows CMD también funciona `mvnw.cmd spring-boot:run`. Para generar el JAR y ejecutarlo:
+
+```bash
+./mvnw -DskipTests package
+java -jar target/api-operador-0.0.1-SNAPSHOT.jar
+```
+
+Comprueba el arranque en:
+
+- Cabina web: `http://localhost:8080/`
+- Estado de la API y la base: `http://localhost:8080/api/salud`
+
+La respuesta esperada de salud es similar a:
+
+```json
+{"hora":"2026-11-18T10:47:58-06:00","estado":"ok","baseDatos":"ok"}
+```
+
+Para ejecutar las pruebas de la API:
+
+```bash
+cd api-operador
+./mvnw test
+```
+
+### Uso de la cabina web
+
+1. Arranca PostgreSQL y la API.
+2. Abre `http://localhost:8080/` en el navegador.
+3. Inicia sesión con una cuenta de rol **OPERADOR** (demo: `operador` / `operador123!`). El usuario administrador solo entra desde la aplicación de escritorio.
+4. La cabina muestra el viaje activo, la jornada, el mapa MapLibre inclinado, la ruta real de OpenRouteService y las indicaciones turn-by-turn.
+5. Los botones **Iniciar trayecto**, **Pausa**, **Reanudar** y **Confirmar entrega** escriben directamente en PostgreSQL.
+6. **Alerta** registra una emergencia con ubicación, fecha y hora, operador, viaje y unidad; aparece en la pestaña **Alertas** del panel administrativo de escritorio.
+7. **Cambiar contraseña** valida la contraseña actual y guarda la nueva con BCrypt.
+8. La web consulta el panel cada **5 segundos**. Las acciones se envían de inmediato y, si se pierde la conexión, la actualización automática se pausa y se reanuda al volver la red.
+9. La sesión web es deslizante y dura hasta **24 horas** desde la última petición; no se cierra por un temporizador fijo mientras la página siga en uso.
+10. En el panel administrativo de escritorio, el **Monitor de flota** se actualiza cada **2 segundos**.
+
+La cabina web es responsiva y prioriza el modo horizontal, incluido el uso desde un teléfono en orientación apaisada.
+
+### Endpoints principales
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `GET` | `/api/config` | Nombre de la empresa para el login web. |
+| `GET` | `/api/salud` | Estado de la API y de la base de datos. |
+| `POST` | `/api/auth/login` | Inicio de sesión de operador; devuelve un token Bearer. |
+| `POST` | `/api/auth/logout` | Cierra la sesión activa. |
+| `POST` | `/api/auth/password` | Cambia la contraseña del operador autenticado. |
+| `GET` | `/api/operador/panel` | Datos del viaje, jornada y siguiente asignación. |
+| `GET` | `/api/operador/ruta` | Ruta GeoJSON procesada desde OpenRouteService. |
+| `POST` | `/api/operador/alerta` | Registra una alerta de emergencia. |
+| `POST` | `/api/operador/jornada/iniciar` | Inicia el trayecto. |
+| `POST` | `/api/operador/jornada/pausar` | Registra una pausa de descanso. |
+| `POST` | `/api/operador/jornada/reanudar` | Reanuda el manejo si el descanso mínimo se cumplió. |
+| `POST` | `/api/operador/jornada/confirmar` | Confirma la entrega y activa el viaje encadenado. |
+
+Los endpoints de `/api/operador/**` y `/api/auth/password` exigen el encabezado `Authorization: Bearer <token>`.
+
+### Publicar la cabina con Cloudflare Tunnel
+
+El túnel es opcional y sirve para abrir la cabina desde otro dispositivo o por datos móviles sin abrir puertos en el router. La API debe estar corriendo en `localhost:8080`.
+
+Instalación en Windows con WinGet:
+
+```powershell
+winget install --id Cloudflare.cloudflared
+```
+
+Comando manual recomendado:
+
+```powershell
+cloudflared tunnel --url http://localhost:8080 --protocol http2 --edge-ip-version 4
+```
+
+`--protocol http2 --edge-ip-version 4` fuerza HTTP/2 sobre TCP y IPv4. Es necesario cuando la red bloquea QUIC/UDP 7844; sin esos parámetros el túnel puede quedarse en `Unable to establish connection with edge`.
+
+También puedes usar el botón **Iniciar Conexión** de la app de escritorio:
+
+1. Inicia sesión como administrador y abre **Gestión de flota**.
+2. Pulsa **Iniciar Conexión**, junto a **Cerrar sesión**.
+3. El punto de estado indica:
+   - **Rojo:** túnel detenido o proceso cerrado.
+   - **Amarillo:** cloudflared está arrancando o `http://localhost:8080/api/salud` no responde correctamente.
+   - **Verde:** túnel activo, URL detectada y API saludable.
+4. El enlace `https://….trycloudflare.com` aparece debajo del botón.
+5. Pulsa **Detener Conexión** para cerrar el túnel; el enlace deja de funcionar.
+
+La app busca `cloudflared` en el `PATH`, en los enlaces de WinGet, en `Program Files\cloudflared` y en `Program Files (x86)\cloudflared`.
+
+> El enlace de Quick Tunnel es temporal y cambia cada vez que se inicia. Cualquier persona con la URL puede llegar al login, así que usa datos de demostración, cierra el túnel al terminar y no publiques credenciales ni información real.
+
+---
+
 ## Datos de ejemplo
 
 El script inserta los catálogos y un conjunto mínimo de datos para probar el sistema. Cuando la base la crea el asistente, los maestros y las cuentas de ejemplo no se insertan: el asistente los define con usted paso a paso.
@@ -500,6 +667,7 @@ El script inserta los catálogos y un conjunto mínimo de datos para probar el s
 | `DB_URL` | Cadena de conexión JDBC completa (host, puerto y base de datos). | `jdbc:postgresql://localhost:5432/fleetroute_pro` |
 | `DB_USER` | Usuario de PostgreSQL. | `postgres` |
 | `DB_PASSWORD` | Contraseña del usuario. | `tu_contrasena` |
+| `OPENROUTESERVICE_API_KEY` | Clave de OpenRouteService para la navegación de la cabina web. | `tu_clave_de_openrouteservice` |
 
 Contenido de la plantilla `.env.example`:
 
@@ -508,9 +676,12 @@ Contenido de la plantilla `.env.example`:
 DB_URL=jdbc:postgresql://localhost:5432/fleetroute_pro
 DB_USER=postgres
 DB_PASSWORD=tu_contrasena
+
+# Navegación turn-by-turn en la web (OpenRouteService)
+OPENROUTESERVICE_API_KEY=
 ```
 
-> Estas tres claves son las que lee `config/Entorno`; si cambias el nombre de alguna, `HibernateUtil` no podrá iniciar la conexión.
+> La aplicación de escritorio lee las tres claves de conexión mediante `config/Entorno`; si cambias el nombre de alguna, `HibernateUtil` no podrá iniciar la conexión. La API importa el mismo `.env` y además usa `OPENROUTESERVICE_API_KEY`.
 
 > El esquema usa `TIMESTAMP` en hora local de Nicaragua (`America/Managua`) y el script configura esa zona. Hibernate fija `hibernate.jdbc.time_zone=America/Managua` para que las fechas de los eventos sean consistentes.
 
@@ -529,7 +700,7 @@ DB_PASSWORD=tu_contrasena
 
 ### Operador
 
-1. Iniciar sesión eligiendo la opción **Operador** (demo: `operador` / `Operador123!`). La cabina muestra **solo el operador vinculado a ese usuario**; no hay selector libre de operadores.
+1. Iniciar sesión eligiendo la opción **Operador** (demo: `operador` / `operador123!`). La cabina muestra **solo el operador vinculado a ese usuario**; no hay selector libre de operadores.
 2. Presionar `INICIAR TRAYECTO` para comenzar el registro de la jornada.
 3. Registrar pausas de descanso y reanudar el manejo; el sistema acumula los tiempos y muestra cuánto descanso falta.
 4. Presionar `CONFIRMAR ENTREGA` al finalizar el viaje; el botón solo se habilita con un tramo en marcha.
@@ -537,6 +708,14 @@ DB_PASSWORD=tu_contrasena
 6. La sesión expira tras **15 minutos de inactividad**; también se puede cerrar con el botón **Cerrar sesión**.
 7. Tras **3 intentos fallidos** de inicio de sesión, el acceso se bloquea durante **30 segundos**. Si se fallan otros **3 intentos** después de ese bloqueo, la aplicación se cierra.
 8. Cambiar la contraseña temporal desde el botón **Cambiar contraseña** de la cabina.
+
+### Operador (cabina web)
+
+1. Inicia la API con `cd api-operador && ./mvnw spring-boot:run`.
+2. Abre `http://localhost:8080/` o el enlace del túnel y entra con una cuenta de operador.
+3. Usa el mapa y las indicaciones para seguir la ruta; el panel se refresca cada 5 segundos.
+4. Cambia la contraseña desde la cabecera con **Cambiar contraseña**.
+5. Envía una emergencia con **Alerta**; quedará visible en la pestaña **Alertas** del panel administrativo de escritorio.
 
 > Si un operador no puede entrar, verifique que exista un registro en `usuarios` con `rol = 'OPERADOR'` y su `id_operador` asociado. El usuario demo `operador` está vinculado a **Operador Demo**.
 
@@ -553,6 +732,7 @@ Módulo construido sobre Hibernate ORM. Cubre **RF-06** (eventos de jornada), **
 | `model/RegistroJornada` | Entidad de `registro_jornada`. `num_evento` es de solo lectura porque lo asigna el trigger `trg_rj_num_evento`; `viaje` y `tipoEvento` son relaciones `@ManyToOne`. |
 | `dao/RegistroJornadaDAO` | Inserta eventos resolviendo el tipo **por nombre** y los consulta con `join fetch` de su tipo. |
 | `dao/FlotaDAO` | Consultas HQL de viajes, viaje activo del operador, viaje encadenado y cambios de estado por nombre de catálogo. |
+| `model/AlertaOperador` + `dao/AlertaOperadorDAO` | Alertas de emergencia enviadas desde la cabina de escritorio y su consulta/marcado en el panel administrativo. |
 | `service/JornadaService` | Cálculo de horas acumuladas, semáforo y validaciones de las reglas de jornada. |
 | `controller/CabinaController` + `cabina-view.fxml` | Pantalla del operador. |
 | `controller/MonitorController` + `monitor-view.fxml` | Monitor de flota del administrador. |
@@ -574,8 +754,9 @@ Las horas no se guardan en columnas: se suman los intervalos de la bitácora `re
 
 | Pantalla | Contenido | Refresco |
 |----------|-----------|----------|
-| Cabina del operador | Viaje activo, cronómetro de manejo y descanso, semáforo, mensaje de alerta con el descanso restante, panel de **siguiente asignación**, bitácora de eventos y los botones **Iniciar trayecto**, **Pausa**, **Reanudar** y **Confirmar entrega**. Los botones se habilitan según el paso real de la jornada. | 2 s |
-| Monitor de flota | Pestañas de viajes activos, unidades y operadores; viajes con unidad, operador, carga, ruta, límite del cliente, manejo acumulado, semáforo y estado; filtro de texto y leyenda de colores. | 5 s |
+| Cabina del operador (escritorio) | Viaje activo, cronómetro de manejo y descanso, semáforo, mensaje de alerta con el descanso restante, panel de **siguiente asignación**, mapa y los botones **Iniciar trayecto**, **Pausa**, **Reanudar** y **Confirmar entrega**. Los botones se habilitan según el paso real de la jornada. | 2 s |
+| Cabina web | Viaje activo, jornada, mapa MapLibre inclinado, ruta ORS e indicaciones, botones de jornada, alerta y cambio de contraseña. | 5 s |
+| Monitor de flota | Pestañas de viajes activos, unidades y operadores; viajes con unidad, operador, carga, ruta, límite del cliente, manejo acumulado, semáforo y estado; filtro de texto y leyenda de colores. | 2 s |
 
 La aplicación principal se inicia con el login (`mvn clean javafx:run`). Los arranques alternativos (`JornadaApplication`, `FlotaApplication`, etc.) ya no permiten saltarse RF-11: si no hay una sesión válida, las pantallas muestran acceso denegado y no consultan datos.
 
@@ -659,6 +840,12 @@ WHERE c2.numero_carga = 'C-DEMO-2' AND c1.numero_carga = 'C-DEMO-1'
 | `duplicate key value violates unique constraint "uq_rj_viaje_num"` | El trigger no está instalado o se insertaron números de evento repetidos. | Volver a ejecutar el script para crear `trg_rj_num_evento`; no enviar `num_evento`. |
 | `permission denied to create extension "pgcrypto"` | El usuario de PostgreSQL no puede crear extensiones. | Ejecutar `CREATE EXTENSION pgcrypto;` como superusuario o pedir permisos. |
 | `could not open extension control file ... pgcrypto` | Falta el paquete contrib de PostgreSQL. | Instalar `postgresql-contrib` o generar los hashes con la aplicación. |
+| `Port 8080 was already in use` | Ya hay otra API o proceso usando el puerto. | Cerrar el proceso anterior o cambiar `server.port` en `api-operador/src/main/resources/application.properties`. |
+| La web responde `La navegación con OpenRouteService no está configurada` | Falta `OPENROUTESERVICE_API_KEY` en el `.env`. | Agregar la clave y reiniciar la API. |
+| OpenRouteService responde `401`, `403` o `429` | Clave inválida, sin permisos o límite de peticiones alcanzado. | Revisar la clave, la cuota de la cuenta y esperar antes de reintentar. |
+| `Unable to establish connection with edge` al iniciar el túnel | La red bloquea QUIC/UDP 7844. | Usar `--protocol http2 --edge-ip-version 4`, o el botón **Iniciar Conexión**, que ya aplica esos parámetros. |
+| `cloudflared` no se reconoce o el botón queda amarillo | No está instalado o no se encontró el ejecutable. | Instalarlo con WinGet, verificar el `PATH` o colocarlo en `Program Files\cloudflared`; reiniciar la app. |
+| El enlace del túnel no carga fuera de la red | La API está detenida, `/api/salud` falla o el túnel se cerró. | Arrancar la API, abrir `http://localhost:8080/api/salud` y volver a iniciar el túnel. |
 
 ---
 
@@ -694,7 +881,7 @@ La evidencia se generó con `hbm2ddl.auto=create` y `show_sql=true` sobre una ba
 
 - **Documento de Requerimientos — FleetRoute Pro v1.0:** objetivo general, requerimientos funcionales y no funcionales, reglas de negocio y modelo relacional.
 - **README.md:** guía de instalación, configuración y uso del sistema.
-- **`database/fleetroute_pro.sql`:** 16 tablas, catálogos, restricciones, índices, triggers y datos de ejemplo.
+- **`database/fleetroute_pro.sql`:** 17 tablas, catálogos, restricciones, índices, triggers y datos de ejemplo.
 
 ---
 

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#F4F6FB">
+    <meta name="description" content="Cabina web del operador de FleetRoute Pro: viaje activo, jornada y navegación.">
+    <title>FleetRoute Pro · Cabina del operador</title>
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+    <link rel="stylesheet" href="/styles.css?v=maplibre15">
+</head>
+<body>
+<svg class="svg-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-truck" viewBox="0 0 24 24">
+        <path d="M3 7h10v10H3zM13 10h4l3 3v4h-7zM7 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM17.5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/>
+    </symbol>
+    <symbol id="i-route" viewBox="0 0 24 24">
+        <circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/>
+        <path d="M8.5 6H14a3 3 0 0 1 0 6h-4a3 3 0 0 0 0 6h5.5"/>
+    </symbol>
+    <symbol id="i-package" viewBox="0 0 24 24">
+        <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/>
+    </symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24">
+        <path d="M12 3 20 6v5c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-3Z"/><path d="m9 12 2 2 4-4"/>
+    </symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24">
+        <path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/>
+    </symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24">
+        <path d="M10 5H5v14h5M14 8l4 4-4 4M9 12h9"/>
+    </symbol>
+    <symbol id="i-user" viewBox="0 0 24 24">
+        <circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.4 3.2-5 7-5s6.2 1.6 7 5"/>
+    </symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24">
+        <rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v2"/>
+    </symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24">
+        <path d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/>
+    </symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24">
+        <path d="m3 3 18 18M10.6 6.2c.5-.1 1-.2 1.4-.2 6.1 0 9.5 6 9.5 6a17 17 0 0 1-3 3.5M6.3 6.8A17.5 17.5 0 0 0 2.5 12s3.4 6 9.5 6c1.6 0 3-.4 4.2-1M9.9 9.9a3 3 0 0 0 4.2 4.2"/>
+    </symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24">
+        <path d="M5 12h14M14 7l5 5-5 5"/>
+    </symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24">
+        <rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>
+    </symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24">
+        <path d="M12 4 21 20H3L12 4Z"/><path d="M12 9v5M12 17.2v.1"/>
+    </symbol>
+    <symbol id="i-signal" viewBox="0 0 24 24">
+        <path d="M4 17v3M9 13v7M14 9v11M19 4v16"/>
+    </symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9"/><path d="M9.5 8v8M14.5 8v8"/>
+    </symbol>
+    <symbol id="i-play" viewBox="0 0 24 24">
+        <path d="m8 5 11 7-11 7V5Z"/>
+    </symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24">
+        <path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v6h-6"/>
+    </symbol>
+    <symbol id="i-check" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/>
+    </symbol>
+    <symbol id="i-navigation" viewBox="0 0 24 24">
+        <path d="m12 3 7 18-7-4-7 4 7-18Z"/>
+    </symbol>
+    <symbol id="i-external" viewBox="0 0 24 24">
+        <path d="M14 4h6v6M20 4l-9 9M19 14v5H5V5h5"/>
+    </symbol>
+</svg>
+
+<section id="login-view" class="login-view">
+    <div class="login-art" aria-hidden="true">
+        <span class="login-art-line line-one"></span>
+        <span class="login-art-line line-two"></span>
+        <span class="login-art-dot dot-one"></span>
+        <span class="login-art-dot dot-two"></span>
+    </div>
+    <main class="login-shell">
+        <div class="login-brand-row">
+            <span class="brand-mark"><svg class="icon"><use href="#i-truck"></use></svg></span>
+            <span class="brand-type"><strong>FleetRoute</strong><small>PRO</small></span>
+        </div>
+        <section class="login-card" aria-labelledby="login-title">
+            <p class="page-title" id="login-title">FleetRoute Pro</p>
+            <p class="login-company" id="login-company">Sistema de despacho de cargas</p>
+            <p class="login-company">Cabina del operador</p>
+            <div class="rule"></div>
+
+            <p class="field-label login-role-label">Ingrese como</p>
+            <div class="role-row" role="group" aria-label="Tipo de acceso">
+                <button class="role-card" type="button" disabled aria-disabled="true">
+                    <svg class="icon"><use href="#i-shield"></use></svg>
+                    <span>Administrador</span>
+                    <small>Solo en escritorio</small>
+                </button>
+                <button class="role-card role-selected" type="button" aria-pressed="true">
+                    <svg class="icon"><use href="#i-user"></use></svg>
+                    <span>Operador</span>
+                    <small>Vista web</small>
+                </button>
+            </div>
+
+            <form id="login-form" novalidate>
+                <label for="usuario" class="field-label">Usuario</label>
+                <div class="input-wrap">
+                    <svg class="icon input-icon" aria-hidden="true"><use href="#i-user"></use></svg>
+                    <input id="usuario" name="usuario" type="text" autocomplete="username"
+                           spellcheck="false" autocapitalize="none" placeholder="su usuario" required>
+                </div>
+                <label for="password" class="field-label">Contraseña</label>
+                <div class="input-wrap">
+                    <svg class="icon input-icon" aria-hidden="true"><use href="#i-lock"></use></svg>
+                    <input id="password" name="password" type="password" autocomplete="current-password"
+                           placeholder="su contraseña" required>
+                    <button id="toggle-password" class="input-action" type="button"
+                            aria-label="Mostrar contraseña" aria-pressed="false">
+                        <svg class="icon"><use id="toggle-password-icon" href="#i-eye"></use></svg>
+                    </button>
+                </div>
+                <p id="login-error" class="form-error" role="alert" aria-live="assertive" hidden></p>
+                <button id="login-submit" class="btn btn-primary btn-block" type="submit">
+                    <span class="btn-label">Ingresar</span>
+                    <svg class="icon btn-arrow"><use href="#i-arrow-right"></use></svg>
+                    <span class="spinner" aria-hidden="true" hidden></span>
+                </button>
+            </form>
+            <p class="login-help">La administración de la flota se realiza desde la aplicación de escritorio.</p>
+        </section>
+        <p class="login-footer">FleetRoute Pro · Gestión de cargas y jornadas</p>
+    </main>
+</section>
+
+<section id="dashboard-view" class="dashboard" hidden>
+    <header class="app-header">
+        <div class="header-title-row">
+            <h1 class="page-title">Cabina del operador</h1>
+            <div class="header-actions">
+                <button id="alert-button" class="btn btn-alert btn-icon" type="button" title="Enviar alerta a administración" disabled>
+                    <svg class="icon"><use href="#i-alert"></use></svg><span>Alerta</span>
+                </button>
+                <button id="change-password" class="btn btn-ghost btn-icon" type="button" title="Cambiar contraseña">
+                    <svg class="icon"><use href="#i-lock"></use></svg><span>Cambiar contraseña</span>
+                </button>
+                <button id="refresh-button" class="btn btn-ghost btn-icon" type="button" title="Actualizar datos">
+                    <svg class="icon"><use href="#i-refresh"></use></svg><span>Actualizar</span>
+                </button>
+                <button id="logout-button" class="btn btn-ghost btn-icon" type="button" title="Cerrar sesión">
+                    <svg class="icon"><use href="#i-logout"></use></svg><span>Cerrar sesión</span>
+                </button>
+            </div>
+        </div>
+        <div class="operator-row">
+            <span class="operator-label">Operador:</span>
+            <strong id="operator-name">Operador</strong>
+            <span id="session-status" class="status-label">Cabina lista.</span>
+            <span id="last-update" class="status-label">Conectando…</span>
+        </div>
+    </header>
+
+    <main class="app-main">
+        <section id="trip-content">
+            <div class="cabina-layout">
+                <article class="card trip-card">
+                        <div class="card-head">
+                            <div>
+                                <p class="eyebrow">VIAJE ACTIVO <span id="trip-id"></span></p>
+                                <h2 class="route-title">
+                                    <span id="route-origin">—</span>
+                                    <span id="route-arrow" class="route-arrow"><svg class="icon"><use href="#i-arrow-right"></use></svg></span>
+                                    <span id="route-destination">—</span>
+                                </h2>
+                            </div>
+                            <div class="status-stack">
+                                <span id="trip-status" class="status-chip">Sin estado</span>
+                                <span id="time-status" class="time-status" data-level="ok">A TIEMPO</span>
+                            </div>
+                        </div>
+                        <div class="trip-meta">
+                            <span class="meta-chip"><svg class="icon"><use href="#i-package"></use></svg><span id="cargo-number">—</span></span>
+                            <span class="meta-chip"><svg class="icon"><use href="#i-truck"></use></svg><span id="unit-number">—</span></span>
+                        </div>
+
+                        <div class="section-rule"></div>
+                        <p class="eyebrow">JORNADA DE HOY</p>
+                        <div class="metric-row">
+                            <span>Manejo acumulado</span>
+                            <strong id="drive-percent">0 %</strong>
+                        </div>
+                        <div class="progress-track"><span id="drive-progress"></span></div>
+                        <div class="metric-subrow"><span id="drive-time">0 h 00 min</span><span id="drive-max">Máximo 8 h</span></div>
+                        <div class="metric-grid">
+                            <div class="metric"><span>Descanso acumulado</span><strong id="rest-time">0 h 00 min</strong></div>
+                            <div class="metric"><span>Descanso restante</span><strong id="rest-remain">0 h 00 min</strong></div>
+                            <div class="metric"><span>Entrega estimada</span><strong id="eta">—</strong></div>
+                            <div class="metric"><span>Límite del cliente</span><strong id="sla-full">—</strong></div>
+                        </div>
+
+                        <div class="step-line"><span class="field-label">Paso de la jornada</span><span id="step-badge" class="step-badge">—</span></div>
+                        <div id="pause-hint" class="pause-hint" hidden>
+                            <svg class="icon"><use href="#i-pause"></use></svg>
+                            <span>El descanso se sigue contando mientras la pausa está activa.</span>
+                        </div>
+
+                        <div class="section-rule"></div>
+                        <p class="eyebrow">SIGUIENTE ASIGNACIÓN</p>
+                        <h3 id="next-title" class="next-title">Sin siguiente viaje</h3>
+                        <div id="next-empty" class="next-empty">No hay otro viaje encadenado.</div>
+                        <div id="next-content" class="next-content" hidden>
+                            <div class="next-route"><span id="next-origin">—</span><svg class="icon"><use href="#i-arrow-right"></use></svg><span id="next-destination">—</span></div>
+                            <p><span id="next-cargo">—</span> <span class="dot-separator">·</span> <span id="next-unit">—</span></p>
+                            <p class="next-sla"><svg class="icon"><use href="#i-calendar"></use></svg> SLA <strong id="next-sla">—</strong></p>
+                        </div>
+                    </article>
+
+                <article class="card map-card">
+                    <div class="card-head map-head">
+                        <div class="map-title-block">
+                            <p class="eyebrow">NAVEGACIÓN</p>
+                            <div class="map-title-line">
+                                <h2>Mapa de la ruta</h2>
+                                <div class="map-places">
+                                    <span>Origen: <strong id="legend-origin">—</strong></span>
+                                    <span>Destino: <strong id="legend-destination">—</strong></span>
+                                </div>
+                            </div>
+                        </div>
+                        <a id="open-navigation" class="btn btn-primary btn-icon" href="#" target="_blank"
+                           rel="noopener noreferrer">
+                            <svg class="icon"><use href="#i-navigation"></use></svg>
+                            <span title="Abrir la ruta en Google Maps">Google Maps</span>
+                            <svg class="icon external-icon"><use href="#i-external"></use></svg>
+                        </a>
+                    </div>
+                    <div class="nav-map-shell">
+                        <div id="nav-map" class="nav-map" role="img" aria-label="Mapa de la ruta del viaje"></div>
+                        <div class="turn-panel">
+                            <span class="turn-icon"><svg class="icon"><use href="#i-navigation"></use></svg></span>
+                            <div class="turn-copy">
+                                <p class="eyebrow">INDICACIÓN ACTUAL</p>
+                                <h3 id="nav-instruction">Calcula la ruta para comenzar.</h3>
+                                <p id="nav-step-distance" class="turn-distance">—</p>
+                            </div>
+                            <div class="turn-meta">
+                                <span id="nav-step-count" class="nav-chip">—</span>
+                                <span id="nav-total" class="nav-chip">—</span>
+                            </div>
+                        </div>
+                        <div id="route-fallback" class="route-fallback">
+                            <span class="route-fallback-icon"><svg class="icon"><use href="#i-route"></use></svg></span>
+                            <p class="eyebrow">OPENROUTESERVICE</p>
+                            <h3 id="route-fallback-title">Calculando ruta…</h3>
+                            <p id="route-fallback-message">La navegación se está preparando.</p>
+                            <p id="route-fallback-route" class="route-fallback-route">—</p>
+                            <a id="fallback-navigation" class="btn btn-secondary" href="#" target="_blank" rel="noopener noreferrer">
+                                <svg class="icon"><use href="#i-navigation"></use></svg> Abrir en Google Maps
+                            </a>
+                        </div>
+                    </div>
+                    <div class="nav-controls">
+                        <button id="nav-start" class="btn btn-primary" type="button" disabled>
+                            <svg class="icon"><use href="#i-navigation"></use></svg>
+                            <span>Iniciar navegación</span>
+                        </button>
+                        <button id="nav-voice" class="btn btn-secondary" type="button"
+                                aria-pressed="true" title="Activar o desactivar las indicaciones por voz">
+                            <svg class="icon"><use href="#i-signal"></use></svg>
+                            <span>Voz activada</span>
+                        </button>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="action-bar">
+            <div class="action-row">
+                <button id="btn-accion-iniciar" class="btn btn-primary" type="button" disabled>
+                    <svg class="icon"><use href="#i-play"></use></svg> Iniciar trayecto
+                </button>
+                <button id="btn-accion-pausar" class="btn btn-secondary" type="button" disabled>
+                    <svg class="icon"><use href="#i-pause"></use></svg> Pausa
+                </button>
+                <button id="btn-accion-reanudar" class="btn btn-success" type="button" disabled>
+                    <svg class="icon"><use href="#i-redo"></use></svg> Reanudar
+                </button>
+                <button id="btn-accion-confirmar" class="btn btn-primary" type="button" disabled>
+                    <svg class="icon"><use href="#i-check"></use></svg> Confirmar entrega
+                </button>
+            </div>
+        </section>
+    </main>
+</section>
+
+
+<div id="password-modal" class="modal-backdrop" hidden>
+    <form id="password-form" class="password-card" novalidate>
+        <div class="password-head">
+            <div>
+                <p class="eyebrow">SEGURIDAD</p>
+                <h3>Cambiar contraseña</h3>
+            </div>
+            <button id="close-password" class="icon-modal-close" type="button" aria-label="Cerrar">×</button>
+        </div>
+        <label class="field-label" for="current-password">Contraseña actual</label>
+        <input id="current-password" type="password" autocomplete="current-password" required>
+        <label class="field-label" for="new-password">Nueva contraseña</label>
+        <input id="new-password" type="password" autocomplete="new-password" minlength="8" required>
+        <label class="field-label" for="confirm-password">Confirmar nueva contraseña</label>
+        <input id="confirm-password" type="password" autocomplete="new-password" minlength="8" required>
+        <p id="password-error" class="form-error" role="alert" hidden></p>
+        <div class="password-actions">
+            <button id="cancel-password" class="btn btn-secondary" type="button">Cancelar</button>
+            <button id="save-password" class="btn btn-primary" type="submit">Guardar contraseña</button>
+        </div>
+    </form>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="/app.js?v=maplibre15"></script>
+</body>
+</html>
