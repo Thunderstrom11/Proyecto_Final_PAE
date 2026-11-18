@@ -18,6 +18,7 @@ import edu.ni.uam.proyecto_final_pae.model.Usuario;
 import edu.ni.uam.proyecto_final_pae.security.SesionActual;
 import edu.ni.uam.proyecto_final_pae.util.Tooltips;
 import javafx.animation.KeyFrame;
+import javafx.animation.PauseTransition;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -27,18 +28,35 @@ import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Bounds;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
+import javafx.util.Duration;
+import org.kordamp.ikonli.javafx.FontIcon;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.math.BigDecimal;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** CRUD de unidades, operadores y clientes conectado a Hibernate (RF-01, RF-02 y login). */
 public class FlotaController {
@@ -54,6 +72,15 @@ public class FlotaController {
     private final UsuarioDAO usuarioDAO = new UsuarioDAO();
 
     private Timeline reloj;
+    private Timeline relojTunel;
+    private Process procesoTunel;
+    private String enlaceTunel;
+    private String estadoTunel = "Sin conexión";
+    private final HttpClient httpCliente = HttpClient.newBuilder()
+            .connectTimeout(java.time.Duration.ofSeconds(2))
+            .build();
+    private PauseTransition pausaTooltipTunel;
+    private static final Pattern URL_TUNEL = Pattern.compile("https://[a-zA-Z0-9.-]+\\.trycloudflare\\.com");
 
     private List<Unidad> todasLasUnidades = List.of();
     private List<Operador> todosLosOperadores = List.of();
@@ -148,6 +175,10 @@ public class FlotaController {
     @FXML private Button btnViajes;
     @FXML private Button btnMonitor;
     @FXML private Button btnSalir;
+    @FXML private Button btnConexion;
+    @FXML private Circle circuloConexion;
+    @FXML private Button btnEnlaceTunel;
+    @FXML private FontIcon iconoEnlaceTunel;
 
     @FXML private Button btnGuardarOperador;
     @FXML private Button btnActualizarOperador;
@@ -176,6 +207,7 @@ public class FlotaController {
         btnReporte.setVisible(conReportes);
         btnReporte.setManaged(conReportes);
 
+        configurarConexionTunel();
         configurarFiltros();
         txtFiltroUnidad.textProperty().addListener((o, a, b) -> aplicarFiltroUnidades());
         txtFiltroOperador.textProperty().addListener((o, a, b) -> aplicarFiltroOperadores());
@@ -420,7 +452,222 @@ public class FlotaController {
 
     @FXML
     private void salir() {
+        detenerTunel();
         Navegacion.cerrarSesion(Navegacion.stageDe(btnSalir));
+    }
+
+    // ------------------------------------------------------------------ túnel de administración
+
+    private void configurarConexionTunel() {
+        pintarConexion(Color.web("#B42318"), "Sin conexión", "Iniciar Conexión");
+        relojTunel = new Timeline(new KeyFrame(javafx.util.Duration.seconds(5), evento -> actualizarEstadoTunel()));
+        relojTunel.setCycleCount(Timeline.INDEFINITE);
+        relojTunel.play();
+        Platform.runLater(() -> {
+            if (btnSalir.getScene() != null) {
+                ((Stage) btnSalir.getScene().getWindow()).setOnCloseRequest(evento -> detenerTunel());
+            }
+        });
+    }
+
+    @FXML
+    private void alternarConexion() {
+        if (procesoTunel != null && procesoTunel.isAlive()) {
+            detenerTunel();
+        } else {
+            iniciarTunel();
+        }
+    }
+
+    private void iniciarTunel() {
+        if (procesoTunel != null && procesoTunel.isAlive()) {
+            return;
+        }
+        String ejecutable = buscarCloudflared();
+        if (ejecutable == null) {
+            pintarConexion(Color.web("#B8860B"), "cloudflared no está instalado", "Iniciar Conexión");
+            return;
+        }
+        try {
+            ProcessBuilder builder = new ProcessBuilder(
+                    ejecutable,
+                    "tunnel",
+                    "--url", "http://localhost:8080",
+                    "--protocol", "http2",
+                    "--edge-ip-version", "4");
+            builder.redirectErrorStream(true);
+            procesoTunel = builder.start();
+            enlaceTunel = null;
+            if (relojTunel != null) {
+                relojTunel.play();
+            }
+            pintarConexion(Color.web("#B8860B"), "Conectando…", "Detener Conexión");
+            Thread lector = new Thread(() -> leerSalidaTunel(procesoTunel), "cloudflared-output");
+            lector.setDaemon(true);
+            lector.start();
+        } catch (IOException e) {
+            procesoTunel = null;
+            pintarConexion(Color.web("#B8860B"), "No se pudo iniciar cloudflared", "Iniciar Conexión");
+        }
+    }
+
+    private String buscarCloudflared() {
+        List<String> candidatos = new ArrayList<>();
+        String local = System.getenv("LOCALAPPDATA");
+        if (local != null) {
+            candidatos.add(local + "\\Microsoft\\WinGet\\Links\\cloudflared.exe");
+        }
+        String programFiles = System.getenv("ProgramFiles");
+        if (programFiles != null) {
+            candidatos.add(programFiles + "\\cloudflared\\cloudflared.exe");
+        }
+        String programFilesX86 = System.getenv("ProgramFiles(x86)");
+        if (programFilesX86 != null) {
+            candidatos.add(programFilesX86 + "\\cloudflared\\cloudflared.exe");
+        }
+        for (String candidato : candidatos) {
+            if (Files.isExecutable(Path.of(candidato))) {
+                return candidato;
+            }
+        }
+        return "cloudflared";
+    }
+
+    private void leerSalidaTunel(Process proceso) {
+        try (BufferedReader lector = new BufferedReader(new InputStreamReader(proceso.getInputStream()))) {
+            String linea;
+            while ((linea = lector.readLine()) != null) {
+                Matcher matcher = URL_TUNEL.matcher(linea);
+                if (matcher.find()) {
+                    String url = matcher.group();
+                    Platform.runLater(() -> {
+                        if (procesoTunel == proceso) {
+                            enlaceTunel = url;
+                            pintarConexion(Color.web("#1B7F3B"), url, "Detener Conexión");
+                        }
+                    });
+                }
+            }
+        } catch (IOException ignored) {
+            // El monitor de estado detecta la caída del proceso.
+        }
+        Platform.runLater(() -> {
+            if (procesoTunel == proceso) {
+                procesoTunel = null;
+                enlaceTunel = null;
+                pintarConexion(Color.web("#B42318"), "Sin conexión", "Iniciar Conexión");
+            }
+        });
+    }
+
+    private void actualizarEstadoTunel() {
+        if (procesoTunel == null || !procesoTunel.isAlive()) {
+            if (procesoTunel != null) {
+                procesoTunel = null;
+                enlaceTunel = null;
+            }
+            pintarConexion(Color.web("#B42318"), "Sin conexión", "Iniciar Conexión");
+            return;
+        }
+        if (enlaceTunel == null || enlaceTunel.isBlank()) {
+            pintarConexion(Color.web("#B8860B"), "Conectando…", "Detener Conexión");
+            return;
+        }
+        HttpRequest solicitud = HttpRequest.newBuilder(URI.create("http://localhost:8080/api/salud"))
+                .timeout(java.time.Duration.ofSeconds(2))
+                .GET()
+                .build();
+        httpCliente.sendAsync(solicitud, HttpResponse.BodyHandlers.discarding())
+                .thenAccept(respuesta -> Platform.runLater(() -> {
+                    if (enlaceTunel != null) {
+                        pintarConexion(respuesta.statusCode() == 200
+                                        ? Color.web("#1B7F3B") : Color.web("#B8860B"),
+                                enlaceTunel, "Detener Conexión");
+                    }
+                }))
+                .exceptionally(error -> {
+                    Platform.runLater(() -> {
+                        if (enlaceTunel != null) {
+                            pintarConexion(Color.web("#B8860B"), enlaceTunel, "Detener Conexión");
+                        }
+                    });
+                    return null;
+                });
+    }
+
+    private void detenerTunel() {
+        if (relojTunel != null) {
+            relojTunel.stop();
+        }
+        if (procesoTunel != null) {
+            procesoTunel.destroy();
+            procesoTunel = null;
+        }
+        enlaceTunel = null;
+        if (btnConexion != null) {
+            pintarConexion(Color.web("#B42318"), "Sin conexión", "Iniciar Conexión");
+        }
+    }
+
+    private void pintarConexion(Color color, String texto, String textoBoton) {
+        if (circuloConexion != null) {
+            circuloConexion.setFill(color);
+        }
+        estadoTunel = texto;
+        boolean activo = enlaceTunel != null && !enlaceTunel.isBlank();
+        if (iconoEnlaceTunel != null) {
+            iconoEnlaceTunel.setIconLiteral(activo ? "fas-link" : "fas-unlink");
+            iconoEnlaceTunel.setIconColor(Color.web(activo ? "#0E7490" : "#8A97AA"));
+        }
+        if (btnEnlaceTunel != null) {
+            actualizarTooltipTunel();
+        }
+        if (btnConexion != null) {
+            btnConexion.setText(textoBoton);
+        }
+    }
+
+    @FXML
+    private void copiarEnlaceTunel() {
+        if (enlaceTunel == null || enlaceTunel.isBlank()) {
+            mostrarTooltipTunel("Todavía no hay un enlace activo.");
+            return;
+        }
+        ClipboardContent contenido = new ClipboardContent();
+        contenido.putString(enlaceTunel);
+        Clipboard.getSystemClipboard().setContent(contenido);
+        mostrarTooltipTunel("Enlace copiado al portapapeles.");
+    }
+
+    private void actualizarTooltipTunel() {
+        if (btnEnlaceTunel == null || btnEnlaceTunel.getTooltip() == null) {
+            return;
+        }
+        btnEnlaceTunel.getTooltip().setText(enlaceTunel != null && !enlaceTunel.isBlank()
+                ? "Copiar enlace del túnel."
+                : estadoTunel);
+    }
+
+    private void mostrarTooltipTunel(String mensaje) {
+        if (btnEnlaceTunel == null || btnEnlaceTunel.getScene() == null
+                || btnEnlaceTunel.getTooltip() == null) {
+            return;
+        }
+        if (pausaTooltipTunel != null) {
+            pausaTooltipTunel.stop();
+        }
+        Tooltip tooltip = btnEnlaceTunel.getTooltip();
+        tooltip.setText(mensaje);
+        Bounds bordes = btnEnlaceTunel.localToScreen(btnEnlaceTunel.getBoundsInLocal());
+        if (bordes != null) {
+            tooltip.show(btnEnlaceTunel, bordes.getMinX(), bordes.getMaxY() + 4);
+        }
+        pausaTooltipTunel = new PauseTransition(Duration.seconds(2));
+        pausaTooltipTunel.setOnFinished(evento -> {
+            tooltip.hide();
+            actualizarTooltipTunel();
+        });
+        pausaTooltipTunel.play();
     }
 
     private boolean sesionAdmin() {
@@ -1100,7 +1347,6 @@ public class FlotaController {
             stage.setMinWidth(Math.min(ancho, 900));
             stage.setMinHeight(Math.min(alto, 620));
             Navegacion.registrar(stage);
-            stage.setMaximized(true);
             stage.show();
         } catch (Exception e) {
             advertencia("No se pudo abrir " + titulo + ": " + e.getMessage());

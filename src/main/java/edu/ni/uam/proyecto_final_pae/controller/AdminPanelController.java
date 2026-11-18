@@ -2,11 +2,13 @@ package edu.ni.uam.proyecto_final_pae.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
+import edu.ni.uam.proyecto_final_pae.dao.AlertaOperadorDAO;
 import edu.ni.uam.proyecto_final_pae.dao.OperadorDAO;
 import edu.ni.uam.proyecto_final_pae.dao.PaisDAO;
 import edu.ni.uam.proyecto_final_pae.dao.RutaDAO;
 import edu.ni.uam.proyecto_final_pae.dao.UbicacionDAO;
 import edu.ni.uam.proyecto_final_pae.dao.UsuarioDAO;
+import edu.ni.uam.proyecto_final_pae.model.AlertaOperador;
 import edu.ni.uam.proyecto_final_pae.model.Operador;
 import edu.ni.uam.proyecto_final_pae.model.RolUsuario;
 import edu.ni.uam.proyecto_final_pae.model.Ruta;
@@ -50,6 +52,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
 /**
@@ -68,6 +71,8 @@ public class AdminPanelController {
     private final UbicacionDAO ubicacionDAO = new UbicacionDAO();
     private final RutaDAO rutaDAO = new RutaDAO();
     private final PaisDAO paisDAO = new PaisDAO();
+    private final AlertaOperadorDAO alertaOperadorDAO = new AlertaOperadorDAO();
+    private static final DateTimeFormatter FORMATO_ALERTA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private final ObjectMapper json = new ObjectMapper();
 
     // cuentas
@@ -133,6 +138,17 @@ public class AdminPanelController {
     @FXML private Button btnActualizarRuta;
     @FXML private Button btnEliminarRuta;
 
+    // alertas
+    @FXML private TableView<AlertaOperador> tablaAlertas;
+    @FXML private TableColumn<AlertaOperador, String> colAlertaFecha;
+    @FXML private TableColumn<AlertaOperador, String> colAlertaOperador;
+    @FXML private TableColumn<AlertaOperador, String> colAlertaViaje;
+    @FXML private TableColumn<AlertaOperador, String> colAlertaUnidad;
+    @FXML private TableColumn<AlertaOperador, String> colAlertaUbicacion;
+    @FXML private TableColumn<AlertaOperador, String> colAlertaMensaje;
+    @FXML private TableColumn<AlertaOperador, String> colAlertaEstado;
+    @FXML private Button btnMarcarAlertaAtendida;
+
     @FXML private Label lblEstado;
     @FXML private Label lblAdministrador;
 
@@ -166,6 +182,7 @@ public class AdminPanelController {
         configurarCuentas();
         configurarUbicaciones();
         configurarRutas();
+        configurarAlertas();
         txtBuscarUbicacion.textProperty().addListener((o, a, b) -> aplicarFiltroUbicaciones());
         txtBuscarRutaAdmin.textProperty().addListener((o, a, b) -> aplicarFiltroRutas());
         crearMapa();
@@ -182,6 +199,7 @@ public class AdminPanelController {
             cargarCuentas();
             cargarUbicaciones();
             cargarRutas();
+            cargarAlertas();
         } catch (PersistenciaException e) {
             error("No se pudo conectar con la base de datos", e);
         }
@@ -392,11 +410,6 @@ public class AdminPanelController {
         } catch (PersistenciaException e) {
             error("No se pudo restablecer la contraseña", e);
         }
-    }
-
-    @FXML
-    private void cerrarSesion() {
-        Navegacion.cerrarSesion(Navegacion.stageDe(lblEstado));
     }
 
     @FXML
@@ -1402,6 +1415,63 @@ public class AdminPanelController {
         Alert alerta = new Alert(Alert.AlertType.WARNING, mensaje, ButtonType.OK);
         alerta.setHeaderText("Datos incompletos o inválidos");
         alerta.showAndWait();
+    }
+
+    // ------------------------------------------------------------------ alertas
+
+    private void configurarAlertas() {
+        colAlertaFecha.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().getFechaHora() == null ? "—" : c.getValue().getFechaHora().format(FORMATO_ALERTA)));
+        colAlertaOperador.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().getOperador() == null ? "—" : c.getValue().getOperador().getNombre()));
+        colAlertaViaje.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().getViaje() == null ? "—"
+                        : "#" + c.getValue().getViaje().getId() + " · "
+                        + c.getValue().getViaje().getCarga().getNumeroCarga()));
+        colAlertaUnidad.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().getUnidad() == null ? "—" : c.getValue().getUnidad().getNumeroUnidad()));
+        colAlertaUbicacion.setCellValueFactory(c -> new SimpleStringProperty(
+                ubicacionAlerta(c.getValue())));
+        colAlertaMensaje.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().getMensaje() == null ? "—" : c.getValue().getMensaje()));
+        colAlertaEstado.setCellValueFactory(c -> new SimpleStringProperty(
+                Boolean.TRUE.equals(c.getValue().getAtendida()) ? "Atendida" : "Pendiente"));
+        btnMarcarAlertaAtendida.disableProperty().bind(
+                tablaAlertas.getSelectionModel().selectedItemProperty().isNull());
+    }
+
+    @FXML
+    private void cargarAlertas() {
+        try {
+            tablaAlertas.setItems(FXCollections.observableArrayList(alertaOperadorDAO.listarTodas()));
+            tablaAlertas.refresh();
+        } catch (PersistenciaException e) {
+            error("No se pudieron cargar las alertas", e);
+        }
+    }
+
+    @FXML
+    private void marcarAlertaAtendida() {
+        AlertaOperador seleccionada = tablaAlertas.getSelectionModel().getSelectedItem();
+        if (seleccionada == null) {
+            advertencia("Seleccione una alerta de la tabla.");
+            return;
+        }
+        try {
+            alertaOperadorDAO.marcarAtendida(seleccionada.getId());
+            cargarAlertas();
+        } catch (PersistenciaException e) {
+            error("No se pudo marcar la alerta", e);
+        }
+    }
+
+    private String ubicacionAlerta(AlertaOperador alerta) {
+        String ubicacion = alerta.getUbicacion() == null ? "—" : alerta.getUbicacion();
+        if (alerta.getLatitud() != null && alerta.getLongitud() != null) {
+            ubicacion += " (" + String.format(Locale.ROOT, "%.5f", alerta.getLatitud())
+                    + ", " + String.format(Locale.ROOT, "%.5f", alerta.getLongitud()) + ")";
+        }
+        return ubicacion;
     }
 
     private void error(String titulo, PersistenciaException e) {

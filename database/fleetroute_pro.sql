@@ -31,6 +31,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- 0. Limpieza (útil en desarrollo; NO ejecutar en producción)
 -- ---------------------------------------------------------------------
 DROP TABLE IF EXISTS registro_jornada        CASCADE;
+DROP TABLE IF EXISTS alertas_operador        CASCADE;
 DROP TABLE IF EXISTS viajes                  CASCADE;
 DROP TABLE IF EXISTS unidad_operador         CASCADE;   -- esquema anterior
 DROP TABLE IF EXISTS cargas                  CASCADE;
@@ -314,6 +315,30 @@ CREATE TABLE registro_jornada (
         CHECK (num_evento > 0)
 );
 
+-- Alertas manuales enviadas por los operadores desde la cabina.
+CREATE TABLE alertas_operador (
+    id_alerta      SERIAL PRIMARY KEY,
+    id_viaje       INT          NOT NULL,
+    id_operador    INT          NOT NULL,
+    id_unidad      INT          NOT NULL,
+    latitud        DOUBLE PRECISION,
+    longitud       DOUBLE PRECISION,
+    ubicacion      VARCHAR(200),
+    mensaje        VARCHAR(300),
+    fecha_hora     TIMESTAMP    NOT NULL DEFAULT NOW(),
+    atendida       BOOLEAN      NOT NULL DEFAULT FALSE,
+
+    CONSTRAINT fk_alerta_viaje
+        FOREIGN KEY (id_viaje) REFERENCES viajes (id_viaje)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_alerta_operador
+        FOREIGN KEY (id_operador) REFERENCES operadores (id_operador)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_alerta_unidad
+        FOREIGN KEY (id_unidad) REFERENCES unidades (id_unidad)
+        ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
 
 -- =====================================================================
 -- 5. TRIGGERS
@@ -424,6 +449,10 @@ CREATE INDEX idx_operadores_estado ON operadores (id_estado_operador);
 CREATE INDEX idx_rj_id_tipo ON registro_jornada (id_tipo_evento, fecha_hora);
 -- (uq_rj_viaje_num ya cubre la búsqueda por id_viaje)
 
+-- Alertas de operadores
+CREATE INDEX idx_alertas_fecha    ON alertas_operador (fecha_hora DESC);
+CREATE INDEX idx_alertas_atendida ON alertas_operador (atendida);
+
 
 -- =====================================================================
 -- 8. SEED — Catálogos
@@ -507,7 +536,7 @@ VALUES ('admin', crypt('Admin123!', gen_salt('bf', 10)), 'ADMIN', TRUE, TRUE);
 INSERT INTO usuarios (username, password_hash, rol, id_operador)
 VALUES (
     'operador',
-    crypt('Operador123!', gen_salt('bf', 10)),
+    crypt('operador123!', gen_salt('bf', 10)),
     'OPERADOR',
     (SELECT id_operador FROM operadores WHERE cedula = '001-000000-0001A')
 );
@@ -526,6 +555,7 @@ COMMENT ON TABLE  usuarios         IS 'Credenciales de acceso por rol; password_
 COMMENT ON TABLE  cargas           IS 'Envíos contratados por un cliente, con SLA (fecha límite).';
 COMMENT ON TABLE  viajes           IS 'Ejecución de una carga por una unidad y un operador.';
 COMMENT ON TABLE  registro_jornada IS 'Bitácora de eventos del viaje para el motor de fatiga.';
+COMMENT ON TABLE  alertas_operador IS 'Alertas manuales enviadas por operadores; incluyen ubicación, viaje y unidad.';
 
 COMMENT ON COLUMN unidades.modelo              IS 'Obligatorio según RF-01.';
 COMMENT ON COLUMN unidades.capacidad_toneladas IS 'Opcional; si se informa, se valida contra el peso de la carga.';

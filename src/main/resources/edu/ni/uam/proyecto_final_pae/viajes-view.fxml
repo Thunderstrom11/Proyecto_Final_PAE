@@ -21,10 +21,6 @@
             <HBox spacing="10" alignment="CENTER_LEFT">
                 <Label text="Gestión de viajes" styleClass="page-title"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Button text="Cerrar sesión" styleClass="btn-ghost" onAction="#cerrarSesion">
-                    <graphic><FontIcon iconLiteral="fas-sign-out-alt"/></graphic>
-                    <tooltip><Tooltip text="Cierra la sesión y vuelve al inicio."/></tooltip>
-                </Button>
             </HBox>
             <Label fx:id="lblEstado" text="Listo." styleClass="status-label"/>
             <padding><Insets bottom="10"/></padding>

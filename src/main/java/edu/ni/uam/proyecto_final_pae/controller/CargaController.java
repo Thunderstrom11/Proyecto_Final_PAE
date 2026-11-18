@@ -148,11 +148,6 @@ public class CargaController {
     // ------------------------------------------------------------------ acciones
 
     @FXML
-    private void cerrarSesion() {
-        Navegacion.cerrarSesion(Navegacion.stageDe(lblEstado));
-    }
-
-    @FXML
     private void verTodas() {
         if (!sesionAdmin()) {
             return;

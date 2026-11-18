@@ -16,6 +16,7 @@
         <property name="hibernate.format_sql">true</property>
         <property name="hibernate.jdbc.time_zone">America/Managua</property>
 
+        <mapping class="edu.ni.uam.proyecto_final_pae.model.AlertaOperador"/>
         <mapping class="edu.ni.uam.proyecto_final_pae.model.Carga"/>
         <mapping class="edu.ni.uam.proyecto_final_pae.model.Cliente"/>
         <mapping class="edu.ni.uam.proyecto_final_pae.model.Empresa"/>

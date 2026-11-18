@@ -25,10 +25,6 @@
                 <Label styleClass="page-title" text="Panel administrativo" />
                 <Region HBox.hgrow="ALWAYS" />
                 <Label fx:id="lblAdministrador" styleClass="status-label" />
-                <Button onAction="#cerrarSesion" styleClass="btn-ghost" text="Cerrar sesión">
-                    <graphic><FontIcon iconLiteral="fas-sign-out-alt" /></graphic>
-                    <tooltip><Tooltip text="Cierra la sesión y vuelve al inicio." /></tooltip>
-                </Button>
             </HBox>
             <Label fx:id="lblEstado" styleClass="status-label" text="Solo el administrador principal puede modificar cuentas, ubicaciones y rutas." />
             <padding><Insets bottom="10" /></padding>
@@ -136,12 +132,40 @@
                 </BorderPane>
             </Tab>
 
+            <Tab text="Alertas">
+                <VBox spacing="8">
+                    <HBox alignment="CENTER_LEFT" spacing="8">
+                        <Label style="-fx-font-weight: bold;" text="Alertas enviadas por operadores" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Button fx:id="btnActualizarAlertas" onAction="#cargarAlertas" styleClass="btn-secondary" text="Actualizar">
+                            <graphic><FontIcon iconLiteral="fas-sync-alt" /></graphic>
+                            <tooltip><Tooltip text="Volver a cargar las alertas." /></tooltip>
+                        </Button>
+                        <Button fx:id="btnMarcarAlertaAtendida" onAction="#marcarAlertaAtendida" styleClass="btn-ghost" text="Marcar atendida">
+                            <graphic><FontIcon iconLiteral="fas-check-circle" /></graphic>
+                            <tooltip><Tooltip text="Marcar la alerta seleccionada como atendida." /></tooltip>
+                        </Button>
+                    </HBox>
+                    <TableView fx:id="tablaAlertas" VBox.vgrow="ALWAYS">
+                        <columns>
+                            <TableColumn fx:id="colAlertaFecha" prefWidth="140" text="Fecha y hora" />
+                            <TableColumn fx:id="colAlertaOperador" prefWidth="140" text="Operador" />
+                            <TableColumn fx:id="colAlertaViaje" prefWidth="180" text="Viaje / carga" />
+                            <TableColumn fx:id="colAlertaUnidad" prefWidth="100" text="Unidad" />
+                            <TableColumn fx:id="colAlertaUbicacion" prefWidth="280" text="Ubicación" />
+                            <TableColumn fx:id="colAlertaMensaje" prefWidth="220" text="Mensaje" />
+                            <TableColumn fx:id="colAlertaEstado" prefWidth="90" text="Estado" />
+                        </columns>
+                    </TableView>
+                </VBox>
+            </Tab>
+
             <Tab text="Ubicaciones">
                 <BorderPane>
                     <center>
                         <VBox spacing="8">
                             <HBox alignment="CENTER_LEFT" spacing="6">
-                                <TextField fx:id="txtBuscarUbicacion" prefHeight="33.0" prefWidth="260.0" promptText="buscador" HBox.hgrow="ALWAYS">
+                                <TextField fx:id="txtBuscarUbicacion" prefHeight="34.0" prefWidth="510.0" promptText="buscador" HBox.hgrow="ALWAYS">
                                     <tooltip><Tooltip text="Busca por nombre, departamento o país." /></tooltip>
                                 </TextField>
                                 <Button onAction="#limpiarBusquedaUbicacion" styleClass="icon-button">

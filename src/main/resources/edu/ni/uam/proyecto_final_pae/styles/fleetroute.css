@@ -433,3 +433,87 @@
 .filter-toggle:selected .ikonli-font-icon {
     -fx-icon-color: #FFFFFF;
 }
+
+/* Cabina del operador: panel central de navegación y métricas compactas. */
+.cabina-root .form-pane .section-title {
+    -fx-font-size: 17px;
+}
+
+.cabina-root .cabina-metric {
+    -fx-font-size: 16px;
+}
+
+.map-panel {
+    -fx-background-color: linear-gradient(to bottom right, #F8FBFF, #E7F1F7);
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+    -fx-border-color: #DDE6F2;
+    -fx-border-width: 1;
+    -fx-padding: 20;
+    -fx-effect: dropshadow(gaussian, rgba(34, 58, 94, 0.08), 12, 0, 0, 3);
+}
+
+.map-placeholder-icon {
+    -fx-icon-color: #0E7490;
+    -fx-icon-size: 46px;
+}
+
+.map-placeholder-title {
+    -fx-font-size: 19px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #1B2B44;
+}
+
+.map-placeholder-route {
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #223A5E;
+}
+
+.map-placeholder-hint {
+    -fx-text-fill: #5D6B82;
+    -fx-font-size: 12px;
+}
+
+.map-badge {
+    -fx-background-color: #E9EFF8;
+    -fx-background-radius: 999;
+    -fx-padding: 4 10 4 10;
+    -fx-text-fill: #223A5E;
+    -fx-font-size: 11px;
+    -fx-font-weight: 600;
+}
+
+/* Alerta de emergencia del operador. */
+.btn-alert {
+    -fx-background-color: #F5B942;
+    -fx-text-fill: #3A2C0B;
+    -fx-border-color: #D99A18;
+    -fx-border-radius: 10;
+}
+
+.btn-alert:hover {
+    -fx-background-color: #FFC95C;
+}
+
+.btn-alert .ikonli-font-icon {
+    -fx-icon-color: #3A2C0B;
+}
+
+.tunnel-link-button {
+    -fx-background-color: transparent;
+    -fx-background-radius: 15;
+    -fx-min-width: 30;
+    -fx-min-height: 30;
+    -fx-padding: 6;
+    -fx-cursor: hand;
+}
+
+.tunnel-link-button:hover {
+    -fx-background-color: #E8EEF6;
+}
+
+.tunnel-link-button .ikonli-font-icon {
+    -fx-icon-color: #0E7490;
+    -fx-icon-size: 16px;
+}

@@ -382,11 +382,6 @@ public class ViajeController {
     }
 
     @FXML
-    private void cerrarSesion() {
-        Navegacion.cerrarSesion(Navegacion.stageDe(lblEstado));
-    }
-
-    @FXML
     private void limpiar() {
         tabla.getSelectionModel().clearSelection();
         cmbUnidad.getSelectionModel().clearSelection();
