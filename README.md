@@ -40,6 +40,7 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 - [Explicación del ORM y las transacciones](#explicación-del-orm-y-las-transacciones)
 - [Requisitos previos](#requisitos-previos)
 - [Instalación y ejecución](#instalación-y-ejecución)
+- [Reporte financiero con JasperReports](#reporte-financiero-con-jasperreports)
 - [API y cabina web del operador](#api-y-cabina-web-del-operador)
 - [Datos de ejemplo](#datos-de-ejemplo)
 - [Variables de entorno](#variables-de-entorno)
@@ -100,7 +101,7 @@ Ambos roles inician sesión con credenciales almacenadas en la base de datos; la
 - **Planificador de asignaciones:** vinculación de unidad, operador y carga en un mismo viaje.
 - **Pre-asignación de viajes:** encolamiento de la siguiente carga validando la consistencia geográfica de la ruta.
 - **Monitor de flota en vivo:** tablero semaforizado con el estado de unidades, operadores y viajes activos.
-- **Control financiero:** registro y consulta de la tarifa cobrada por cada flete, por operador y por unidad.
+- **Control financiero:** registro de la tarifa cobrada por cada flete, consulta por operador y unidad, y exportación a PDF.
 - **Gestión de unidades, operadores y cargas:** alta, consulta, actualización y baja.
 - **Gestión de clientes:** pestaña con todos los campos de `clientes` (empresa, contacto, teléfono, email, dirección y activo), con validaciones y bajas protegidas por integridad referencial.
 - **Panel administrativo:** cuentas de administradores y operadores, permisos de reportes, restablecimiento de contraseñas, países activos con buscador, ubicaciones editables con mapa satelital de solo lectura y rutas con tiempo estimado y precio sugerido. Incluye borrados masivos de cuentas filtradas, ubicaciones y rutas protegidos con la contraseña del administrador.
@@ -512,6 +513,18 @@ mvn test
 2. Configurar el SDK del proyecto en **File → Project Structure → Project** con un JDK 17 o superior (por ejemplo, Temurin 21 o 25).
 3. Verificar que el archivo `.env` esté en la raíz del proyecto.
 4. Ejecutar la clase principal o la meta de Maven `javafx:run`.
+
+---
+
+## Reporte financiero con JasperReports
+
+1. Ejecuta `mvn clean javafx:run` e inicia sesión como administrador principal o administrador con permiso para ver reportes financieros.
+2. En la pantalla de Flota, abre **Reporte financiero**. Usa **Desde** y **Hasta** para filtrar por fecha de finalización. Ambos días se incluyen y puedes dejar cualquiera de los campos vacío.
+3. Pulsa **Exportar PDF** y elige dónde guardar el archivo. El PDF incluye el período, el total en la moneda de la empresa y ambos desgloses, por operador y por unidad. Para la demo, elige un período con al menos un viaje finalizado para ver filas de ejemplo.
+
+Para cambiar el diseño, importa [reporte-financiero.jrxml](src/main/resources/edu/ni/uam/proyecto_final_pae/reportes/reporte-financiero.jrxml) a un proyecto de **Jaspersoft Studio Community Edition 6.21.5** y ábrelo en la pestaña **Design**. Guarda el diseño en la ruta original del repositorio y vuelve a ejecutar la aplicación para probar el PDF con datos reales. [Jaspersoft Studio Community Edition 6.21.5](https://community.jaspersoft.com/files/file/113-jaspersoft-studio-community-edition/)
+
+El `.jrxml` describe el diseño. Al exportar, `ReporteFinancieroService` lo compila con JasperReports Library 6.21.5, lo rellena con los resultados que JavaFX ya cargó con Hibernate y guarda el PDF. Maven descarga la biblioteca. Studio se usa para editar la plantilla y la aplicación genera el archivo con su conexión de PostgreSQL habitual. [JasperReports Library 6.21.5](https://community.jaspersoft.com/download-jaspersoft/community-edition/jasperreports-library_6.21.5)
 
 ---
 
