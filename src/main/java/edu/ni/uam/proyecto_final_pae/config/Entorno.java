@@ -114,7 +114,8 @@ final class Entorno {
         return valores;
     }
 
-    private static Path ubicar() {
+    /** Archivo .env en uso, o null si todavia no existe. */
+    static Path ubicar() {
         Path directorio = Path.of(System.getProperty("user.dir")).toAbsolutePath();
         for (int nivel = 0; nivel < 4 && directorio != null; nivel++, directorio = directorio.getParent()) {
             Path archivo = directorio.resolve(".env");

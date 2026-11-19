@@ -1,5 +1,6 @@
 package edu.ni.uam.proyecto_final_pae.controller;
 
+import edu.ni.uam.proyecto_final_pae.config.MarcaEmpresa;
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.dao.EmpresaDAO;
 import edu.ni.uam.proyecto_final_pae.dao.UsuarioDAO;
@@ -25,6 +26,7 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.image.ImageView;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.util.Duration;
@@ -52,6 +54,7 @@ public class LoginController {
     @FXML private Button btnIngresar;
     @FXML private Label lblMensaje;
     @FXML private Label lblEmpresa;
+    @FXML private ImageView imgLogo;
 
     @FXML
     private void initialize() {
@@ -78,6 +81,11 @@ public class LoginController {
             }
         });
 
+        MarcaEmpresa.imagen(86).ifPresent(imagen -> {
+            imgLogo.setImage(imagen);
+            imgLogo.setVisible(true);
+            imgLogo.setManaged(true);
+        });
         try {
             empresaDAO.obtener().ifPresent(empresa -> lblEmpresa.setText(empresa.getNombre()));
         } catch (PersistenciaException e) {

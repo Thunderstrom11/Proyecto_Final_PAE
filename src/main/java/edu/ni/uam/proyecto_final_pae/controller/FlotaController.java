@@ -479,7 +479,7 @@ public class FlotaController {
         if (iniciandoConexion) {
             detenerServicios();
         } else if (procesoTunel != null && procesoTunel.isAlive()) {
-            detenerTunel();
+            detenerServicios();
         } else {
             iniciarTunel();
         }

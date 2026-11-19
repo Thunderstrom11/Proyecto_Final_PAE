@@ -1,5 +1,6 @@
 target/
 .env
+.env.*
 !.env.example
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
@@ -41,3 +42,6 @@ build/
 .DS_Store
 ### IntelliJ (carpeta de usuario) ###
 .idea/
+
+### Logo de la empresa (dato local) ###
+.fleetroute/
