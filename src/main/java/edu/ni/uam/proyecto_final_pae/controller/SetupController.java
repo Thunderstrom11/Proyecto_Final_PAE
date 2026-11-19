@@ -1,6 +1,7 @@
 package edu.ni.uam.proyecto_final_pae.controller;
 
 import edu.ni.uam.proyecto_final_pae.config.GeoUtil;
+import edu.ni.uam.proyecto_final_pae.config.MarcaEmpresa;
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.config.PreparadorBase;
 import edu.ni.uam.proyecto_final_pae.config.Transaccion;
@@ -34,10 +35,15 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 import org.mindrot.jbcrypt.BCrypt;
 
+import java.io.File;
 import java.math.BigDecimal;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -105,6 +111,10 @@ public class SetupController {
     @FXML private ComboBox<String> cmbEmpresaPais;
     @FXML private ComboBox<String> cmbZona;
     @FXML private ComboBox<String> cmbMoneda;
+    @FXML private ImageView imgLogo;
+    @FXML private Button btnElegirLogo;
+    @FXML private Button btnQuitarLogo;
+    @FXML private Label lblEstadoLogo;
 
     @FXML private VBox pasoAdmin;
     @FXML private TextField txtUsuario;
@@ -179,11 +189,14 @@ public class SetupController {
     private boolean crearAdmin;
     private Empresa empresa;
     private Usuario admin;
+    private Path logoElegido;
+    private boolean logoQuitado;
 
     @FXML
     private void initialize() {
         ComboBuscador.configurar(cmbMoneda, Listas.monedas());
         cmbMoneda.setValue(monedaPorDefecto());
+        MarcaEmpresa.imagen(72).ifPresent(this::mostrarLogo);
         ComboBuscador.configurar(cmbEmpresaPais, Listas.paises());
         cmbEmpresaPais.setValue("Nicaragua");
         ComboBuscador.configurar(cmbZona, Listas.zonasHorarias());
@@ -449,6 +462,74 @@ public class SetupController {
         nueva.setZonaHoraria(zona.trim());
         nueva.setMoneda(moneda.substring(0, 3));
         return nueva;
+    }
+
+    /** Abre el selector de archivos y deja el logo listo para la vista previa. */
+    @FXML
+    private void elegirLogo() {
+        lblMensaje.setText("");
+        FileChooser selector = new FileChooser();
+        selector.setTitle("Elegir el logo de la empresa");
+        selector.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Imágenes (PNG, JPG, GIF)", "*.png", "*.jpg", "*.jpeg", "*.gif"));
+        MarcaEmpresa.ruta().ifPresent(actual -> {
+            File carpeta = actual.getParent().toFile();
+            if (carpeta.isDirectory()) {
+                selector.setInitialDirectory(carpeta);
+            }
+        });
+        File archivo = selector.showOpenDialog(Navegacion.stageDe(btnElegirLogo));
+        if (archivo == null) {
+            return;
+        }
+        try {
+            Image vista = MarcaEmpresa.leer(archivo.toPath(), 72);
+            logoElegido = archivo.toPath();
+            logoQuitado = false;
+            mostrarLogo(vista);
+            lblEstadoLogo.setText(archivo.getName() + " · se copia junto a los datos al guardar la configuración.");
+        } catch (IllegalArgumentException e) {
+            lblMensaje.setText(e.getMessage());
+        }
+    }
+
+    /** Deja la pantalla de inicio sin logo. */
+    @FXML
+    private void quitarLogo() {
+        lblMensaje.setText("");
+        logoElegido = null;
+        logoQuitado = true;
+        imgLogo.setImage(null);
+        imgLogo.setVisible(false);
+        imgLogo.setManaged(false);
+        btnQuitarLogo.setDisable(true);
+        lblEstadoLogo.setText("Sin logo. La pantalla de inicio mostrará el nombre de la empresa.");
+    }
+
+    private void mostrarLogo(Image imagen) {
+        imgLogo.setImage(imagen);
+        imgLogo.setVisible(true);
+        imgLogo.setManaged(true);
+        btnQuitarLogo.setDisable(false);
+    }
+
+    /** Copia el logo elegido antes de guardar la empresa. */
+    private void aplicarLogo() {
+        if (logoElegido != null) {
+            MarcaEmpresa.guardar(logoElegido);
+        } else if (logoQuitado) {
+            MarcaEmpresa.quitar();
+        }
+    }
+
+    private String describirLogo() {
+        if (logoElegido != null) {
+            return logoElegido.getFileName().toString();
+        }
+        if (logoQuitado) {
+            return "se quita el logo actual";
+        }
+        return MarcaEmpresa.ruta().map(ruta -> ruta.getFileName().toString()).orElse("sin logo");
     }
 
     private String monedaPorDefecto() {
@@ -891,6 +972,7 @@ public class SetupController {
         StringBuilder texto = new StringBuilder();
         texto.append("Empresa: ").append(empresa == null ? "—" : empresa.getNombre())
                 .append(" (").append(empresa == null ? "—" : empresa.getMoneda()).append(")\n");
+        texto.append("Logo: ").append(describirLogo()).append("\n");
         texto.append("Administrador: ")
                 .append(admin == null ? "se conserva el existente" : admin.getUsername())
                 .append("\n");
@@ -912,6 +994,12 @@ public class SetupController {
     private void guardarTodo() {
         if (empresa == null) {
             lblMensaje.setText("Faltan los datos de la empresa: vuelve al primer paso.");
+            return;
+        }
+        try {
+            aplicarLogo();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            lblMensaje.setText(e.getMessage());
             return;
         }
         try {
