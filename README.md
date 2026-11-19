@@ -21,7 +21,7 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 - **Conexión a la base de datos:** se realiza mediante un archivo **`.env`**. Cada integrante mantiene su propio archivo `.env` en su equipo con sus credenciales locales de PostgreSQL (usuario, contraseña, puerto, etc.). Este archivo **no se sube al repositorio**.
 - **Archivo de ejemplo:** se incluye **`.env.example`** como plantilla. Cualquier persona que descargue el proyecto debe copiarlo, renombrarlo a `.env` y colocar en él sus propias credenciales.
 - **API y cabina web:** el módulo `api-operador/` publica la API REST y la vista web del operador en `http://localhost:8080`. Usa la misma base PostgreSQL y requiere `OPENROUTESERVICE_API_KEY` para la navegación turn-by-turn.
-- **Acceso desde otros dispositivos:** se puede publicar con Cloudflare Quick Tunnel. La app de escritorio incluye el botón **Iniciar Conexión** en la vista de flota para controlar el túnel y copiar su enlace.
+- **Acceso desde otros dispositivos:** se puede publicar con Cloudflare Quick Tunnel. La app de escritorio incluye el botón **Iniciar Conexión** en la vista de flota: arranca la API si todavía no responde en `localhost:8080`, abre el túnel, muestra el estado con un punto de color y copia el enlace público con un clic en el icono de cadena. Para que el botón pueda arrancar la API, el JAR debe estar compilado una vez y la app debe ejecutarse con **JDK 21 o superior**.
 
 ---
 
@@ -105,7 +105,7 @@ Ambos roles inician sesión con credenciales almacenadas en la base de datos; la
 - **Gestión de clientes:** pestaña con todos los campos de `clientes` (empresa, contacto, teléfono, email, dirección y activo), con validaciones y bajas protegidas por integridad referencial.
 - **Panel administrativo:** cuentas de administradores y operadores, permisos de reportes, restablecimiento de contraseñas, países activos con buscador, ubicaciones editables con mapa satelital de solo lectura y rutas con tiempo estimado y precio sugerido. Incluye borrados masivos de cuentas filtradas, ubicaciones y rutas protegidos con la contraseña del administrador.
 - **Alertas de operador:** pestaña **Alertas** con la ubicación, fecha y hora, operador, viaje/carga, unidad, mensaje y estado de cada emergencia enviada desde la cabina de escritorio o web.
-- **Túnel de administración:** botón **Iniciar Conexión** junto a **Cerrar sesión**. Arranca y detiene un Cloudflare Quick Tunnel, muestra un punto de estado (rojo, amarillo o verde) y el enlace público debajo del botón.
+- **Túnel de administración:** botón **Iniciar Conexión** junto a **Cerrar sesión**. Arranca la API si no responde, abre y detiene un Cloudflare Quick Tunnel, muestra un punto de estado (rojo, amarillo o verde) y un icono de enlace que copia la URL pública al portapapeles.
 - **Lugares exactos para viajes:** al elegir origen/destino se abre un selector con búsqueda Nominatim y mapa Leaflet. Se puede buscar una referencia, mover el mapa y hacer clic en el punto exacto (por ejemplo, una casa cercana); el nombre para guardar es editable. El lugar se guarda en `ubicaciones` con país, nombre, latitud y longitud, por lo que puede reutilizarse al buscar ese país. El botón **Google Maps** abre la ubicación en el navegador.
 - **Asistente de primera configuración:** en el primer arranque se capturan los datos de la empresa, la moneda con la que se muestran los cobros y se crea la cuenta de administrador, sin editar archivos ni buscar en la base de datos.
 
@@ -118,7 +118,7 @@ Ambos roles inician sesión con credenciales almacenadas en la base de datos; la
 - **Cronómetro digital:** horas conducidas y descanso acumulado en tiempo real.
 - **Controles rápidos:** `INICIAR TRAYECTO`, `PAUSA`, `REANUDAR` y `CONFIRMAR ENTREGA`.
 - **Panel de siguiente asignación:** vista previa de la carga encadenada que se activará al finalizar el viaje actual.
-- **Cabina web:** misma lógica de jornada, alertas y cambio de contraseña desde el navegador; mapa inclinado MapLibre con seguimiento del vehículo, ruta real de OpenRouteService e indicaciones turn-by-turn. Consulta el panel cada 5 segundos y mantiene la sesión activa hasta 24 horas desde el último uso.
+- **Cabina web:** misma lógica de jornada, alertas y cambio de contraseña desde el navegador; mapa inclinado MapLibre con seguimiento del vehículo, ruta real de OpenRouteService e indicaciones turn-by-turn. Consulta el panel cada 5 segundos y mantiene la sesión activa hasta 24 horas desde el último uso. Al ingresar solicita pantalla completa y, en navegadores móviles compatibles, bloquea la orientación horizontal. El diseño se adapta a PC, tablet y teléfono (dos columnas en horizontal, una con desplazamiento en vertical) y mantiene siempre visibles los botones de la jornada.
 
 ---
 
@@ -582,8 +582,12 @@ cd api-operador
 8. La web consulta el panel cada **5 segundos**. Las acciones se envían de inmediato y, si se pierde la conexión, la actualización automática se pausa y se reanuda al volver la red.
 9. La sesión web es deslizante y dura hasta **24 horas** desde la última petición; no se cierra por un temporizador fijo mientras la página siga en uso.
 10. En el panel administrativo de escritorio, el **Monitor de flota** se actualiza cada **2 segundos**.
+11. Al pulsar **Ingresar**, la cabina solicita **pantalla completa** y, en navegadores móviles compatibles (Chrome/Edge en Android), bloquea la orientación en **horizontal**; al cerrar sesión se libera la pantalla y la orientación. En iPhone/iPad el bloqueo de orientación no está disponible y el giro queda a cargo del sistema.
+12. El mapa muestra la **posición actual** y una línea de **trayecto** punteada hasta el punto A. El botón de centrar (junto a `+`/`−` y la brújula) enfoca la posición y mantiene el **seguimiento**; los botones `+`/`−` acercan y alejan en pasos amplios y retoman el seguimiento, igual que la brújula, y al arrastrar el mapa el seguimiento se desactiva. El desplazamiento está limitado al mapa mundial. El botón de **pantalla completa** de la cabecera permite entrar y salir del modo a pantalla completa en cualquier momento.
+13. El botón **‹** del panel **Viaje Activo** lo oculta para ampliar el mapa y el botón **›** lo vuelve a mostrar.
+14. La navegación calcula la ruta hasta el **punto A** en verde oscuro cuando el trayecto aún no inicia. Al llegar (unos 90 m) la cabina avisa **"Has llegado al punto A"** y habilita **Iniciar trayecto**; desde ahí navega al **punto B** y anuncia **"… ha llegado a su destino"**. Si el vehículo se desvía más de 90 m de la ruta, la cabina **recalcula automáticamente** desde la posición actual (con un mínimo de 20 segundos entre recálculos).
 
-La cabina web es responsiva y prioriza el modo horizontal, incluido el uso desde un teléfono en orientación apaisada.
+La cabina web es responsiva y prioriza el modo horizontal: usa dos columnas en PC y teléfonos apaisados (con el mapa ocupando el espacio disponible y las acciones de jornada siempre visibles) y una sola columna con desplazamiento en vertical.
 
 ### Endpoints principales
 
@@ -595,7 +599,7 @@ La cabina web es responsiva y prioriza el modo horizontal, incluido el uso desde
 | `POST` | `/api/auth/logout` | Cierra la sesión activa. |
 | `POST` | `/api/auth/password` | Cambia la contraseña del operador autenticado. |
 | `GET` | `/api/operador/panel` | Datos del viaje, jornada y siguiente asignación. |
-| `GET` | `/api/operador/ruta` | Ruta GeoJSON procesada desde OpenRouteService. |
+| `GET` | `/api/operador/ruta` | Ruta GeoJSON procesada desde OpenRouteService. Acepta `lat` y `lon` para partir de la posición actual y `hasta=origen\|destino` para elegir el punto A o el punto B. |
 | `POST` | `/api/operador/alerta` | Registra una alerta de emergencia. |
 | `POST` | `/api/operador/jornada/iniciar` | Inicia el trayecto. |
 | `POST` | `/api/operador/jornada/pausar` | Registra una pausa de descanso. |
@@ -606,34 +610,50 @@ Los endpoints de `/api/operador/**` y `/api/auth/password` exigen el encabezado 
 
 ### Publicar la cabina con Cloudflare Tunnel
 
-El túnel es opcional y sirve para abrir la cabina desde otro dispositivo o por datos móviles sin abrir puertos en el router. La API debe estar corriendo en `localhost:8080`.
+El túnel es opcional y sirve para abrir la cabina desde otro dispositivo o por datos móviles sin abrir puertos en el router. El botón **Iniciar Conexión** de la app de escritorio arranca la API si hace falta, abre el túnel y copia el enlace; no es necesario lanzar nada a mano.
 
-Instalación en Windows con WinGet:
+#### Preparación (una sola vez por equipo)
 
-```powershell
-winget install --id Cloudflare.cloudflared
-```
+1. **JDK 21 o superior en la app de escritorio.** El botón usa el mismo JDK con el que corre la app para lanzar la API, y la API está compilada para Java 21. El escritorio puede correr con 17, pero entonces el botón no podrá arrancar la API.
+2. **Base de datos y `.env` en la raíz del proyecto**, con las credenciales locales. La API los lee desde `api-operador/` a través de `../.env`.
+3. **JAR de la API compilado.** Desde la raíz del proyecto:
 
-Comando manual recomendado:
+   ```bash
+   cd api-operador
+   ./mvnw -DskipTests package
+   ```
+
+   En Windows CMD: `mvnw.cmd -DskipTests package`. Queda en `api-operador/target/api-operador-0.0.1-SNAPSHOT.jar`. Repite este paso cada vez que cambie el código de la API; si el JAR no existe, el botón queda amarillo con el mensaje `Falta api-operador/target/api-operador-0.0.1-SNAPSHOT.jar. Compile la API.`
+4. **cloudflared instalado.** En Windows:
+
+   ```powershell
+   winget install --id Cloudflare.cloudflared
+   ```
+
+   La app lo busca en el `PATH`, en los enlaces de WinGet, en `Program Files\cloudflared` y en `Program Files (x86)\cloudflared`.
+5. **Clave de OpenRouteService en el `.env`** (recomendado): sin ella la cabina web funciona, pero muestra que la navegación ORS no está configurada.
+
+#### Uso del botón Iniciar Conexión
+
+1. Inicia sesión como administrador y abre **Gestión de flota**.
+2. Pulsa **Iniciar Conexión**, junto a **Cerrar sesión**.
+3. El botón primero comprueba `http://localhost:8080/api/salud`:
+   - Si la API responde, abre el túnel directamente.
+   - Si no responde, arranca la API con `java -jar` (working dir `api-operador`, para leer `../.env`), espera a que `/api/salud` devuelva 200 y recién entonces abre el túnel.
+4. El punto de estado indica:
+   - **Rojo:** conexión detenida.
+   - **Amarillo:** la API está arrancando o `http://localhost:8080/api/salud` no responde. Si queda amarillo fijo, pasa el cursor sobre el botón: el tooltip muestra el motivo (por ejemplo, JAR sin compilar, puerto 8080 ocupado o cloudflared no encontrado).
+   - **Verde:** API saludable y túnel activo con URL detectada.
+5. El icono de cadena junto al botón refleja el enlace: gris con barra (link-slash) cuando no hay túnel y azul cuando está conectado. Al pulsarlo copia la URL `https://….trycloudflare.com` al portapapeles y muestra un aviso.
+6. Pulsa **Detener Conexión** para cerrar el túnel; el enlace deja de funcionar. Si la API la arrancó la propia app, también se detiene al cerrar la ventana; si ya estaba corriendo antes (por ejemplo, con `spring-boot:run`), se deja intacta.
+
+Comando manual equivalente (si se quiere operar por fuera de la app):
 
 ```powershell
 cloudflared tunnel --url http://localhost:8080 --protocol http2 --edge-ip-version 4
 ```
 
-`--protocol http2 --edge-ip-version 4` fuerza HTTP/2 sobre TCP y IPv4. Es necesario cuando la red bloquea QUIC/UDP 7844; sin esos parámetros el túnel puede quedarse en `Unable to establish connection with edge`.
-
-También puedes usar el botón **Iniciar Conexión** de la app de escritorio:
-
-1. Inicia sesión como administrador y abre **Gestión de flota**.
-2. Pulsa **Iniciar Conexión**, junto a **Cerrar sesión**.
-3. El punto de estado indica:
-   - **Rojo:** túnel detenido o proceso cerrado.
-   - **Amarillo:** cloudflared está arrancando o `http://localhost:8080/api/salud` no responde correctamente.
-   - **Verde:** túnel activo, URL detectada y API saludable.
-4. El enlace `https://….trycloudflare.com` aparece debajo del botón.
-5. Pulsa **Detener Conexión** para cerrar el túnel; el enlace deja de funcionar.
-
-La app busca `cloudflared` en el `PATH`, en los enlaces de WinGet, en `Program Files\cloudflared` y en `Program Files (x86)\cloudflared`.
+`--protocol http2 --edge-ip-version 4` fuerza HTTP/2 sobre TCP y IPv4. Es necesario cuando la red bloquea QUIC/UDP 7844; sin esos parámetros el túnel puede quedarse en `Unable to establish connection with edge`. Si el túnel está arriba pero la API no, la URL responde **502 Bad Gateway**: comprueba `http://localhost:8080/api/salud`.
 
 > El enlace de Quick Tunnel es temporal y cambia cada vez que se inicia. Cualquier persona con la URL puede llegar al login, así que usa datos de demostración, cierra el túnel al terminar y no publiques credenciales ni información real.
 
@@ -845,6 +865,9 @@ WHERE c2.numero_carga = 'C-DEMO-2' AND c1.numero_carga = 'C-DEMO-1'
 | OpenRouteService responde `401`, `403` o `429` | Clave inválida, sin permisos o límite de peticiones alcanzado. | Revisar la clave, la cuota de la cuenta y esperar antes de reintentar. |
 | `Unable to establish connection with edge` al iniciar el túnel | La red bloquea QUIC/UDP 7844. | Usar `--protocol http2 --edge-ip-version 4`, o el botón **Iniciar Conexión**, que ya aplica esos parámetros. |
 | `cloudflared` no se reconoce o el botón queda amarillo | No está instalado o no se encontró el ejecutable. | Instalarlo con WinGet, verificar el `PATH` o colocarlo en `Program Files\cloudflared`; reiniciar la app. |
+| El botón queda amarillo con `Falta api-operador/target/...jar` | La API no está compilada en ese equipo. | `cd api-operador && ./mvnw -DskipTests package` y volver a pulsar **Iniciar Conexión**. |
+| El botón queda amarillo con `La API se cerró durante el arranque` | La app corre con un JDK anterior a 21 o el puerto 8080 está ocupado. | Ejecutar la app con JDK 21+ y liberar el puerto 8080 (`Port 8080 was already in use`). |
+| El enlace del túnel responde **502 Bad Gateway** | El túnel está publicado pero la API no responde en `localhost:8080`. | Comprobar `http://localhost:8080/api/salud`; si falla, pulsar **Detener Conexión** y **Iniciar Conexión** con el JAR compilado. |
 | El enlace del túnel no carga fuera de la red | La API está detenida, `/api/salud` falla o el túnel se cerró. | Arrancar la API, abrir `http://localhost:8080/api/salud` y volver a iniciar el túnel. |
 
 ---

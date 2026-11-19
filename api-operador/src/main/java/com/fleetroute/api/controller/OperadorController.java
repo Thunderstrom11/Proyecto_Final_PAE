@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
@@ -44,8 +45,11 @@ public class OperadorController {
     }
 
     @GetMapping("/ruta")
-    public RutaResponse ruta(@RequestAttribute(SesionService.ATRIBUTO) Sesion sesion) {
-        return rutaService.ruta(sesion);
+    public RutaResponse ruta(@RequestAttribute(SesionService.ATRIBUTO) Sesion sesion,
+                             @RequestParam(required = false) Double lat,
+                             @RequestParam(required = false) Double lon,
+                             @RequestParam(required = false) String hasta) {
+        return rutaService.ruta(sesion, lat, lon, hasta);
     }
 
     @PostMapping("/alerta")
