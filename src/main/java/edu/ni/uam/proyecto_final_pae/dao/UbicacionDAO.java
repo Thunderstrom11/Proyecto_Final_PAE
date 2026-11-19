@@ -4,7 +4,12 @@ import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.config.Transaccion;
 import edu.ni.uam.proyecto_final_pae.model.Ubicacion;
 
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class UbicacionDAO extends GenericDAO<Ubicacion, Integer> {
 
@@ -62,6 +67,49 @@ public class UbicacionDAO extends GenericDAO<Ubicacion, Integer> {
                 .setMaxResults(1)
                 .getResultList());
         return lista.isEmpty() ? null : lista.get(0);
+    }
+
+    /**
+     * Guarda en lote las ubicaciones que todavía no existen y devuelve cuántas agregó.
+     * Se apoya en la clave nombre, departamento y país para no repetir lugares.
+     */
+    public int guardarNuevas(Collection<Ubicacion> candidatas) {
+        if (candidatas == null || candidatas.isEmpty()) {
+            return 0;
+        }
+        Set<String> paises = candidatas.stream()
+                .map(ubicacion -> ubicacion.getPais() == null ? "" : ubicacion.getPais().toLowerCase(Locale.ROOT))
+                .collect(Collectors.toSet());
+        return Transaccion.ejecutar(sesion -> {
+            Set<String> existentes = new HashSet<>(sesion.createQuery(
+                            "select lower(u.nombre)||'|'||lower(u.departamento)||'|'||lower(u.pais) "
+                                    + "from Ubicacion u where lower(u.pais) in (:paises)", String.class)
+                    .setParameter("paises", paises)
+                    .getResultList());
+            int agregadas = 0;
+            int lote = 0;
+            for (Ubicacion ubicacion : candidatas) {
+                if (!existentes.add(clave(ubicacion))) {
+                    continue;
+                }
+                sesion.persist(ubicacion);
+                agregadas++;
+                if (++lote % 400 == 0) {
+                    sesion.flush();
+                    sesion.clear();
+                }
+            }
+            return agregadas;
+        });
+    }
+
+    private String clave(Ubicacion ubicacion) {
+        return texto(ubicacion.getNombre()) + "|" + texto(ubicacion.getDepartamento())
+                + "|" + texto(ubicacion.getPais());
+    }
+
+    private String texto(String valor) {
+        return valor == null ? "" : valor.toLowerCase(Locale.ROOT);
     }
 
     /** Elimina rutas y ubicaciones; no toca viajes, por eso exige que no existan. */

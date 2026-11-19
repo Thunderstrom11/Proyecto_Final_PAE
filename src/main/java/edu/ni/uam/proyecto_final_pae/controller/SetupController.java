@@ -1,11 +1,13 @@
 package edu.ni.uam.proyecto_final_pae.controller;
 
+import edu.ni.uam.proyecto_final_pae.config.DivisionesMundo;
 import edu.ni.uam.proyecto_final_pae.config.GeoUtil;
 import edu.ni.uam.proyecto_final_pae.config.MarcaEmpresa;
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.config.PreparadorBase;
 import edu.ni.uam.proyecto_final_pae.config.Transaccion;
 import edu.ni.uam.proyecto_final_pae.dao.ClienteDAO;
+import edu.ni.uam.proyecto_final_pae.dao.PaisDAO;
 import edu.ni.uam.proyecto_final_pae.dao.OperadorDAO;
 import edu.ni.uam.proyecto_final_pae.dao.RutaDAO;
 import edu.ni.uam.proyecto_final_pae.dao.UbicacionDAO;
@@ -39,6 +41,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
+import javafx.stage.Window;
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.io.File;
@@ -57,7 +60,7 @@ import java.util.Optional;
  */
 public class SetupController {
 
-    private enum Paso { BASE, EMPRESA, ADMIN, UBICACIONES, UNIDADES, OPERADORES, CLIENTES, TARIFAS, RESUMEN }
+    private enum Paso { BASE, EMPRESA, ADMIN, PAISES, UBICACIONES, UNIDADES, OPERADORES, CLIENTES, TARIFAS, RESUMEN }
 
     private static final Map<String, String> ZONA_POR_PAIS = Map.ofEntries(
             Map.entry("Nicaragua", "America/Managua"),
@@ -88,6 +91,7 @@ public class SetupController {
     private final OperadorDAO operadorDAO = new OperadorDAO();
     private final ClienteDAO clienteDAO = new ClienteDAO();
     private final RutaDAO rutaDAO = new RutaDAO();
+    private final PaisDAO paisDAO = new PaisDAO();
 
     @FXML private ProgressBar barraAvance;
     @FXML private Label lblPaso;
@@ -120,6 +124,10 @@ public class SetupController {
     @FXML private TextField txtUsuario;
     @FXML private PasswordField txtPassword;
     @FXML private PasswordField txtConfirmar;
+
+    @FXML private VBox pasoPaises;
+    @FXML private Button btnElegirPaises;
+    @FXML private Label lblPaisesEstado;
 
     @FXML private VBox pasoUbicaciones;
     @FXML private TextField txtUbicNombre;
@@ -191,6 +199,8 @@ public class SetupController {
     private Usuario admin;
     private Path logoElegido;
     private boolean logoQuitado;
+    private List<String> paisesElegidos = List.of();
+    private int ubicacionesGeneradas;
 
     @FXML
     private void initialize() {
@@ -235,6 +245,7 @@ public class SetupController {
         if (crearAdmin) {
             pasos.add(Paso.ADMIN);
         }
+        pasos.add(Paso.PAISES);
         pasos.add(Paso.UBICACIONES);
         pasos.add(Paso.UNIDADES);
         pasos.add(Paso.OPERADORES);
@@ -297,6 +308,8 @@ public class SetupController {
         pasoEmpresa.setManaged(actual == Paso.EMPRESA);
         pasoAdmin.setVisible(actual == Paso.ADMIN);
         pasoAdmin.setManaged(actual == Paso.ADMIN);
+        pasoPaises.setVisible(actual == Paso.PAISES);
+        pasoPaises.setManaged(actual == Paso.PAISES);
         pasoUbicaciones.setVisible(actual == Paso.UBICACIONES);
         pasoUbicaciones.setManaged(actual == Paso.UBICACIONES);
         pasoUnidades.setVisible(actual == Paso.UNIDADES);
@@ -332,6 +345,7 @@ public class SetupController {
             case BASE -> "Conexión y base de datos";
             case EMPRESA -> "Datos de la empresa";
             case ADMIN -> "Cuenta de administrador";
+            case PAISES -> "Países de la empresa";
             case UBICACIONES -> "Ubicaciones";
             case UNIDADES -> "Unidades de la flota";
             case OPERADORES -> "Operadores";
@@ -346,7 +360,10 @@ public class SetupController {
             case BASE -> "El sistema guarda todo en PostgreSQL. Si no lo tiene, instálelo desde postgresql.org/download y anote la contraseña que eligió para el usuario postgres. Escriba esa contraseña aquí y pulse Siguiente: el sistema crea la base, las tablas y los catálogos por usted.";
             case EMPRESA -> "Con estos datos aparece la empresa en el sistema. El país y la zona horaria definen cómo se registran las horas. La moneda se usa para mostrar los cobros.";
             case ADMIN -> "Esta cuenta maneja el sistema completo. La contraseña se guarda cifrada con BCrypt.";
-            case UBICACIONES -> "Vienen cargadas 20 ubicaciones de ejemplo de Centroamérica. Puedes usarlas o agregar las tuyas. Este paso es opcional.";
+            case PAISES -> "Elija los países donde trabaja la empresa. Al guardar se registran sus provincias, "
+                    + "departamentos y ciudades como ubicaciones del sistema. Los países de Centroamérica no vienen "
+                    + "marcados: márquelos si los necesita. Este paso es opcional.";
+            case UBICACIONES -> "Puedes agregar ubicaciones sueltas que no estén en la lista del país. Este paso es opcional.";
             case UNIDADES -> "Los camiones con los que va a trabajar la empresa. Quedan disponibles para asignar viajes.";
             case OPERADORES -> "Los choferes y sus reglas de descanso. Cada uno recibe su cuenta con la cédula como usuario y la contraseña "
                     + CLAVE_TEMPORAL + ".";
@@ -446,15 +463,15 @@ public class SetupController {
         if (nueva.getEmail() != null && !nueva.getEmail().matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
             throw new IllegalArgumentException("El correo de la empresa no tiene un formato válido.");
         }
-        String pais = cmbEmpresaPais.getValue();
+        String pais = ComboBuscador.valor(cmbEmpresaPais);
         if (pais == null || pais.isBlank()) {
             throw new IllegalArgumentException("Seleccione el país de la empresa.");
         }
-        String zona = cmbZona.getValue();
+        String zona = ComboBuscador.valor(cmbZona);
         if (zona == null || zona.isBlank()) {
             throw new IllegalArgumentException("Seleccione la zona horaria de la empresa.");
         }
-        String moneda = cmbMoneda.getValue();
+        String moneda = ComboBuscador.valor(cmbMoneda);
         if (moneda == null || moneda.length() < 3) {
             throw new IllegalArgumentException("Seleccione la moneda de la empresa.");
         }
@@ -571,6 +588,59 @@ public class SetupController {
         return nuevo;
     }
 
+    // ------------------------------------------------------------------ países
+
+    @FXML
+    private void elegirPaises() {
+        lblMensaje.setText("");
+        Window duenio = btnSiguiente.getScene() == null ? null : btnSiguiente.getScene().getWindow();
+        Optional<List<String>> eleccion = DialogoPaises.elegir(duenio, paisesElegidos,
+                "Países de la empresa", "Elija los países donde trabaja la empresa",
+                "Al guardar se registran las provincias, departamentos y ciudades de cada país marcado. "
+                        + "Los países de Centroamérica no vienen marcados: elíjalos si los necesita.");
+        if (eleccion.isEmpty()) {
+            return;
+        }
+        generarPaises(eleccion.get());
+    }
+
+    private void generarPaises(List<String> seleccion) {
+        btnElegirPaises.setDisable(true);
+        btnSiguiente.setDisable(true);
+        lblPaisesEstado.setText("Agregando las provincias y ciudades de los países marcados...");
+        Task<DivisionesMundo.Resumen> tarea = new Task<>() {
+            @Override
+            protected DivisionesMundo.Resumen call() {
+                return DivisionesMundo.activar(seleccion);
+            }
+        };
+        tarea.setOnSucceeded(evento -> {
+            btnElegirPaises.setDisable(false);
+            btnSiguiente.setDisable(false);
+            DivisionesMundo.Resumen resumen = tarea.getValue();
+            paisesElegidos = seleccion;
+            ubicacionesGeneradas += resumen.ubicaciones();
+            lblPaisesEstado.setText(describirPaises(resumen));
+        });
+        tarea.setOnFailed(evento -> {
+            btnElegirPaises.setDisable(false);
+            btnSiguiente.setDisable(false);
+            lblPaisesEstado.setText("No se pudieron agregar los países.");
+            lblMensaje.setText(tarea.getException() == null ? "" : tarea.getException().getMessage());
+        });
+        Thread hilo = new Thread(tarea, "paises-asistente");
+        hilo.setDaemon(true);
+        hilo.start();
+    }
+
+    private String describirPaises(DivisionesMundo.Resumen resumen) {
+        String paises = String.join(", ", paisesElegidos);
+        if (resumen.ubicaciones() == 0) {
+            return "Países activos: " + paises + ". Esos países ya tenían cargadas sus ubicaciones.";
+        }
+        return "Países activos: " + paises + ". Ubicaciones agregadas: " + resumen.ubicaciones() + ".";
+    }
+
     // ------------------------------------------------------------------ ubicaciones
 
     @FXML
@@ -579,7 +649,7 @@ public class SetupController {
         try {
             String nombre = requerido(txtUbicNombre, "El nombre de la ubicación", 120);
             String departamento = requerido(txtUbicDepartamento, "El departamento", 80);
-            String pais = cmbUbicPais.getValue();
+            String pais = ComboBuscador.valor(cmbUbicPais);
             if (pais == null || pais.isBlank()) {
                 throw new IllegalArgumentException("Seleccione el país de la ubicación.");
             }
@@ -977,6 +1047,9 @@ public class SetupController {
                 .append(admin == null ? "se conserva el existente" : admin.getUsername())
                 .append("\n");
         texto.append("Ubicaciones nuevas: ").append(nuevasUbicaciones.size()).append("\n");
+        if (ubicacionesGeneradas > 0) {
+            texto.append("Ubicaciones por país: ").append(ubicacionesGeneradas).append("\n");
+        }
         texto.append("Unidades nuevas: ").append(nuevasUnidades.size()).append("\n");
         texto.append("Operadores nuevos: ").append(nuevosOperadores.size()).append("\n");
         texto.append("Clientes nuevos: ").append(nuevosClientes.size()).append("\n");
