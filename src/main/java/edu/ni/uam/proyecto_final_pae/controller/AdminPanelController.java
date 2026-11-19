@@ -1,6 +1,7 @@
 package edu.ni.uam.proyecto_final_pae.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.ni.uam.proyecto_final_pae.config.DivisionesMundo;
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.dao.AlertaOperadorDAO;
 import edu.ni.uam.proyecto_final_pae.dao.OperadorDAO;
@@ -20,22 +21,19 @@ import edu.ni.uam.proyecto_final_pae.util.ComboBuscador;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
-import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.collections.ObservableSet;
-import javafx.collections.transformation.FilteredList;
+import javafx.concurrent.Task;
 import javafx.concurrent.Worker;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
 import javafx.stage.Modality;
+import javafx.stage.Window;
 import netscape.javascript.JSObject;
 
 import java.io.IOException;
@@ -47,7 +45,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.text.Normalizer;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -159,8 +156,6 @@ public class AdminPanelController {
     private String filtroEstadoCuenta = "Todos";
     private List<String> paisesMundo = List.of();
     private List<String> paisesActivos = List.of();
-    private final ObservableList<String> paisesFiltrados = FXCollections.observableArrayList();
-    private boolean ajustandoPais;
 
     @FXML
     private void initialize() {
@@ -191,11 +186,7 @@ public class AdminPanelController {
             ComboBuscador.configurar(cmbOperadorCuenta, operadorDAO.listar());
             paisesMundo = Listas.paises();
             cargarPaisesActivos();
-            cmbPaisUbicacion.setItems(paisesFiltrados);
-            cmbPaisUbicacion.setEditable(true);
-            cmbPaisUbicacion.setValue(null);
-            cmbPaisUbicacion.getEditor().clear();
-            configurarBuscadorPais();
+            ComboBuscador.configurar(cmbPaisUbicacion, paisesActivos);
             cargarCuentas();
             cargarUbicaciones();
             cargarRutas();
@@ -504,51 +495,16 @@ public class AdminPanelController {
     }
 
     private void configurarBuscadorPais() {
-        cmbPaisUbicacion.setEditable(true);
-        cmbPaisUbicacion.getEditor().textProperty().addListener((o, anterior, texto) -> {
-            if (ajustandoPais) {
-                return;
-            }
-            String filtro = normalizar(texto);
-            List<String> filtrados = paisesActivos.stream()
-                    .filter(pais -> normalizar(pais).contains(filtro))
-                    .toList();
-            ajustandoPais = true;
-            paisesFiltrados.setAll(filtrados);
-            cmbPaisUbicacion.getEditor().setText(texto == null ? "" : texto);
-            if (texto != null) {
-                cmbPaisUbicacion.getEditor().positionCaret(texto.length());
-            }
-            ajustandoPais = false;
-            if (filtrados.isEmpty() || filtro.isBlank()) {
-                cmbPaisUbicacion.hide();
-            } else {
-                cmbPaisUbicacion.show();
-            }
-        });
-        cmbPaisUbicacion.setOnAction(evento -> {
-            if (ajustandoPais) {
-                return;
-            }
-            String pais = cmbPaisUbicacion.getValue();
-            if (pais != null && paisesMundo.contains(pais)) {
-                ajustandoPais = true;
-                paisesFiltrados.setAll(sugerenciasPais(pais));
-                cmbPaisUbicacion.getEditor().setText(pais);
-                cmbPaisUbicacion.getEditor().positionCaret(pais.length());
-                ajustandoPais = false;
-                cmbPaisUbicacion.hide();
-            }
-        });
+        ComboBuscador.configurar(cmbPaisUbicacion, paisesActivos);
     }
 
     private void seleccionarPais(String pais) {
-        ajustandoPais = true;
-        paisesFiltrados.setAll(sugerenciasPais(pais));
-        cmbPaisUbicacion.setValue(pais);
-        cmbPaisUbicacion.getEditor().setText(pais == null ? "" : pais);
-        cmbPaisUbicacion.getEditor().positionCaret(pais == null ? 0 : pais.length());
-        ajustandoPais = false;
+        if (pais == null || pais.isBlank()) {
+            cmbPaisUbicacion.setValue(null);
+            cmbPaisUbicacion.getEditor().clear();
+            return;
+        }
+        ComboBuscador.seleccionar(cmbPaisUbicacion, pais);
     }
 
     private void cargarPaisesActivos() {
@@ -556,16 +512,6 @@ public class AdminPanelController {
         if (paisesActivos.isEmpty()) {
             paisesActivos = paisesMundo;
         }
-        paisesFiltrados.setAll(sugerenciasPais(null));
-    }
-
-    private List<String> sugerenciasPais(String actual) {
-        List<String> sugerencias = new ArrayList<>(paisesActivos);
-        if (actual != null && !actual.isBlank() && !sugerencias.contains(actual)
-                && paisesMundo.contains(actual)) {
-            sugerencias.add(actual);
-        }
-        return sugerencias;
     }
 
     @FXML
@@ -580,72 +526,57 @@ public class AdminPanelController {
             error("No se pudieron consultar los países activos", e);
             return;
         }
-        ObservableSet<String> seleccionados =
-                FXCollections.observableSet(new LinkedHashSet<>(activos));
-        FilteredList<String> filtrados =
-                new FilteredList<>(FXCollections.observableArrayList(Listas.paises()), p -> true);
-        ListView<String> lista = new ListView<>(filtrados);
-        lista.setPrefHeight(360);
-        lista.setCellFactory(CheckBoxListCell.forListView(pais -> {
-            SimpleBooleanProperty activo =
-                    new SimpleBooleanProperty(seleccionados.contains(pais));
-            activo.addListener((o, a, b) -> {
-                if (b) {
-                    seleccionados.add(pais);
-                } else {
-                    seleccionados.remove(pais);
-                }
-            });
-            return activo;
-        }));
-
-        TextField buscar = new TextField();
-        buscar.setPromptText("buscador");
-        buscar.textProperty().addListener((o, a, texto) -> {
-            String filtro = normalizar(texto);
-            filtrados.setPredicate(p -> filtro.isBlank() || normalizar(p).contains(filtro));
-        });
-        Label ayuda = new Label("Marque los países disponibles para crear ubicaciones. "
-                + "Los lugares existentes no se eliminan.");
-        ayuda.setWrapText(true);
-        VBox contenido = new VBox(8, ayuda, buscar, lista);
-        contenido.setPrefWidth(430);
-
-        ButtonType guardar = new ButtonType("Guardar", ButtonBar.ButtonData.OK_DONE);
-        ButtonType cancelar = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
-        Dialog<ButtonType> dialogo = new Dialog<>();
-        dialogo.setTitle("Países activos");
-        dialogo.setHeaderText("Activar o desactivar países");
-        dialogo.getDialogPane().getButtonTypes().addAll(guardar, cancelar);
-        dialogo.getDialogPane().setContent(contenido);
-        if (lblEstado.getScene() != null) {
-            dialogo.initOwner(lblEstado.getScene().getWindow());
-            dialogo.initModality(Modality.WINDOW_MODAL);
-        }
-        Button botonGuardar = (Button) dialogo.getDialogPane().lookupButton(guardar);
-        botonGuardar.addEventFilter(ActionEvent.ACTION, evento -> {
-            if (seleccionados.isEmpty()) {
-                advertencia("Debe quedar al menos un país activo.");
-                evento.consume();
-            }
-        });
-
-        Optional<ButtonType> respuesta = dialogo.showAndWait();
-        if (respuesta.isEmpty() || respuesta.get() != guardar) {
+        Window duenio = lblEstado.getScene() == null ? null : lblEstado.getScene().getWindow();
+        Optional<List<String>> eleccion = DialogoPaises.elegir(duenio, activos, "Países activos",
+                "Activar o desactivar países",
+                "Marque los países donde la empresa tiene ubicaciones. Al guardar se agregan sus "
+                        + "provincias y ciudades al sistema y al mapa. Los lugares que ya existen no se tocan.");
+        if (eleccion.isEmpty()) {
             return;
         }
-        try {
-            String actual = cmbPaisUbicacion.getEditor().getText();
-            paisDAO.reemplazar(new ArrayList<>(seleccionados));
+        guardarPaises(eleccion.get());
+    }
+
+    /** Guarda los países marcados y agrega las ubicaciones que falten, sin congelar la ventana. */
+    private void guardarPaises(List<String> seleccion) {
+        String paisPrevio = resolverPais();
+        lblEstado.setText("Agregando las provincias y ciudades de los países seleccionados...");
+        btnPaises.setDisable(true);
+        Task<DivisionesMundo.Resumen> tarea = new Task<>() {
+            @Override
+            protected DivisionesMundo.Resumen call() {
+                return DivisionesMundo.activar(seleccion);
+            }
+        };
+        tarea.setOnSucceeded(evento -> {
+            btnPaises.setDisable(false);
+            DivisionesMundo.Resumen resumen = tarea.getValue();
             cargarPaisesActivos();
-            seleccionarPais(actual == null || actual.isBlank() ? null : actual);
-            lblEstado.setText("Países activos actualizados: " + seleccionados.size() + ".");
-        } catch (PersistenciaException e) {
-            error("No se pudieron guardar los países activos", e);
-        }
+            ComboBuscador.configurar(cmbPaisUbicacion, paisesActivos);
+            seleccionarPais(paisPrevio);
+            cargarUbicaciones();
+            lblEstado.setText("Países activos: " + resumen.paises()
+                    + " · ubicaciones nuevas: " + resumen.ubicaciones() + ".");
+        });
+        tarea.setOnFailed(evento -> {
+            btnPaises.setDisable(false);
+            Throwable causa = tarea.getException();
+            String detalle = causa == null ? "" : causa.getMessage();
+            lblEstado.setText("No se pudieron guardar los países activos.");
+            Alert alerta = new Alert(Alert.AlertType.ERROR, detalle, ButtonType.OK);
+            alerta.setHeaderText("No se pudieron guardar los países activos");
+            alerta.showAndWait();
+        });
+        Thread hilo = new Thread(tarea, "paises-activos");
+        hilo.setDaemon(true);
+        hilo.start();
     }
 
     private String resolverPais() {
+        String elegido = cmbPaisUbicacion.getValue();
+        if (elegido != null && !elegido.isBlank() && paisesMundo.contains(elegido)) {
+            return elegido;
+        }
         String buscado = normalizar(cmbPaisUbicacion.getEditor().getText());
         if (buscado.isBlank()) {
             return null;

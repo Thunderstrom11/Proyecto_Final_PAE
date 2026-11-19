@@ -113,6 +113,22 @@
                 <PasswordField fx:id="txtConfirmar"/>
             </VBox>
 
+            <VBox fx:id="pasoPaises" spacing="7" styleClass="form-pane">
+                <padding>
+                    <Insets top="14" right="16" bottom="14" left="16"/>
+                </padding>
+                <Label text="Países de la empresa" styleClass="section-title">
+                    <graphic><FontIcon iconLiteral="fas-globe-americas"/></graphic>
+                </Label>
+                <Label styleClass="status-label" wrapText="true"
+                       text="Se crean las provincias, departamentos y ciudades de cada país marcado."/>
+                <Button fx:id="btnElegirPaises" text="Elegir países" maxWidth="Infinity" styleClass="btn-secondary" onAction="#elegirPaises">
+                    <graphic><FontIcon iconLiteral="fas-globe-americas"/></graphic>
+                </Button>
+                <Label fx:id="lblPaisesEstado" wrapText="true" styleClass="status-label"
+                       text="Todavía no eligió ningún país."/>
+            </VBox>
+
             <VBox fx:id="pasoUbicaciones" spacing="7" styleClass="form-pane">
                 <padding>
                     <Insets top="14" right="16" bottom="14" left="16"/>
@@ -120,7 +136,7 @@
                 <Label text="Ubicaciones" styleClass="section-title">
                     <graphic><FontIcon iconLiteral="fas-map-marker-alt"/></graphic>
                 </Label>
-                <Label text="Vienen cargadas 20 ubicaciones de ejemplo de Centroamérica. Puedes usarlas o agregar las tuyas. Este paso es opcional."
+                <Label text="Use este formulario para un puerto, una bodega o cualquier punto que no venga en la lista."
                        styleClass="status-label" wrapText="true"/>
                 <Label text="Nombre *"/>
                 <TextField fx:id="txtUbicNombre" promptText="Puerto Sandino"/>
