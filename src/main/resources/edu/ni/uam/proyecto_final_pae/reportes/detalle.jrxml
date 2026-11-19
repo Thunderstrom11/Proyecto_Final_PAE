@@ -32,25 +32,25 @@
         <element kind="textField" x="0" y="0" width="782" height="16" textAdjust="StretchHeight" fontSize="8.0" forecolor="#586B7E"><printWhenExpression><![CDATA[$V{PAGE_NUMBER} > 1]]></printWhenExpression><expression><![CDATA[$P{EMPRESA} + " | " + $P{TITULO}]]></expression></element>
     </pageHeader>
     <columnHeader height="26">
-        <element kind="staticText" x="0" y="0" width="40" height="26" style="Encabezado"><text><![CDATA[Viaje]]></text></element>
-        <element kind="staticText" x="40" y="0" width="80" height="26" style="Encabezado"><text><![CDATA[Carga]]></text></element>
-        <element kind="staticText" x="120" y="0" width="130" height="26" style="Encabezado"><text><![CDATA[Cliente]]></text></element>
-        <element kind="staticText" x="250" y="0" width="140" height="26" style="Encabezado"><text><![CDATA[Operador]]></text></element>
-        <element kind="staticText" x="390" y="0" width="65" height="26" style="Encabezado"><text><![CDATA[Unidad]]></text></element>
-        <element kind="staticText" x="455" y="0" width="105" height="26" style="Encabezado"><text><![CDATA[Inicio]]></text></element>
-        <element kind="staticText" x="560" y="0" width="105" height="26" style="Encabezado"><text><![CDATA[Finalización]]></text></element>
-        <element kind="staticText" x="665" y="0" width="117" height="26" style="Encabezado"><text><![CDATA[Importe]]></text></element>
+        <element kind="staticText" x="0" y="0" width="70" height="26" style="Encabezado"><text><![CDATA[Viaje]]></text></element>
+        <element kind="staticText" x="70" y="0" width="80" height="26" style="Encabezado"><text><![CDATA[Carga]]></text></element>
+        <element kind="staticText" x="150" y="0" width="120" height="26" style="Encabezado"><text><![CDATA[Cliente]]></text></element>
+        <element kind="staticText" x="270" y="0" width="130" height="26" style="Encabezado"><text><![CDATA[Operador]]></text></element>
+        <element kind="staticText" x="400" y="0" width="65" height="26" style="Encabezado"><text><![CDATA[Unidad]]></text></element>
+        <element kind="staticText" x="465" y="0" width="105" height="26" style="Encabezado"><text><![CDATA[Inicio]]></text></element>
+        <element kind="staticText" x="570" y="0" width="105" height="26" style="Encabezado"><text><![CDATA[Finalización]]></text></element>
+        <element kind="staticText" x="675" y="0" width="107" height="26" style="Encabezado"><text><![CDATA[Importe]]></text></element>
     </columnHeader>
     <detail>
         <band height="26" splitType="Prevent">
-            <element kind="textField" x="0" y="0" width="40" height="26" textAdjust="StretchHeight" stretchType="ContainerHeight" hTextAlign="Left" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{viaje}]]></expression></element>
-            <element kind="textField" x="40" y="0" width="80" height="26" textAdjust="StretchHeight" stretchType="ContainerHeight" hTextAlign="Left" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{carga}]]></expression></element>
-            <element kind="textField" x="120" y="0" width="130" height="26" textAdjust="StretchHeight" stretchType="ContainerHeight" hTextAlign="Left" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{cliente}]]></expression></element>
-            <element kind="textField" x="250" y="0" width="140" height="26" textAdjust="StretchHeight" stretchType="ContainerHeight" hTextAlign="Left" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{operador}]]></expression></element>
-            <element kind="textField" x="390" y="0" width="65" height="26" textAdjust="StretchHeight" stretchType="ContainerHeight" hTextAlign="Left" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{unidad}]]></expression></element>
-            <element kind="textField" x="455" y="0" width="105" height="26" textAdjust="StretchHeight" stretchType="ContainerHeight" hTextAlign="Left" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{inicio}]]></expression></element>
-            <element kind="textField" x="560" y="0" width="105" height="26" textAdjust="StretchHeight" stretchType="ContainerHeight" hTextAlign="Left" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{fin}]]></expression></element>
-            <element kind="textField" x="665" y="0" width="117" height="26" textAdjust="StretchHeight" stretchType="ContainerHeight" hTextAlign="Right" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{importe}]]></expression></element>
+            <element kind="textField" x="0" y="0" width="70" height="26" textAdjust="StretchHeight" stretchType="ContainerHeight" hTextAlign="Left" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{viaje}]]></expression></element>
+            <element kind="textField" x="70" y="0" width="80" height="26" textAdjust="StretchHeight" stretchType="ContainerHeight" hTextAlign="Left" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{carga}]]></expression></element>
+            <element kind="textField" x="150" y="0" width="120" height="26" textAdjust="StretchHeight" stretchType="ContainerHeight" hTextAlign="Left" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{cliente}]]></expression></element>
+            <element kind="textField" x="270" y="0" width="130" height="26" textAdjust="StretchHeight" stretchType="ContainerHeight" hTextAlign="Left" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{operador}]]></expression></element>
+            <element kind="textField" x="400" y="0" width="65" height="26" textAdjust="StretchHeight" stretchType="ContainerHeight" hTextAlign="Left" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{unidad}]]></expression></element>
+            <element kind="textField" x="465" y="0" width="105" height="26" textAdjust="StretchHeight" stretchType="ContainerHeight" hTextAlign="Left" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{inicio}]]></expression></element>
+            <element kind="textField" x="570" y="0" width="105" height="26" textAdjust="StretchHeight" stretchType="ContainerHeight" hTextAlign="Left" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{fin}]]></expression></element>
+            <element kind="textField" x="675" y="0" width="107" height="26" textAdjust="StretchHeight" stretchType="ContainerHeight" hTextAlign="Right" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{importe}]]></expression></element>
         </band>
     </detail>
     <pageFooter height="24">
