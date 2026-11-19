@@ -409,7 +409,7 @@ public class ViajeController {
         if (elegida != null) {
             ajustandoLugar = true;
             agregarUbicacionACombos(elegida);
-            cmbOrigen.setValue(elegida);
+            ComboBuscador.seleccionar(cmbOrigen, elegida);
             ajustandoLugar = false;
             actualizarTiempo();
             actualizarCoordenadasOrigen();
@@ -427,7 +427,7 @@ public class ViajeController {
         if (elegida != null) {
             ajustandoLugar = true;
             agregarUbicacionACombos(elegida);
-            cmbDestino.setValue(elegida);
+            ComboBuscador.seleccionar(cmbDestino, elegida);
             ajustandoLugar = false;
             actualizarTiempo();
             actualizarCoordenadasDestino();

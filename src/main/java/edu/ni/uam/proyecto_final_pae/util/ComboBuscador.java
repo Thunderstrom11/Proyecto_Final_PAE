@@ -139,6 +139,22 @@ public final class ComboBuscador {
         combo.setItems(FXCollections.observableArrayList(todos));
     }
 
+    /** Agrega la opción si hace falta y la deja seleccionada, sin que el filtro la descarte. */
+    public static <T> void seleccionar(ComboBox<T> combo, T opcion) {
+        if (opcion == null) {
+            return;
+        }
+        agregarOpcion(combo, opcion);
+        ajustando(combo, true);
+        try {
+            combo.getSelectionModel().select(opcion);
+            combo.setValue(opcion);
+            combo.getEditor().setText(etiqueta(combo, opcion));
+        } finally {
+            ajustando(combo, false);
+        }
+    }
+
     private static boolean ajustando(ComboBox<?> combo) {
         return Boolean.TRUE.equals(combo.getProperties().get(AJUSTANDO));
     }
