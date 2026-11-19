@@ -1,0 +1,25 @@
+mundo.tsv.gz
+
+Provincias, departamentos y ciudades que el sistema carga como ubicaciones cuando se
+activa un país.
+
+Origen de los datos
+  Base de datos "Countries States Cities Database" de dr5hn.
+  https://github.com/dr5hn/countries-states-cities-database
+
+Licencia
+  Open Database License (ODbL) 1.0.
+  https://opendatacommons.org/licenses/odbl/1-0/
+
+Formato
+  Archivo de texto separado por tabuladores y comprimido con gzip.
+  Una línea por registro.
+
+    P   <código ISO del país>   <provincia o departamento>   <latitud>   <longitud>
+    C   <código ISO del país>   <provincia o departamento>   <ciudad>   <latitud>   <longitud>
+
+  La fila P es la cabecera de la provincia o departamento y la fila C cada ciudad.
+  Las coordenadas van en grados decimales con cuatro decimales.
+
+El país se identifica con su código ISO de dos letras y el nombre se traduce al español
+con la configuración regional del sistema, igual que en las listas de la aplicación.
