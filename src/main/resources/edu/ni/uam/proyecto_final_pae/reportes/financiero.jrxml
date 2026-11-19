@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport name="ReporteFinanciero" pageWidth="595" pageHeight="842" orientation="Portrait" columnWidth="535" leftMargin="30" rightMargin="30" topMargin="24" bottomMargin="24" whenNoDataType="AllSectionsNoDetail">
+    <style name="Base" default="true" fontName="DejaVu Sans" fontSize="9.0" forecolor="#20344A"/>
+    <style name="Celda" fontName="DejaVu Sans" fontSize="9.0"><box leftPadding="5" rightPadding="5" topPadding="5" bottomPadding="5"><bottomPen lineWidth="0.4" lineColor="#DDE4EB"/></box></style>
+    <style name="Encabezado" mode="Opaque" backcolor="#EAF0F7" bold="true" fontSize="9.0" vTextAlign="Middle"><box leftPadding="5" rightPadding="5"/></style>
+    <parameter name="EMPRESA" class="java.lang.String"/>
+    <parameter name="TITULO" class="java.lang.String"/>
+    <parameter name="FILTROS" class="java.lang.String"/>
+    <parameter name="GENERADO" class="java.lang.String"/>
+    <parameter name="METRICAS" class="java.lang.String"/>
+    <parameter name="CATEGORIA" class="java.lang.String"/>
+    <parameter name="GRAFICO" class="java.awt.Image"/>
+    <parameter name="NOTA_GRAFICO" class="java.lang.String"/>
+    <parameter name="VACIO" class="java.lang.Boolean"/>
+    <field name="categoria" class="java.lang.String"/>
+    <field name="viajes" class="java.lang.String"/>
+    <field name="total" class="java.lang.String"/>
+    <title height="214" splitType="Stretch">
+        <element kind="textField" x="0" y="0" width="535" height="28" fontSize="18.0" bold="true" textAdjust="StretchHeight"><expression><![CDATA[$P{EMPRESA}]]></expression></element>
+        <element kind="textField" positionType="Float" x="0" y="34" width="535" height="27" fontSize="16.0" bold="true"><expression><![CDATA[$P{TITULO}]]></expression></element>
+        <element kind="textField" positionType="Float" x="0" y="66" width="535" height="18" fontSize="8.0" forecolor="#586B7E"><expression><![CDATA[$P{GENERADO}]]></expression></element>
+        <element kind="textField" positionType="Float" x="0" y="88" width="535" height="48" textAdjust="StretchHeight"><expression><![CDATA[$P{FILTROS}]]></expression></element>
+        <element kind="textField" positionType="Float" x="0" y="145" width="535" height="34" textAdjust="StretchHeight" bold="true" fontSize="10.0"><expression><![CDATA[$P{METRICAS}]]></expression></element>
+        <element kind="staticText" positionType="Float" x="0" y="185" width="535" height="24" forecolor="#586B7E"><printWhenExpression><![CDATA[$P{VACIO}]]></printWhenExpression><text><![CDATA[No hay viajes que coincidan con los filtros.]]></text></element>
+    </title>
+    <pageHeader height="20">
+        <element kind="textField" x="0" y="0" width="535" height="16" textAdjust="StretchHeight" fontSize="8.0" forecolor="#586B7E"><printWhenExpression><![CDATA[$V{PAGE_NUMBER} > 1]]></printWhenExpression><expression><![CDATA[$P{EMPRESA} + " | " + $P{TITULO}]]></expression></element>
+    </pageHeader>
+    <columnHeader height="26">
+        <element kind="textField" x="0" y="0" width="335" height="26" style="Encabezado"><expression><![CDATA[$P{CATEGORIA}]]></expression></element>
+        <element kind="staticText" x="335" y="0" width="65" height="26" style="Encabezado"><text><![CDATA[Viajes]]></text></element>
+        <element kind="staticText" x="400" y="0" width="135" height="26" style="Encabezado"><text><![CDATA[Total facturado]]></text></element>
+    </columnHeader>
+    <detail>
+        <band height="26" splitType="Prevent">
+            <element kind="textField" x="0" y="0" width="335" height="26" textAdjust="StretchHeight" stretchType="ContainerHeight" hTextAlign="Left" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{categoria}]]></expression></element>
+            <element kind="textField" x="335" y="0" width="65" height="26" textAdjust="StretchHeight" stretchType="ContainerHeight" hTextAlign="Right" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{viajes}]]></expression></element>
+            <element kind="textField" x="400" y="0" width="135" height="26" textAdjust="StretchHeight" stretchType="ContainerHeight" hTextAlign="Right" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{total}]]></expression></element>
+        </band>
+    </detail>
+    <pageFooter height="24">
+        <element kind="staticText" x="0" y="7" width="405" height="15" fontSize="7.0" forecolor="#586B7E"><text><![CDATA[Cobro registrado de viajes finalizados.]]></text></element>
+        <element kind="textField" x="405" y="7" width="130" height="15" hTextAlign="Right" fontSize="8.0"><expression><![CDATA["Página " + $V{PAGE_NUMBER}]]></expression></element>
+    </pageFooter>
+    <summary height="285" splitType="Prevent">
+        <printWhenExpression><![CDATA[$P{GRAFICO} != null]]></printWhenExpression>
+        <element kind="image" x="0" y="12" width="535" height="245" scaleImage="RetainShape"><expression><![CDATA[$P{GRAFICO}]]></expression></element>
+        <element kind="textField" x="0" y="262" width="535" height="20" fontSize="8.0" forecolor="#586B7E"><expression><![CDATA[$P{NOTA_GRAFICO}]]></expression></element>
+    </summary>
+</jasperReport>

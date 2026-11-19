@@ -100,7 +100,7 @@ Ambos roles inician sesión con credenciales almacenadas en la base de datos; la
 - **Planificador de asignaciones:** vinculación de unidad, operador y carga en un mismo viaje.
 - **Pre-asignación de viajes:** encolamiento de la siguiente carga validando la consistencia geográfica de la ruta.
 - **Monitor de flota en vivo:** tablero semaforizado con el estado de unidades, operadores y viajes activos.
-- **Control financiero:** registro y consulta de la tarifa cobrada por cada flete, por operador y por unidad.
+- **Reportes financieros:** resumen, facturación por operador/unidad, evolución y detalle de viajes finalizados; filtros combinados, gráficos, vista previa paginada y exportación PDF.
 - **Gestión de unidades, operadores y cargas:** alta, consulta, actualización y baja.
 - **Gestión de clientes:** pestaña con todos los campos de `clientes` (empresa, contacto, teléfono, email, dirección y activo), con validaciones y bajas protegidas por integridad referencial.
 - **Panel administrativo:** cuentas de administradores y operadores, permisos de reportes, restablecimiento de contraseñas, países activos con buscador, ubicaciones editables con mapa satelital de solo lectura y rutas con tiempo estimado y precio sugerido. Incluye borrados masivos de cuentas filtradas, ubicaciones y rutas protegidos con la contraseña del administrador.
