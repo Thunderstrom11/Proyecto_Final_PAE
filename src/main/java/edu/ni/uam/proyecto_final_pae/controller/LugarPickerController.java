@@ -1436,17 +1436,18 @@ public class LugarPickerController {
                   markerZoomAnimation: false,
                   maxZoom: MAX_SATELITE
                 }).setView([12.8, -85.5], 6);
-                var capaCalles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+                var capaCalles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
                   maxZoom: MAX_CALLE,
                   keepBuffer: 4,
-                  attribution: 'Tiles &copy; Esri · Geocoding &copy; OpenStreetMap/Nominatim'
-                });
+                  noWrap: true,
+                  attribution: '&copy; OpenStreetMap contributors · Geocoding &copy; Nominatim'
+                }).addTo(mapa);
                 var capaSatelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                   maxZoom: MAX_CALLE,
                   maxNativeZoom: MAX_SATELITE,
                   keepBuffer: 4,
-                  attribution: 'Tiles &copy; Esri · Geocoding &copy; OpenStreetMap/Nominatim'
-                }).addTo(mapa);
+                  attribution: 'Tiles &copy; Esri · &copy; OpenStreetMap contributors'
+                });
                 var capaGuardados = L.layerGroup().addTo(mapa);
                 var capaResultados = L.layerGroup().addTo(mapa);
                 L.control.layers(

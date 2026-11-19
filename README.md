@@ -110,7 +110,7 @@ Ambos roles inician sesión con credenciales almacenadas en la base de datos; la
 - **Asistente de primera configuración:** en el primer arranque se capturan los datos de la empresa, la moneda con la que se muestran los cobros y se crea la cuenta de administrador, sin editar archivos ni buscar en la base de datos.
 
 > La pestaña Ubicaciones incluye un mapa Leaflet satelital de solo lectura con los puntos de las ubicaciones registradas. Permite mover y ampliar el mapa, seleccionar un punto para centrarlo y ver su información; no permite crear ubicaciones haciendo clic en el mapa.
-> El selector de lugares exactos usa Leaflet con mosaicos de Esri y búsqueda Nominatim/OpenStreetMap; la búsqueda respeta el límite de 1 petición por segundo y requiere conexión a Internet.
+> El selector de lugares exactos usa Leaflet con mosaicos de OpenStreetMap (muestra calles, iconos y nombres de negocios y sitios a zoom alto), capa satelital de Esri y búsqueda Nominatim/OpenStreetMap; la búsqueda respeta el límite de 1 petición por segundo y requiere conexión a Internet.
 
 ### Módulo Operador (Cabina)
 
