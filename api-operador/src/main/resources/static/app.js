@@ -36,6 +36,15 @@
         route: null,
         routeSignature: null,
         navActive: false,
+        navPhase: null,
+        routeTarget: null,
+        arrivedOrigin: false,
+        arrivedDestination: false,
+        followUser: true,
+        followButton: null,
+        mapResizeObserver: null,
+        lastRecalcAt: 0,
+        recalculating: false,
         geoWatch: null,
         voiceEnabled: true,
         currentStep: 0,
@@ -53,6 +62,7 @@
 
     function init() {
         bindEvents();
+        actualizarBotonPantallaCompleta();
         loadConfig();
         restoreSession();
     }
@@ -89,10 +99,22 @@
         $('btn-accion-confirmar').addEventListener('click', () => ejecutarJornada('confirmar'));
         $('nav-start').addEventListener('click', toggleNavigation);
         $('nav-voice').addEventListener('click', toggleVoice);
+        $('toggle-trip').addEventListener('click', toggleTripPanel);
+        $('nav-arrival-close').addEventListener('click', ocultarLlegada);
+        const botonPantalla = $('fullscreen-toggle');
+        if (botonPantalla) {
+            botonPantalla.addEventListener('click', togglePantallaCompleta);
+        }
         window.addEventListener('resize', () => {
             if (state.map) {
                 state.map.resize();
             }
+        });
+        document.addEventListener('fullscreenchange', () => {
+            if (document.fullscreenElement) {
+                bloquearHorizontal();
+            }
+            actualizarBotonPantallaCompleta();
         });
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden && state.token) {
@@ -131,6 +153,7 @@
 
     async function login(event) {
         event.preventDefault();
+        activarPantallaCompleta();
         hideLoginError();
         const usuario = $('usuario').value.trim();
         const password = $('password').value;
@@ -154,9 +177,84 @@
             showDashboard(data);
             await loadPanel();
         } catch (error) {
+            salirPantallaCompleta();
             showLoginError(error.message || 'No se pudo iniciar sesión.');
         } finally {
             setLoginLoading(false);
+        }
+    }
+
+    function activarPantallaCompleta() {
+        const raiz = document.documentElement;
+        if (document.fullscreenElement || typeof raiz.requestFullscreen !== 'function') {
+            return;
+        }
+        try {
+            const intento = raiz.requestFullscreen({ navigationUI: 'hide' });
+            if (intento && typeof intento.catch === 'function') {
+                intento.catch(() => {});
+            }
+        } catch (ignored) {
+            // Algunos navegadores rechazan la solicitud aunque venga del gesto de login.
+        }
+    }
+
+    function bloquearHorizontal() {
+        if (!document.fullscreenElement || !screen.orientation
+            || typeof screen.orientation.lock !== 'function') {
+            return;
+        }
+        try {
+            const intento = screen.orientation.lock('landscape');
+            if (intento && typeof intento.catch === 'function') {
+                intento.catch(() => {});
+            }
+        } catch (ignored) {
+            // El bloqueo de orientación solo existe en algunos navegadores móviles.
+        }
+    }
+
+    function salirPantallaCompleta() {
+        try {
+            if (document.fullscreenElement && typeof document.exitFullscreen === 'function') {
+                const intento = document.exitFullscreen();
+                if (intento && typeof intento.catch === 'function') {
+                    intento.catch(() => {});
+                }
+            }
+            if (screen.orientation && typeof screen.orientation.unlock === 'function') {
+                screen.orientation.unlock();
+            }
+        } catch (ignored) {
+            // Sin efecto cuando no hay pantalla completa activa.
+        }
+    }
+
+    function togglePantallaCompleta() {
+        if (document.fullscreenElement) {
+            salirPantallaCompleta();
+            return;
+        }
+        activarPantallaCompleta();
+    }
+
+    function actualizarBotonPantallaCompleta() {
+        const boton = $('fullscreen-toggle');
+        if (!boton) {
+            return;
+        }
+        const activa = !!document.fullscreenElement;
+        const etiqueta = activa ? 'Salir de pantalla completa' : 'Pantalla completa';
+        boton.title = etiqueta;
+        boton.setAttribute('aria-label', etiqueta);
+        boton.setAttribute('aria-pressed', String(activa));
+        const texto = boton.querySelector('span');
+        if (texto) {
+            texto.textContent = etiqueta;
+        }
+        const icono = $('fullscreen-toggle-icon');
+        if (icono) {
+            icono.setAttribute('href', activa ? '#i-fullscreen-exit' : '#i-fullscreen');
         }
     }
 
@@ -188,6 +286,7 @@
     function showLogin(message, tone = 'error') {
         stopTimers();
         resetMap();
+        salirPantallaCompleta();
         $('alert-button').disabled = true;
         deshabilitarAcciones();
         $('dashboard-view').hidden = true;
@@ -292,10 +391,52 @@
 
     function habilitarAcciones(jornada) {
         const paso = jornada?.paso;
-        $('btn-accion-iniciar').disabled = paso !== 'SIN_INICIAR';
+        const esperandoOrigen = debeEsperarLlegada();
+        const botonIniciar = $('btn-accion-iniciar');
+        botonIniciar.disabled = paso !== 'SIN_INICIAR' || esperandoOrigen;
+        botonIniciar.title = esperandoOrigen ? 'Acércate al punto A para iniciar el trayecto.' : '';
         $('btn-accion-pausar').disabled = paso !== 'EN_MARCHA';
         $('btn-accion-reanudar').disabled = !(paso === 'EN_PAUSA' && jornada?.puedeReanudar);
         $('btn-accion-confirmar').disabled = paso !== 'EN_MARCHA';
+    }
+
+    function debeEsperarLlegada() {
+        if (!state.navActive || state.navPhase !== 'hacia-origen'
+                || state.arrivedOrigin || !state.lastPosition) {
+            return false;
+        }
+        const origen = origenViaje();
+        if (!origen) {
+            return false;
+        }
+        return distanceMeters(state.lastPosition.lat, state.lastPosition.lng,
+            origen[1], origen[0]) > 120;
+    }
+
+    function origenViaje() {
+        const viaje = state.panel?.viaje;
+        return viaje ? coordinatePair(viaje.latitudOrigen, viaje.longitudOrigen) : null;
+    }
+
+    function destinoViaje() {
+        const viaje = state.panel?.viaje;
+        return viaje ? coordinatePair(viaje.latitudDestino, viaje.longitudDestino) : null;
+    }
+
+    function toggleTripPanel() {
+        const layout = $('cabina-layout');
+        const colapsado = layout.classList.toggle('trip-collapsed');
+        const boton = $('toggle-trip');
+        const etiqueta = colapsado ? 'Mostrar viaje activo' : 'Ocultar viaje activo';
+        boton.setAttribute('aria-expanded', String(!colapsado));
+        boton.setAttribute('aria-label', etiqueta);
+        boton.title = etiqueta;
+        $('toggle-trip-icon').setAttribute('href', colapsado ? '#i-chevron-right' : '#i-chevron-left');
+        window.setTimeout(() => {
+            if (state.map) {
+                state.map.resize();
+            }
+        }, 240);
     }
 
     async function ejecutarJornada(accion) {
@@ -318,6 +459,13 @@
             const respuesta = await api('/operador/jornada/' + accion, { method: 'POST' });
             state.routeSignature = null;
             await loadPanel();
+            if (accion === 'iniciar' && state.navActive && state.navPhase === 'hacia-origen') {
+                state.arrivedOrigin = true;
+                state.navPhase = 'hacia-destino';
+                state.routeTarget = null;
+                ocultarLlegada();
+                recalcularRutaNavegacion(true);
+            }
             toast(respuesta?.mensaje || 'Jornada actualizada.');
         } catch (error) {
             if (error.status === 401) {
@@ -593,6 +741,7 @@
         setText('nav-step-distance', '—');
         showRouteFallback('Calculando ruta…', 'Estamos consultando OpenRouteService para obtener la ruta y las indicaciones.', false);
         ensureNavMap();
+        $('nav-start').disabled = !(origen && destino);
         drawRouteBase(viaje, origen, destino);
 
         if (!origen || !destino) {
@@ -607,7 +756,7 @@
             drawRoute(respuesta, origen, destino);
             renderSteps(respuesta);
             hideRouteFallback();
-            $('nav-start').disabled = !(respuesta.pasos && respuesta.pasos.length);
+            $('nav-start').disabled = false;
         } catch (error) {
             if (error.status === 401) {
                 clearSession();
@@ -632,13 +781,52 @@
             zoom: 7,
             pitch: 0,
             bearing: 0,
-            antialias: true
+            antialias: true,
+            renderWorldCopies: false,
+            minZoom: 1.5
+        });
+        state.map.on('moveend', () => {
+            if (!state.map) {
+                return;
+            }
+            const centro = state.map.getCenter();
+            const lng = Math.max(-180, Math.min(180, centro.lng));
+            const lat = Math.max(-85, Math.min(85, centro.lat));
+            if (Math.abs(centro.lng - lng) > 1e-6 || Math.abs(centro.lat - lat) > 1e-6) {
+                state.map.panTo([lng, lat], { duration: 0 });
+            }
         });
         state.map.addControl(new maplibregl.NavigationControl({
             visualizePitch: true,
             showCompass: true,
-            showZoom: true
+            showZoom: false
         }), 'bottom-right');
+        agregarControlesZoom(state.map);
+        agregarControlSeguir(state.map);
+        state.map.on('dragstart', () => {
+            state.followUser = false;
+            actualizarBotonSeguir();
+        });
+        state.map.on('rotatestart', () => {
+            state.followUser = false;
+            actualizarBotonSeguir();
+        });
+        state.map.on('wheel', () => {
+            state.followUser = false;
+            actualizarBotonSeguir();
+        });
+        const brujula = state.map.getContainer().querySelector('.maplibregl-ctrl-compass');
+        if (brujula) {
+            brujula.addEventListener('click', () => seguirUsuario());
+        }
+        if (typeof ResizeObserver === 'function') {
+            state.mapResizeObserver = new ResizeObserver(() => {
+                if (state.map) {
+                    state.map.resize();
+                }
+            });
+            state.mapResizeObserver.observe(document.getElementById('nav-map'));
+        }
         state.map.on('load', () => {
             state.mapLoaded = true;
             state.map.setSky({
@@ -671,6 +859,216 @@
         }
     }
 
+    function agregarControlesZoom(map) {
+        const grupo = document.createElement('div');
+        grupo.className = 'maplibregl-ctrl maplibregl-ctrl-group maplibregl-ctrl-zoom-custom';
+        const acercar = document.createElement('button');
+        acercar.type = 'button';
+        acercar.title = 'Acercar';
+        acercar.setAttribute('aria-label', 'Acercar');
+        acercar.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
+        acercar.addEventListener('click', () => {
+            map.zoomTo(map.getZoom() + 1.5, { duration: 300 });
+            seguirUsuario();
+        });
+        const alejar = document.createElement('button');
+        alejar.type = 'button';
+        alejar.title = 'Alejar';
+        alejar.setAttribute('aria-label', 'Alejar');
+        alejar.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>';
+        alejar.addEventListener('click', () => {
+            map.zoomTo(map.getZoom() - 1.5, { duration: 300 });
+            seguirUsuario();
+        });
+        grupo.append(acercar, alejar);
+        map.addControl({
+            onAdd: () => grupo,
+            onRemove: () => grupo.remove()
+        }, 'bottom-right');
+    }
+
+    function agregarControlSeguir(map) {
+        const contenedor = document.createElement('div');
+        contenedor.className = 'maplibregl-ctrl maplibregl-ctrl-group maplibregl-ctrl-follow';
+        const boton = document.createElement('button');
+        boton.type = 'button';
+        boton.title = 'Centrar en mi ubicación';
+        boton.setAttribute('aria-label', 'Centrar en mi ubicación');
+        boton.innerHTML = '<svg viewBox="0 0 24 24"><use href="#i-target"></use></svg>';
+        boton.addEventListener('click', () => seguirUsuario());
+        contenedor.append(boton);
+        map.addControl({
+            onAdd: () => contenedor,
+            onRemove: () => contenedor.remove()
+        }, 'bottom-right');
+        state.followButton = boton;
+        actualizarBotonSeguir();
+    }
+
+    function seguirUsuario() {
+        state.followUser = true;
+        actualizarBotonSeguir();
+        if (!state.lastPosition) {
+            toast('Esperando la ubicación del GPS…');
+            return;
+        }
+        if (!state.map) {
+            return;
+        }
+        state.map.easeTo({
+            center: [state.lastPosition.lng, state.lastPosition.lat],
+            bearing: state.navActive ? (state.lastPosition.rumbo || 0) : state.map.getBearing(),
+            pitch: state.navActive ? 58 : state.map.getPitch(),
+            duration: 700
+        });
+    }
+
+    function actualizarBotonSeguir() {
+        if (state.followButton) {
+            state.followButton.classList.toggle('active', !!state.followUser);
+        }
+    }
+
+    function drawNavigationRoute(ruta) {
+        withMapReady(() => {
+            if (!ruta?.puntos?.length || !state.map) {
+                return;
+            }
+            const geoJson = {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                    type: 'LineString',
+                    coordinates: ruta.puntos.map(punto => [punto.lng, punto.lat])
+                }
+            };
+            if (!state.map.getSource('ruta-navegacion')) {
+                state.map.addSource('ruta-navegacion', { type: 'geojson', data: geoJson });
+                state.map.addLayer({
+                    id: 'ruta-navegacion-casing',
+                    type: 'line',
+                    source: 'ruta-navegacion',
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: { 'line-color': '#FFFFFF', 'line-width': 11, 'line-opacity': 0.9 }
+                });
+                state.map.addLayer({
+                    id: 'ruta-navegacion-linea',
+                    type: 'line',
+                    source: 'ruta-navegacion',
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: { 'line-color': '#166534', 'line-width': 6, 'line-opacity': 0.97 }
+                });
+            } else {
+                state.map.getSource('ruta-navegacion').setData(geoJson);
+            }
+            if (state.map.getLayer('ruta-operador-linea')) {
+                state.map.setPaintProperty('ruta-operador-linea', 'line-opacity', 0.22);
+            }
+            if (state.map.getLayer('trayecto-base-linea')) {
+                state.map.setLayoutProperty('trayecto-base-linea', 'visibility', 'none');
+            }
+        });
+    }
+
+    function limpiarRutaNavegacion() {
+        if (!state.map) {
+            return;
+        }
+        ['ruta-navegacion-linea', 'ruta-navegacion-casing'].forEach(id => {
+            if (state.map.getLayer(id)) {
+                state.map.removeLayer(id);
+            }
+        });
+        if (state.map.getSource('ruta-navegacion')) {
+            state.map.removeSource('ruta-navegacion');
+        }
+        if (state.map.getLayer('ruta-operador-linea')) {
+            state.map.setPaintProperty('ruta-operador-linea', 'line-opacity', 0.95);
+        }
+        if (state.map.getLayer('trayecto-base-linea')) {
+            state.map.setLayoutProperty('trayecto-base-linea', 'visibility', 'visible');
+        }
+    }
+
+    function mostrarLlegada(titulo, mensaje) {
+        setText('nav-arrival-title', titulo);
+        setText('nav-arrival-message', mensaje);
+        const overlay = $('nav-arrival');
+        if (overlay) {
+            overlay.hidden = false;
+        }
+    }
+
+    function ocultarLlegada() {
+        const overlay = $('nav-arrival');
+        if (overlay) {
+            overlay.hidden = true;
+        }
+    }
+
+    async function recalcularRutaNavegacion(forzar = false) {
+        if (!state.navActive || state.recalculating) {
+            return;
+        }
+        const objetivo = state.navPhase === 'hacia-origen' ? 'origen' : 'destino';
+        const ahora = Date.now();
+        if (!forzar && ahora - state.lastRecalcAt < 20000) {
+            return;
+        }
+        state.recalculating = true;
+        state.lastRecalcAt = ahora;
+        try {
+            const posicion = state.lastPosition
+                ? { lat: state.lastPosition.lat, lng: state.lastPosition.lng }
+                : await obtenerUbicacionActual();
+            if (!state.navActive) {
+                return;
+            }
+            const params = new URLSearchParams({ hasta: objetivo });
+            if (posicion) {
+                params.set('lat', posicion.lat.toFixed(6));
+                params.set('lon', posicion.lng.toFixed(6));
+            }
+            const respuesta = await api('/operador/ruta?' + params.toString());
+            if (!state.navActive) {
+                return;
+            }
+            state.route = respuesta;
+            state.routeTarget = objetivo;
+            drawNavigationRoute(respuesta);
+            renderSteps(respuesta);
+            hideRouteFallback();
+        } catch (error) {
+            if (error.status === 401) {
+                clearSession();
+                showLogin('Tu sesión expiró. Inicia sesión nuevamente.');
+                return;
+            }
+            toast(error.message || 'No se pudo calcular la ruta de navegación.', true);
+        } finally {
+            state.recalculating = false;
+        }
+    }
+
+    function manejarLlegada(objetivo) {
+        if (objetivo === 'origen' && !state.arrivedOrigin) {
+            state.arrivedOrigin = true;
+            const nombre = state.panel?.viaje?.origen || 'el punto A';
+            mostrarLlegada('Has llegado al punto A',
+                `Estás en ${nombre}. Ya puedes iniciar el trayecto y comenzar a contar las horas de manejo.`);
+            speakInstruction('Has llegado al punto de origen. Ya puedes iniciar el trayecto.');
+            habilitarAcciones(state.panel?.jornada);
+            return;
+        }
+        if (objetivo === 'destino' && !state.arrivedDestination) {
+            state.arrivedDestination = true;
+            const quien = state.panel?.operador?.nombre || 'El operador';
+            mostrarLlegada(`${quien} ha llegado a su destino`,
+                'Confirma la entrega para cerrar el viaje.');
+            speakInstruction(`${quien} ha llegado a su destino.`);
+        }
+    }
+
     function drawRouteBase(viaje, origen, destino) {
         withMapReady(() => {
             state.routeMarkers.forEach(marker => marker.remove());
@@ -698,6 +1096,7 @@
                 });
             }
         });
+        refrescarTrayecto();
     }
 
     function createNodeMarker(nombre, clase, lngLat) {
@@ -726,6 +1125,53 @@
                 bounds.extend(destino);
                 state.map.fitBounds(bounds, { padding: 55, maxZoom: 13, duration: 0 });
                 state.map.easeTo({ pitch: 45, bearing: 0, duration: 0 });
+            }
+        });
+        refrescarTrayecto();
+    }
+
+    async function refrescarTrayecto() {
+        if (!state.map || !state.mapLoaded || state.navActive) {
+            return;
+        }
+        const origen = origenViaje();
+        if (!origen) {
+            return;
+        }
+        const posicion = state.lastPosition
+            ? { lat: state.lastPosition.lat, lng: state.lastPosition.lng }
+            : await obtenerUbicacionActual();
+        if (!posicion || !state.map || state.navActive) {
+            return;
+        }
+        state.lastPosition = { lat: posicion.lat, lng: posicion.lng, rumbo: state.lastPosition?.rumbo || 0 };
+        ensureUserMarker(posicion.lng, posicion.lat, state.lastPosition.rumbo);
+        const geojson = {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+                type: 'LineString',
+                coordinates: [[posicion.lng, posicion.lat], origen]
+            }
+        };
+        if (state.map.getSource('trayecto-base')) {
+            state.map.getSource('trayecto-base').setData(geojson);
+            if (state.map.getLayer('trayecto-base-linea')) {
+                state.map.setLayoutProperty('trayecto-base-linea', 'visibility', 'visible');
+            }
+            return;
+        }
+        state.map.addSource('trayecto-base', { type: 'geojson', data: geojson });
+        state.map.addLayer({
+            id: 'trayecto-base-linea',
+            type: 'line',
+            source: 'trayecto-base',
+            layout: { 'line-cap': 'round', 'line-join': 'round' },
+            paint: {
+                'line-color': '#0E7490',
+                'line-width': 3,
+                'line-opacity': 0.75,
+                'line-dasharray': [1.2, 1.6]
             }
         });
     }
@@ -799,16 +1245,16 @@
     function toggleNavigation() {
         if (state.navActive) {
             stopNavigation();
+            if (state.panel?.viaje) {
+                state.routeSignature = null;
+                updateMap(state.panel.viaje);
+            }
             return;
         }
         startNavigation();
     }
 
     function startNavigation() {
-        if (!state.route?.pasos?.length) {
-            toast('La ruta todavía no tiene indicaciones disponibles.', true);
-            return;
-        }
         if (!('geolocation' in navigator)) {
             toast('Este navegador no puede acceder a la ubicación.', true);
             return;
@@ -817,21 +1263,30 @@
             toast('La navegación necesita HTTPS o localhost para usar el GPS.', true);
             return;
         }
+        if (!origenViaje() || !destinoViaje()) {
+            toast('El viaje no tiene coordenadas completas de origen y destino.', true);
+            return;
+        }
+        stopNavigation();
         state.navActive = true;
-        state.lastPosition = null;
+        state.followUser = true;
+        actualizarBotonSeguir();
+        state.navPhase = state.panel?.jornada?.paso === 'SIN_INICIAR' ? 'hacia-origen' : 'hacia-destino';
+        state.routeTarget = null;
+        state.arrivedOrigin = false;
+        state.arrivedDestination = false;
+        state.lastRecalcAt = 0;
+        ocultarLlegada();
         updateNavButton();
         if (state.map) {
             state.map.easeTo({ pitch: 58, zoom: Math.max(state.map.getZoom(), 16.5), duration: 800 });
-        }
-        const paso = state.route.pasos[state.currentStep];
-        if (paso) {
-            speakInstruction(paso.instruccion);
         }
         state.geoWatch = navigator.geolocation.watchPosition(onPosition, onGeoError, {
             enableHighAccuracy: true,
             maximumAge: 1000,
             timeout: 12000
         });
+        recalcularRutaNavegacion(true);
     }
 
     function stopNavigation() {
@@ -840,7 +1295,15 @@
         }
         state.geoWatch = null;
         state.navActive = false;
+        state.navPhase = null;
+        state.routeTarget = null;
+        state.arrivedOrigin = false;
+        state.arrivedDestination = false;
+        state.followUser = false;
         state.lastPosition = null;
+        ocultarLlegada();
+        actualizarBotonSeguir();
+        limpiarRutaNavegacion();
         if (state.userMarker) {
             state.userMarker.remove();
             state.userMarker = null;
@@ -863,7 +1326,7 @@
     }
 
     function onPosition(position) {
-        if (!state.route || !state.navActive) {
+        if (!state.navActive) {
             return;
         }
         const lat = position.coords.latitude;
@@ -876,7 +1339,7 @@
                 rumbo = bearingBetween(anterior.lat, anterior.lng, lat, lng);
             }
         }
-        if (!anterior) {
+        if (!anterior && state.route?.puntos?.length) {
             const cercanoInicial = nearestRoutePoint(lat, lng, state.route.puntos || []);
             if (cercanoInicial) {
                 const siguiente = state.route.puntos[Math.min(cercanoInicial.indice + 2, state.route.puntos.length - 1)];
@@ -890,6 +1353,30 @@
         }
 
         ensureUserMarker(lng, lat, rumbo);
+        state.lastPosition = { lat, lng, rumbo };
+        if (state.followUser && state.map) {
+            state.map.easeTo({
+                center: [lng, lat],
+                bearing: rumbo,
+                pitch: 58,
+                duration: 600
+            });
+        }
+
+        const objetivo = state.navPhase === 'hacia-origen' ? origenViaje() : destinoViaje();
+        if (objetivo && distanceMeters(lat, lng, objetivo[1], objetivo[0]) < 90) {
+            manejarLlegada(state.navPhase === 'hacia-origen' ? 'origen' : 'destino');
+        }
+
+        const objetivoActual = state.navPhase === 'hacia-origen' ? 'origen' : 'destino';
+        const llegadaActual = objetivoActual === 'origen' ? state.arrivedOrigin : state.arrivedDestination;
+        if (llegadaActual) {
+            return;
+        }
+        if (!state.route || state.routeTarget !== objetivoActual) {
+            recalcularRutaNavegacion();
+            return;
+        }
         const cercano = nearestRoutePoint(lat, lng, state.route.puntos || []);
         if (cercano) {
             let paso = state.route.pasos.findIndex(p => cercano.indice >= p.inicio && cercano.indice <= p.fin);
@@ -898,17 +1385,9 @@
                     p.inicio <= cercano.indice && p.inicio > (state.route.pasos[mejor]?.inicio ?? -1) ? i : mejor, 0);
             }
             setCurrentStep(paso, paso !== state.currentStep);
-        }
-        const fueraDeRuta = cercano && cercano.distanciaMetros > 120;
-        state.lastPosition = { lat, lng, rumbo };
-        if (state.map) {
-            state.map.easeTo({
-                center: [lng, lat],
-                bearing: rumbo,
-                pitch: 58,
-                zoom: Math.max(state.map.getZoom(), 16.5),
-                duration: 700
-            });
+            if (cercano.distanciaMetros > 90) {
+                recalcularRutaNavegacion();
+            }
         }
     }
 
@@ -1007,7 +1486,6 @@
             enlace.hidden = !mostrarEnlace;
         }
         if (!state.route) {
-            $('nav-start').disabled = true;
             clearSteps();
         }
     }
@@ -1104,11 +1582,16 @@
             state.userMarker.remove();
             state.userMarker = null;
         }
+        if (state.mapResizeObserver) {
+            state.mapResizeObserver.disconnect();
+            state.mapResizeObserver = null;
+        }
         if (state.map) {
             state.map.remove();
             state.map = null;
         }
         state.mapLoaded = false;
+        state.followButton = null;
         state.lastPosition = null;
     }
 

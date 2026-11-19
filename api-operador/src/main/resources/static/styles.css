@@ -500,6 +500,8 @@ a {
 }
 
 .btn-block {
+    position: relative;
+    justify-content: center;
     width: 100%;
     min-height: 38px;
     margin-top: 0.25rem;
@@ -507,9 +509,15 @@ a {
 }
 
 .btn-arrow {
+    position: absolute;
+    right: 13px;
     width: 1rem;
     height: 1rem;
-    margin-left: auto;
+}
+
+.btn-block .spinner {
+    position: absolute;
+    right: 13px;
 }
 
 .spinner {
@@ -528,14 +536,20 @@ a {
 /* ------------------------------------------------------------------ dashboard header */
 
 .dashboard {
-    min-width: 920px;
-    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .app-header {
     position: relative;
     z-index: 20;
     display: flex;
+    flex: 0 0 auto;
     flex-direction: column;
     gap: 5px;
     padding: 12px 14px;
@@ -548,7 +562,8 @@ a {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 14px;
+    flex-wrap: wrap;
+    gap: 8px 14px;
 }
 
 .header-title-row .page-title {
@@ -600,20 +615,87 @@ a {
 /* ------------------------------------------------------------------ dashboard layout */
 
 .app-main {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
     width: min(1400px, 100%);
     margin: 0 auto;
-    padding: 18px 14px;
+    padding: 14px;
+    min-height: 0;
+}
+
+#trip-content {
+    display: flex;
+    flex: 1;
+    min-height: 0;
 }
 
 .cabina-layout {
+    --trip-w: clamp(220px, 21vw, 280px);
+    position: relative;
     display: grid;
-    grid-template-columns: 270px minmax(0, 1fr);
+    flex: 1;
+    grid-template-columns: var(--trip-w) minmax(0, 1fr);
     gap: 12px;
     align-items: stretch;
+    min-height: 0;
+    transition: grid-template-columns 200ms ease;
+}
+
+.trip-pane {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    transition: opacity 160ms ease;
+}
+
+.trip-pane > .trip-card {
+    height: 100%;
+}
+
+.cabina-layout.trip-collapsed {
+    --trip-w: 0px;
+    gap: 0 12px;
+}
+
+.cabina-layout.trip-collapsed .trip-pane {
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.trip-toggle {
+    position: absolute;
+    top: 10px;
+    left: max(0px, calc(var(--trip-w) - 11px));
+    z-index: 30;
+    display: grid;
+    width: 22px;
+    height: 46px;
+    place-items: center;
+    padding: 0;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: #FFFFFF;
+    color: var(--navy);
+    box-shadow: 0 4px 12px rgba(34, 58, 94, 0.14);
+    cursor: pointer;
+    transition: background 150ms ease, left 200ms ease;
+}
+
+.trip-toggle:hover {
+    background: #E8EEF8;
+}
+
+.trip-toggle .icon {
+    width: 14px;
+    height: 14px;
 }
 
 .action-bar {
-    margin-top: 13px;
+    flex: 0 0 auto;
+    margin-top: 10px;
 }
 
 .action-row {
@@ -623,10 +705,10 @@ a {
 }
 
 .action-row .btn {
-    min-height: 54px;
+    min-height: clamp(44px, 6.5vh, 56px);
     border-radius: 10px;
     font-size: 16px;
-    padding: 14px 22px;
+    padding: 12px 22px;
 }
 
 .action-row .btn:disabled {
@@ -644,6 +726,8 @@ a {
 
 .trip-card {
     padding: 16px;
+    min-height: 0;
+    overflow-y: auto;
 }
 
 .card-head {
@@ -969,7 +1053,7 @@ a {
 .map-card {
     display: flex;
     flex-direction: column;
-    min-height: 520px;
+    min-height: 0;
     padding: 16px;
 }
 
@@ -1024,7 +1108,9 @@ a {
 
 .nav-map-shell {
     position: relative;
-    height: clamp(500px, 60vh, 720px);
+    flex: 1;
+    height: auto;
+    min-height: 220px;
     margin-top: 13px;
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -1277,6 +1363,139 @@ a {
     opacity: 0.78;
 }
 
+/* ------------------------------------------------------------------ llegada y seguimiento */
+
+.nav-arrival {
+    position: absolute;
+    inset: 0;
+    z-index: 800;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(15, 32, 54, 0.42);
+    backdrop-filter: blur(3px);
+}
+
+.nav-arrival-card {
+    width: min(360px, 100%);
+    padding: 20px 22px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: #FFFFFF;
+    box-shadow: 0 22px 60px rgba(7, 16, 29, 0.35);
+    text-align: center;
+}
+
+.nav-arrival-icon {
+    display: inline-grid;
+    width: 46px;
+    height: 46px;
+    place-items: center;
+    margin-bottom: 8px;
+    border-radius: 50%;
+    background: var(--green-soft);
+    color: var(--green);
+}
+
+.nav-arrival-icon .icon {
+    width: 24px;
+    height: 24px;
+}
+
+.nav-arrival-card h3 {
+    margin: 0;
+    color: var(--navy-dark);
+    font-size: 18px;
+}
+
+.nav-arrival-card p {
+    margin: 6px 0 14px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.maplibregl-ctrl-group button {
+    width: 34px;
+    height: 34px;
+}
+
+.maplibregl-ctrl-zoom-custom button {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    background-color: #FFFFFF;
+    color: var(--navy);
+    cursor: pointer;
+}
+
+.maplibregl-ctrl-zoom-custom button:hover {
+    background-color: #EDF2FA;
+}
+
+.maplibregl-ctrl-zoom-custom svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+}
+
+.maplibregl-ctrl-follow button {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    background-color: #FFFFFF;
+    color: var(--navy);
+    cursor: pointer;
+}
+
+.maplibregl-ctrl-follow button:hover {
+    background-color: #EDF2FA;
+}
+
+.maplibregl-ctrl-follow button.active {
+    background-color: #E5F3F5;
+    color: var(--teal);
+}
+
+.maplibregl-ctrl-follow svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Controles y acciones más grandes en pantallas táctiles. */
+@media (pointer: coarse), (max-width: 900px) {
+    .maplibregl-ctrl-group button {
+        width: 44px;
+        height: 44px;
+    }
+
+    .maplibregl-ctrl-zoom-custom button,
+    .maplibregl-ctrl-follow button {
+        width: 44px;
+        height: 44px;
+    }
+
+    .maplibregl-ctrl-zoom-custom svg,
+    .maplibregl-ctrl-follow svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
 /* ------------------------------------------------------------------ toast */
 
 .toast {
@@ -1368,69 +1587,150 @@ a {
     opacity: 0.55;
 }
 
-/* Móvil en horizontal: mantiene la cabina en dos columnas y usa toda la altura. */
-@media (orientation: landscape) and (max-height: 540px) {
-    .dashboard {
-        display: flex;
-        flex-direction: column;
-        min-width: 800px;
-        height: 100dvh;
-        min-height: 0;
-        overflow: hidden;
+/* Acciones de cabecera compactas en pantallas medianas y móviles. */
+@media (max-width: 1180px) {
+    .header-actions .btn span {
+        display: none;
     }
 
+    .header-actions .btn {
+        min-width: 34px;
+        padding: 7px 9px;
+    }
+}
+
+/* Tablet y teléfono en vertical: una columna con desplazamiento interno y acciones fijas abajo. */
+@media (max-width: 900px) {
     .app-header {
-        flex: 0 0 auto;
-        padding: 6px 10px;
-        gap: 2px;
+        padding: 10px 12px;
     }
 
     .header-title-row .page-title {
         font-size: 18px;
     }
 
+    .app-main {
+        padding: 10px;
+    }
+
+    #trip-content {
+        display: block;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .cabina-layout {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .trip-toggle {
+        top: 8px;
+        left: auto;
+        right: 10px;
+        height: 40px;
+    }
+
+    .cabina-layout.trip-collapsed .trip-pane {
+        display: none;
+    }
+
+    .trip-card {
+        overflow: visible;
+    }
+
+    .map-card {
+        min-height: min(68dvh, 560px);
+    }
+
+    .nav-map-shell {
+        min-height: 300px;
+    }
+
+    .action-row {
+        gap: 7px;
+    }
+
+    .action-row .btn {
+        min-height: 46px;
+        padding: 10px;
+        font-size: 13px;
+    }
+}
+
+/* Teléfono en vertical: acciones en dos filas para que no se aprieten. */
+@media (max-width: 600px) {
+    .action-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .header-title-row .page-title {
+        font-size: 17px;
+    }
+
     .operator-row {
-        gap: 4px 8px;
-        font-size: 10px;
+        font-size: 11px;
+    }
+}
+
+/* Teléfono en horizontal y pantallas de poca altura: cabina compacta en dos columnas. */
+@media (orientation: landscape) and (max-height: 620px) {
+    .app-header {
+        padding: 6px 10px;
+        gap: 1px;
+    }
+
+    .header-title-row .page-title {
+        font-size: 16px;
     }
 
     .header-actions .btn {
-        min-height: 28px;
-        padding: 4px 7px;
+        min-height: 26px;
+        padding: 3px 7px;
+        font-size: 10px;
+    }
+
+    .operator-row {
+        gap: 2px 8px;
         font-size: 10px;
     }
 
     .app-main {
+        padding: 6px 10px;
+    }
+
+    #trip-content {
         display: flex;
-        flex: 1;
-        flex-direction: column;
-        min-height: 0;
-        padding: 6px 10px 6px;
         overflow: hidden;
     }
 
     .cabina-layout {
-        flex: 1;
-        min-height: 0;
-        grid-template-columns: 230px minmax(0, 1fr);
+        display: grid;
+        --trip-w: clamp(185px, 24vw, 230px);
+        grid-template-columns: var(--trip-w) minmax(0, 1fr);
         gap: 8px;
     }
 
+    .trip-toggle {
+        top: 6px;
+        left: max(0px, calc(var(--trip-w) - 11px));
+        right: auto;
+        height: 38px;
+    }
+
     .trip-card {
-        height: 100%;
         padding: 10px;
         overflow-y: auto;
     }
 
     .map-card {
-        height: 100%;
         min-height: 0;
         padding: 10px;
         overflow: hidden;
     }
 
     .map-head h2 {
-        font-size: 16px;
+        font-size: 15px;
     }
 
     .map-head .btn {
@@ -1442,7 +1742,7 @@ a {
     .nav-map-shell {
         flex: 1;
         height: auto;
-        min-height: 0;
+        min-height: 150px;
         margin-top: 7px;
     }
 
@@ -1480,14 +1780,39 @@ a {
     }
 
     .action-bar {
-        flex: 0 0 auto;
-        margin: 6px 0 0;
+        margin-top: 6px;
     }
 
     .action-row .btn {
         min-height: 38px;
         padding: 7px 8px;
         font-size: 11px;
+    }
+}
+
+/* Login en teléfonos apaisados: tarjeta compacta y desplazable. */
+@media (orientation: landscape) and (max-height: 500px) {
+    .login-view {
+        padding: 1rem;
+        place-items: start center;
+    }
+
+    .login-card {
+        padding: 18px 22px;
+    }
+
+    .role-row {
+        margin-bottom: 0.8rem;
+    }
+
+    .role-card {
+        min-height: 64px;
+        flex-direction: row;
+        gap: 8px;
+    }
+
+    .role-card small {
+        display: none;
     }
 }
 
@@ -1568,4 +1893,13 @@ a {
     justify-content: flex-end;
     gap: 8px;
     margin-top: 4px;
+}
+
+/* Refuerzo táctil: los botones de navegación también ganan altura en horizontal. */
+@media (pointer: coarse), (max-width: 900px) {
+    .nav-controls .btn {
+        min-height: 46px;
+        padding: 10px 14px;
+        font-size: 13px;
+    }
 }

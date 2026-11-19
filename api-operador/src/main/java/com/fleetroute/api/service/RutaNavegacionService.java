@@ -49,6 +49,14 @@ public class RutaNavegacionService {
     }
 
     public RutaResponse ruta(Sesion sesion) {
+        return ruta(sesion, null, null, null);
+    }
+
+    /**
+     * Calcula la ruta del viaje. Si llegan coordenadas de partida, la ruta sale desde esa
+     * posición; con {@code hasta=origen} el destino es el punto A en lugar del punto B.
+     */
+    public RutaResponse ruta(Sesion sesion, Double lat, Double lon, String hasta) {
         if (apiKey.isBlank()) {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
                     "La navegación con OpenRouteService no está configurada.");
@@ -67,6 +75,15 @@ public class RutaNavegacionService {
                     "El viaje no tiene coordenadas completas de origen y destino.");
         }
 
+        boolean haciaOrigen = "origen".equalsIgnoreCase(hasta);
+        double destinoLat = haciaOrigen ? viaje.latitudOrigen() : viaje.latitudDestino();
+        double destinoLon = haciaOrigen ? viaje.longitudOrigen() : viaje.longitudDestino();
+        boolean partidaValida = lat != null && lon != null
+                && Double.isFinite(lat) && Double.isFinite(lon)
+                && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
+        double partidaLat = partidaValida ? lat : viaje.latitudOrigen();
+        double partidaLon = partidaValida ? lon : viaje.longitudOrigen();
+
         try {
             JsonNode respuesta = restClient.post()
                     .uri("/v2/directions/driving-car/geojson")
@@ -74,8 +91,8 @@ public class RutaNavegacionService {
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of(
                             "coordinates", List.of(
-                                    List.of(viaje.longitudOrigen(), viaje.latitudOrigen()),
-                                    List.of(viaje.longitudDestino(), viaje.latitudDestino())),
+                                    List.of(partidaLon, partidaLat),
+                                    List.of(destinoLon, destinoLat)),
                             "instructions", true,
                             "language", "es",
                             "units", "m"))
