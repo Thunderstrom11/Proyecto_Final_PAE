@@ -596,7 +596,8 @@ public class SetupController {
         Window duenio = btnSiguiente.getScene() == null ? null : btnSiguiente.getScene().getWindow();
         Optional<List<String>> eleccion = DialogoPaises.elegir(duenio, paisesElegidos,
                 "Países de la empresa", "Elija los países donde trabaja la empresa",
-                "Al guardar se registran las provincias, departamentos y ciudades de cada país marcado. "
+                "Al guardar, cada país marcado se registra como una sola ubicación (con un centro "
+                        + "aproximado) para usarlo como origen o destino. "
                         + "Los países de Centroamérica no vienen marcados: elíjalos si los necesita.");
         if (eleccion.isEmpty()) {
             return;
@@ -607,7 +608,7 @@ public class SetupController {
     private void generarPaises(List<String> seleccion) {
         btnElegirPaises.setDisable(true);
         btnSiguiente.setDisable(true);
-        lblPaisesEstado.setText("Agregando las provincias y ciudades de los países marcados...");
+        lblPaisesEstado.setText("Agregando los países marcados como ubicaciones...");
         Task<DivisionesMundo.Resumen> tarea = new Task<>() {
             @Override
             protected DivisionesMundo.Resumen call() {
@@ -636,7 +637,7 @@ public class SetupController {
     private String describirPaises(DivisionesMundo.Resumen resumen) {
         String paises = String.join(", ", paisesElegidos);
         if (resumen.ubicaciones() == 0) {
-            return "Países activos: " + paises + ". Esos países ya tenían cargadas sus ubicaciones.";
+            return "Países activos: " + paises + ". Esos países ya estaban registrados como ubicación.";
         }
         return "Países activos: " + paises + ". Ubicaciones agregadas: " + resumen.ubicaciones() + ".";
     }
