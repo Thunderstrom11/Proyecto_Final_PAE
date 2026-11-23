@@ -1,6 +1,6 @@
 # FleetRoute Pro
 
-![Java](https://img.shields.io/badge/Java-17%2B-orange)
+![Java](https://img.shields.io/badge/Java-21%2B-orange)
 ![JavaFX](https://img.shields.io/badge/JavaFX-21%2B-blue)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?logo=springboot&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14%2B-336791?logo=postgresql&logoColor=white)
@@ -14,7 +14,7 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 
 ## Información importante del entorno
 
-- **JDK:** el proyecto compila con **Java 17 o superior** (probado con JDK 21 y 25).
+- **JDK:** los dos módulos requieren **JDK 21 o superior**. Configure el SDK de IntelliJ y `JAVA_HOME` con el mismo JDK.
 - **Base de datos:** se utiliza **PostgreSQL 14+** como sistema gestor de base de datos; el esquema tiene **17 tablas**.
 - **Script de base de datos:** el repositorio incluye [`database/fleetroute_pro.sql`](database/fleetroute_pro.sql), con la creación de tablas, restricciones, triggers, índices, catálogos y datos de ejemplo.
 - **Extensión:** el script crea `pgcrypto` para generar los hashes BCrypt de los usuarios de demostración.
@@ -75,7 +75,7 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 
 | Componente | Tecnología |
 |------------|------------|
-| Lenguaje base | Java 17+ (probado con JDK 21 y 25) |
+| Lenguaje base | Java 21+ |
 | Interfaz gráfica | JavaFX + FXML |
 | Cabina web | HTML, CSS y JavaScript · MapLibre GL JS |
 | API REST | Spring Boot 4.1 · Spring Web MVC · Spring JDBC |
@@ -148,7 +148,7 @@ Ambos roles inician sesión con credenciales almacenadas en la base de datos; la
 |--------|-------------|
 | RNF-01 | **Rendimiento:** las operaciones principales deben responder en menos de 2 segundos en condiciones normales. |
 | RNF-02 | **Usabilidad:** la interfaz del operador debe ser tipo tableta, con botones grandes y un máximo de 3 pasos por evento. |
-| RNF-03 | **Compatibilidad:** ejecución sobre Java 17 o superior, JavaFX y PostgreSQL en una red LAN local. |
+| RNF-03 | **Compatibilidad:** ejecución sobre Java 21 o superior, JavaFX y PostgreSQL en una red LAN local. |
 | RNF-04 | **Seguridad:** contraseñas almacenadas con hash, expiración de sesión por inactividad y acceso restringido por rol. |
 | RNF-05 | **Integridad de datos:** claves foráneas, restricciones `NOT NULL` y validaciones `CHECK` en el modelo relacional. |
 | RNF-06 | **Mantenibilidad:** arquitectura en capas (Vista JavaFX + Servicios + DAO + Modelo) con separación de responsabilidades. |
@@ -236,7 +236,7 @@ Proyecto_Final_PAE/
 │   │       └── edu/ni/uam/proyecto_final_pae/
 │   │           ├── *.fxml          # Vistas FXML
 │   │           └── styles/         # Hojas de estilo CSS
-│   └── test/java/…             # Pruebas de JornadaService
+│   └── test/java/…             # Pruebas de búsqueda y persistencia
 ├── .env.example                # Plantilla de variables de entorno
 ├── .env                        # Credenciales locales (NO se sube al repositorio)
 ├── .gitignore
@@ -340,7 +340,7 @@ Así el proyecto mantiene un único `SessionFactory` y separa la persistencia de
 
 | Herramienta | Versión mínima | Notas |
 |-------------|----------------|-------|
-| JDK | **17 o superior** para escritorio; **21 o superior** para la API (probado con 21 y 25) | Debe estar configurado como SDK del proyecto. |
+| JDK | **21 o superior** para escritorio y API | Debe estar configurado como SDK del proyecto. |
 | Maven | 3.9 o superior | Gestiona JavaFX, Hibernate, Spring Boot y el driver JDBC de PostgreSQL. |
 | PostgreSQL | 14 o superior | Servicio activo en `localhost:5432` (o el puerto configurado); probado con PostgreSQL 18.4. |
 | Cuenta de OpenRouteService | Gratuita | Solo para la navegación turn-by-turn de la cabina web; se configura en `.env`. |
@@ -388,56 +388,9 @@ psql -U postgres -d fleetroute_pro -v ON_ERROR_STOP=1 -f database/fleetroute_pro
 1. Crear una base de datos llamada `fleetroute_pro`.
 2. Abrir la base de datos y ejecutar el contenido de `database/fleetroute_pro.sql` desde el Query Tool.
 
-**Si la base ya existía**, no ejecutes el script completo (borra las tablas). Aplica una sola vez estos cambios desde el Query Tool de pgAdmin para actualizarla:
+**Si la base ya existía**, no ejecute el script completo: ese archivo sirve para una instalación desde cero. Al iniciar el escritorio, FleetRoute actualiza las tablas y columnas de las versiones anteriores compatibles sin borrar clientes, cuentas, ubicaciones ni viajes. La actualización también está en [`database/actualizar_esquema.sql`](database/actualizar_esquema.sql) para ejecución manual. Una base ajena o incompleta se rechaza en lugar de borrar sus datos.
 
-```sql
-BEGIN;
-
-ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS es_principal BOOLEAN NOT NULL DEFAULT FALSE;
-ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS puede_ver_reportes BOOLEAN NOT NULL DEFAULT FALSE;
-ALTER TABLE usuarios DROP COLUMN IF EXISTS clave_visible;
-
-ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS latitud DOUBLE PRECISION;
-ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS longitud DOUBLE PRECISION;
-ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS categoria VARCHAR(20) NOT NULL DEFAULT 'Otro';
-ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS color VARCHAR(7) NOT NULL DEFAULT '#0891B2';
-ALTER TABLE ubicaciones DROP CONSTRAINT IF EXISTS uq_ubicacion;
-ALTER TABLE ubicaciones ADD CONSTRAINT uq_ubicacion UNIQUE (nombre, departamento, pais);
-
-ALTER TABLE empresa ADD COLUMN IF NOT EXISTS moneda VARCHAR(3) NOT NULL DEFAULT 'NIO';
-
-CREATE TABLE IF NOT EXISTS rutas (
-    id_ruta               SERIAL PRIMARY KEY,
-    id_origen             INT NOT NULL REFERENCES ubicaciones (id_ubicacion) ON DELETE RESTRICT,
-    id_destino            INT NOT NULL REFERENCES ubicaciones (id_ubicacion) ON DELETE RESTRICT,
-    tiempo_estimado_horas NUMERIC(6,2) NOT NULL CHECK (tiempo_estimado_horas > 0),
-    CONSTRAINT uq_ruta_origen_destino UNIQUE (id_origen, id_destino),
-    CONSTRAINT ck_ruta_distinta CHECK (id_origen <> id_destino)
-);
-
-CREATE TABLE IF NOT EXISTS alertas_operador (
-    id_alerta      SERIAL PRIMARY KEY,
-    id_viaje       INT NOT NULL REFERENCES viajes (id_viaje) ON DELETE CASCADE,
-    id_operador    INT NOT NULL REFERENCES operadores (id_operador) ON DELETE RESTRICT,
-    id_unidad      INT NOT NULL REFERENCES unidades (id_unidad) ON DELETE RESTRICT,
-    latitud        DOUBLE PRECISION,
-    longitud       DOUBLE PRECISION,
-    ubicacion      VARCHAR(200),
-    mensaje        VARCHAR(300),
-    fecha_hora     TIMESTAMP NOT NULL DEFAULT NOW(),
-    atendida       BOOLEAN NOT NULL DEFAULT FALSE
-);
-
-CREATE INDEX IF NOT EXISTS idx_alertas_fecha    ON alertas_operador (fecha_hora DESC);
-CREATE INDEX IF NOT EXISTS idx_alertas_atendida ON alertas_operador (atendida);
-
-UPDATE usuarios
-   SET es_principal = TRUE,
-       puede_ver_reportes = TRUE
- WHERE username = 'admin';
-
-COMMIT;
-```
+Las ubicaciones y los países elegidos pertenecen al usuario: los arranques siguientes no restauran ejemplos eliminados ni cambian sus coordenadas.
 
 > El script no crea la base de datos; solo el esquema y los datos. En Windows, si `psql` no se reconoce, agrega la carpeta `bin` de PostgreSQL al `PATH` o ejecuta los comandos desde la ruta de instalación.
 >
@@ -473,9 +426,23 @@ DB_PASSWORD=tu_contrasena
 
 ### 4. Compilar y ejecutar
 
-```bash
-mvn clean javafx:run
+Desde la raíz del proyecto, con JDK 21+ en `JAVA_HOME`, compile los dos módulos antes de abrir el escritorio:
+
+**Windows (PowerShell o CMD):**
+
+```bat
+.\mvnw.cmd -f api-operador/pom.xml verify
+.\mvnw.cmd verify javafx:run
 ```
+
+**Linux / macOS:**
+
+```bash
+./mvnw -f api-operador/pom.xml verify
+./mvnw verify javafx:run
+```
+
+El wrapper incluye la misma versión de Maven para ambos módulos. Si falta JDK 21, la compilación muestra el requisito antes de intentar arrancar la API. Cada integrante usa su PostgreSQL local: al abrir por primera vez, el asistente permite crear la base y guardar su propia conexión en `.env`. No copie las credenciales de otro integrante.
 
 ### 5. Primera ejecución (asistente de configuración)
 
@@ -501,16 +468,25 @@ Para verificar únicamente la compilación:
 mvn clean compile
 ```
 
-Para ejecutar las pruebas de las reglas de jornada:
+Las pruebas del buscador usan un servidor HTTP local, sin Internet:
 
 ```bash
-mvn test
+./mvnw test
+./mvnw -f api-operador/pom.xml test
 ```
+
+Las regresiones de PostgreSQL se ejecutan con el perfil `postgres-it`. Defina `FLEETROUTE_IT_PASSWORD` con su contraseña local y use su usuario y puerto:
+
+```bash
+./mvnw -Ppostgres-it verify -Dfleetroute.it.admin-url=jdbc:postgresql://localhost:5432/postgres -Dfleetroute.it.user=postgres
+```
+
+En Windows, sustituya `./mvnw` por `.\mvnw.cmd`. Estas pruebas crean sus propias bases temporales y comprueban la instalación desde cero, la actualización del esquema y la persistencia después de reiniciar.
 
 **Desde IntelliJ IDEA:**
 
 1. Abrir la carpeta del proyecto (IntelliJ detecta el `pom.xml`).
-2. Configurar el SDK del proyecto en **File → Project Structure → Project** con un JDK 17 o superior (por ejemplo, Temurin 21 o 25).
+2. Configurar el SDK del proyecto en **File → Project Structure → Project** con un JDK 21 o superior (por ejemplo, Temurin 21 o 25).
 3. Verificar que el archivo `.env` esté en la raíz del proyecto.
 4. Ejecutar la clase principal o la meta de Maven `javafx:run`.
 
@@ -627,7 +603,7 @@ El túnel es opcional y sirve para abrir la cabina desde otro dispositivo o por 
 
 #### Preparación (una sola vez por equipo)
 
-1. **JDK 21 o superior en la app de escritorio.** El botón usa el mismo JDK con el que corre la app para lanzar la API, y la API está compilada para Java 21. El escritorio puede correr con 17, pero entonces el botón no podrá arrancar la API.
+1. **JDK 21 o superior en la app de escritorio.** El botón usa el mismo JDK con el que corre la app para lanzar la API. Ambos módulos se compilan y ejecutan con Java 21 o superior.
 2. **Base de datos y `.env` en la raíz del proyecto**, con las credenciales locales. La API los lee desde `api-operador/` a través de `../.env`.
 3. **JAR de la API compilado.** Desde la raíz del proyecto:
 

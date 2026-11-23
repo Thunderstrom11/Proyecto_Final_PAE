@@ -7,6 +7,7 @@ import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.config.PreparadorBase;
 import edu.ni.uam.proyecto_final_pae.config.Transaccion;
 import edu.ni.uam.proyecto_final_pae.dao.ClienteDAO;
+import edu.ni.uam.proyecto_final_pae.dao.EmpresaDAO;
 import edu.ni.uam.proyecto_final_pae.dao.PaisDAO;
 import edu.ni.uam.proyecto_final_pae.dao.OperadorDAO;
 import edu.ni.uam.proyecto_final_pae.dao.RutaDAO;
@@ -405,23 +406,30 @@ public class SetupController {
         new Thread(tarea, "probar-base").start();
     }
 
+    private record BasePreparada(String mensaje, boolean configurada) { }
+
     private void prepararBase() {
         PreparadorBase.Conexion conexion = leerConexion();
         btnSiguiente.setDisable(true);
         btnProbar.setDisable(true);
         lblMensaje.setText("");
-        Task<String> tarea = new Task<>() {
+        Task<BasePreparada> tarea = new Task<>() {
             @Override
-            protected String call() {
-                return PreparadorBase.preparar(conexion, this::updateMessage);
+            protected BasePreparada call() {
+                String mensaje = PreparadorBase.preparar(conexion, this::updateMessage);
+                return new BasePreparada(mensaje, new EmpresaDAO().configurada());
             }
         };
         lblEstadoBase.textProperty().bind(tarea.messageProperty());
         tarea.setOnSucceeded(evento -> {
             lblEstadoBase.textProperty().unbind();
-            lblEstadoBase.setText(tarea.getValue());
+            lblEstadoBase.setText(tarea.getValue().mensaje());
             btnSiguiente.setDisable(false);
             btnProbar.setDisable(false);
+            if (tarea.getValue().configurada()) {
+                Navegacion.abrirLogin(Navegacion.stageDe(btnSiguiente), "Conexión preparada. Inicie sesión con su cuenta.");
+                return;
+            }
             construirPasos();
             indice = 0;
             mostrarPaso();

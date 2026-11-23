@@ -74,12 +74,15 @@ public class FlotaController {
     private Timeline reloj;
     private Timeline relojTunel;
     private Process procesoTunel;
-    private Process procesoApi;
+    private volatile Process procesoApi;
+    private final Object bloqueoApi = new Object();
+    private Path logApi;
     private String enlaceTunel;
     private String estadoTunel = "Sin conexión";
     private String errorConexion;
-    private boolean apiIniciadaPorApp;
+    private volatile boolean apiIniciadaPorApp;
     private volatile boolean iniciandoConexion;
+    private volatile long revisionConexion;
     private final HttpClient httpCliente = HttpClient.newBuilder()
             .connectTimeout(java.time.Duration.ofSeconds(2))
             .build();
@@ -495,23 +498,29 @@ public class FlotaController {
             return;
         }
         iniciandoConexion = true;
+        long solicitud = ++revisionConexion;
         errorConexion = null;
         if (relojTunel != null) {
             relojTunel.play();
         }
         pintarConexion(Color.web("#B8860B"), "Iniciando API…", "Detener Conexión");
-        Thread preparacion = new Thread(() -> prepararConexion(ejecutable), "fleetroute-api-tunel");
+        Thread preparacion = new Thread(() -> prepararConexion(ejecutable, solicitud), "fleetroute-api-tunel");
         preparacion.setDaemon(true);
         preparacion.start();
     }
 
-    private void prepararConexion(String ejecutable) {
-        String error = asegurarApi();
-        if (!iniciandoConexion) {
+    private boolean conexionActual(long solicitud) {
+        return iniciandoConexion && revisionConexion == solicitud;
+    }
+
+    private void prepararConexion(String ejecutable, long solicitud) {
+        String error = asegurarApi(solicitud);
+        if (!conexionActual(solicitud)) {
             return;
         }
         if (error != null) {
             Platform.runLater(() -> {
+                if (!conexionActual(solicitud)) return;
                 iniciandoConexion = false;
                 errorConexion = error;
                 detenerApiPropia();
@@ -520,7 +529,7 @@ public class FlotaController {
             return;
         }
         Platform.runLater(() -> {
-            if (!iniciandoConexion) {
+            if (!conexionActual(solicitud)) {
                 return;
             }
             iniciandoConexion = false;
@@ -529,37 +538,45 @@ public class FlotaController {
     }
 
     /** Comprueba la API y la arranca desde api-operador/target si es necesario. */
-    private String asegurarApi() {
+    private String asegurarApi(long solicitud) {
         if (apiSaludable()) {
             return null;
+        }
+        if (Runtime.version().feature() < 21) {
+            return "La API requiere Java 21 o superior. Ejecute FleetRoute con JDK 21.";
         }
         Path jar = buscarJarApi();
         if (jar == null) {
             return "Falta api-operador/target/api-operador-0.0.1-SNAPSHOT.jar. Compile la API.";
         }
-        if (procesoApi == null || !procesoApi.isAlive()) {
-            try {
-                Path apiDir = jar.getParent().getParent();
-                Path javaExe = Path.of(System.getProperty("java.home"), "bin", "java.exe");
-                ProcessBuilder builder = new ProcessBuilder(
-                        javaExe.toString(), "-jar", jar.toAbsolutePath().toString());
-                builder.directory(apiDir.toFile());
-                builder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
-                builder.redirectError(ProcessBuilder.Redirect.DISCARD);
-                procesoApi = builder.start();
-                apiIniciadaPorApp = true;
-            } catch (IOException e) {
-                procesoApi = null;
-                apiIniciadaPorApp = false;
-                return "No se pudo iniciar la API: " + e.getMessage();
+        synchronized (bloqueoApi) {
+            if (!conexionActual(solicitud)) return null;
+            if (procesoApi == null || !procesoApi.isAlive()) {
+                try {
+                    Path apiDir = jar.getParent().getParent();
+                    Path javaExe = Path.of(System.getProperty("java.home"), "bin", "java.exe");
+                    if (!Files.isRegularFile(javaExe)) javaExe = Path.of(System.getProperty("java.home"), "bin", "java");
+                    ProcessBuilder builder = new ProcessBuilder(
+                            javaExe.toString(), "-jar", jar.toAbsolutePath().toString());
+                    builder.directory(apiDir.toFile());
+                    logApi = Files.createTempFile("fleetroute-api-", ".log");
+                    builder.redirectErrorStream(true);
+                    builder.redirectOutput(logApi.toFile());
+                    procesoApi = builder.start();
+                    apiIniciadaPorApp = true;
+                } catch (IOException e) {
+                    procesoApi = null;
+                    apiIniciadaPorApp = false;
+                    return "No se pudo iniciar la API: " + e.getMessage();
+                }
             }
         }
-        for (int intento = 0; intento < 30 && iniciandoConexion; intento++) {
+        for (int intento = 0; intento < 30 && conexionActual(solicitud); intento++) {
             if (apiSaludable()) {
                 return null;
             }
             if (procesoApi == null || !procesoApi.isAlive()) {
-                return "La API se cerró durante el arranque. Revise el puerto 8080.";
+                return "La API se cerró durante el arranque. Revise el registro: " + logApi;
             }
             try {
                 Thread.sleep(700);
@@ -568,8 +585,8 @@ public class FlotaController {
                 return "El arranque de la conexión fue interrumpido.";
             }
         }
-        return iniciandoConexion
-                ? "La API no respondió a tiempo. Revise /api/salud y el puerto 8080."
+        return conexionActual(solicitud)
+                ? "La API no respondió a tiempo. Revise el registro: " + logApi
                 : null;
     }
 
@@ -618,12 +635,13 @@ public class FlotaController {
                     "--edge-ip-version", "4");
             builder.redirectErrorStream(true);
             procesoTunel = builder.start();
+            Process proceso = procesoTunel;
             enlaceTunel = null;
             if (relojTunel != null) {
                 relojTunel.play();
             }
             pintarConexion(Color.web("#B8860B"), "Conectando…", "Detener Conexión");
-            Thread lector = new Thread(() -> leerSalidaTunel(procesoTunel), "cloudflared-output");
+            Thread lector = new Thread(() -> leerSalidaTunel(proceso), "cloudflared-output");
             lector.setDaemon(true);
             lector.start();
         } catch (IOException e) {
@@ -728,6 +746,7 @@ public class FlotaController {
 
     private void detenerTunel() {
         iniciandoConexion = false;
+        revisionConexion++;
         errorConexion = null;
         if (relojTunel != null) {
             relojTunel.stop();
@@ -748,11 +767,13 @@ public class FlotaController {
     }
 
     private void detenerApiPropia() {
-        if (apiIniciadaPorApp && procesoApi != null) {
-            procesoApi.destroy();
+        synchronized (bloqueoApi) {
+            if (apiIniciadaPorApp && procesoApi != null) {
+                procesoApi.destroy();
+            }
+            procesoApi = null;
+            apiIniciadaPorApp = false;
         }
-        procesoApi = null;
-        apiIniciadaPorApp = false;
     }
 
     private void pintarConexion(Color color, String texto, String textoBoton) {

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.dao.UbicacionDAO;
 import edu.ni.uam.proyecto_final_pae.model.Ubicacion;
+import edu.ni.uam.proyecto_final_pae.service.NominatimService;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -35,7 +36,6 @@ import java.text.Normalizer;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -51,13 +51,14 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /** Selector de un lugar exacto con búsqueda Nominatim y mapa Leaflet. */
 public class LugarPickerController {
 
-    private static final String NOMINATIM = "https://nominatim.openstreetmap.org";
+    private final NominatimService buscador = NominatimService.compartido();
     private static final String USER_AGENT =
             "FleetRouteProAcademic/1.0 (contacto: estudiante-uam)";
     private static final String COLOR_POR_DEFECTO = "#0891B2";
@@ -126,9 +127,11 @@ public class LugarPickerController {
     private Resultado puntoPendiente;
     private OpcionColor ultimoColorValido = COLORES_UBICACION.get(0);
     private int generacionBusqueda;
+    private CompletableFuture<JsonNode> consultaBusqueda;
+    private CompletableFuture<JsonNode> consultaReferencia;
     private Stage ventana;
     private final PauseTransition esperaBusqueda =
-            new PauseTransition(javafx.util.Duration.millis(700));
+            new PauseTransition(javafx.util.Duration.seconds(1));
 
     public record Resultado(String nombre, String direccion, String departamento,
                             String pais, double latitud, double longitud,
@@ -440,21 +443,12 @@ public class LugarPickerController {
             return;
         }
         String solicitado = pais;
-        String url = NOMINATIM + "/search?format=jsonv2&limit=1&featuretype=country"
-                + "&accept-language=es&q=" + URLEncoder.encode(solicitado, StandardCharsets.UTF_8);
-        HttpRequest request = HttpRequest.newBuilder(URI.create(url))
-                .header("User-Agent", USER_AGENT)
-                .timeout(Duration.ofSeconds(15))
-                .GET()
-                .build();
-        http.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                .thenAccept(respuesta -> Platform.runLater(() -> {
-                    if (!solicitado.equals(pais) || !mapaListo || mapa == null
-                            || respuesta.statusCode() != 200) {
+        buscador.limitesPais(solicitado)
+                .thenAccept(raiz -> Platform.runLater(() -> {
+                    if (!solicitado.equals(pais) || !mapaListo || mapa == null) {
                         return;
                     }
                     try {
-                        JsonNode raiz = json.readTree(respuesta.body());
                         if (!raiz.isArray() || raiz.isEmpty()) {
                             return;
                         }
@@ -626,6 +620,7 @@ public class LugarPickerController {
             return;
         }
         int generacion = ++generacionBusqueda;
+        String paisBuscado = pais;
         btnBuscar.setDisable(true);
         lblEstado.setText("Buscando en OpenStreetMap…");
         List<Resultado> guardadas = guardadas(texto);
@@ -633,30 +628,16 @@ public class LugarPickerController {
         if (limites == null) {
             aplicarLimitesPais();
         }
-        String url = NOMINATIM + "/search?format=jsonv2&addressdetails=1&limit=8&accept-language=es"
-                + "&q=" + URLEncoder.encode(texto + ", " + pais, StandardCharsets.UTF_8);
-        if (limites != null) {
-            url += "&viewbox=" + limites[1] + "," + limites[2] + ","
-                    + limites[3] + "," + limites[0] + "&bounded=1";
-        }
-        HttpRequest request = HttpRequest.newBuilder(URI.create(url))
-                .header("User-Agent", USER_AGENT)
-                .timeout(Duration.ofSeconds(15))
-                .GET()
-                .build();
-        http.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                .thenAccept(respuesta -> Platform.runLater(() -> {
-                    if (generacion != generacionBusqueda) {
+        if (consultaBusqueda != null) consultaBusqueda.cancel(false);
+        consultaBusqueda = buscador.buscar(texto, paisBuscado, limites);
+        consultaBusqueda
+                .thenAccept(raiz -> Platform.runLater(() -> {
+                    if (generacion != generacionBusqueda || !Objects.equals(paisBuscado, pais)) {
                         return;
                     }
                     btnBuscar.setDisable(false);
-                    if (respuesta.statusCode() != 200) {
-                        mostrarResultados(guardadas, "No se pudo consultar Nominatim. Se muestran los lugares guardados.");
-                        return;
-                    }
                     try {
                         List<Resultado> resultados = new ArrayList<>(guardadas);
-                        JsonNode raiz = json.readTree(respuesta.body());
                         for (JsonNode nodo : raiz) {
                             Resultado resultado = desdeNominatim(nodo);
                             if (resultado != null && noDuplicado(resultados, resultado)) {
@@ -679,6 +660,7 @@ public class LugarPickerController {
                 }))
                 .exceptionally(error -> {
                     Platform.runLater(() -> {
+                        if (generacion != generacionBusqueda || !Objects.equals(paisBuscado, pais)) return;
                         btnBuscar.setDisable(false);
                         mostrarResultados(guardadas, "No se pudo conectar con Nominatim. Se muestran los lugares guardados.");
                     });
@@ -921,21 +903,14 @@ public class LugarPickerController {
             txtNombreLugar.requestFocus();
             txtNombreLugar.selectAll();
             lblEstado.setText("Buscando una referencia cercana… Aún no está guardado.");
-            String url = NOMINATIM + "/reverse?format=jsonv2&accept-language=es&lat=" + latitud
-                    + "&lon=" + longitud;
-            HttpRequest request = HttpRequest.newBuilder(URI.create(url))
-                    .header("User-Agent", USER_AGENT)
-                    .timeout(Duration.ofSeconds(15))
-                    .GET()
-                    .build();
-            http.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                    .thenAccept(respuesta -> Platform.runLater(() -> {
-                        if (lista.getSelectionModel().getSelectedItem() != provisional
-                                || respuesta.statusCode() != 200) {
+            if (consultaReferencia != null) consultaReferencia.cancel(false);
+            consultaReferencia = buscador.referencia(latitud, longitud);
+            consultaReferencia
+                    .thenAccept(nodo -> Platform.runLater(() -> {
+                        if (lista.getSelectionModel().getSelectedItem() != provisional) {
                             return;
                         }
                         try {
-                            JsonNode nodo = json.readTree(respuesta.body());
                             String sugerido = nombreSugerido(nodo);
                             if (sugerido.isBlank()) {
                                 lblEstado.setText("No se encontró una referencia cercana; escriba el nombre manualmente.");
@@ -1022,6 +997,7 @@ public class LugarPickerController {
                     }))
                     .exceptionally(error -> {
                         Platform.runLater(() -> {
+                            if (lista.getSelectionModel().getSelectedItem() != provisional) return;
                             lblEstado.setText("No se pudo obtener la dirección sugerida; "
                                     + "escriba el nombre y confirme para guardarlo.");
                             aplicarLimitesPais();
