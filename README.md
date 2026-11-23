@@ -745,7 +745,6 @@ Módulo construido sobre Hibernate ORM. Cubre **RF-06** (eventos de jornada), **
 | `service/JornadaService` | Cálculo de horas acumuladas, semáforo y validaciones de las reglas de jornada. |
 | `controller/CabinaController` + `cabina-view.fxml` | Pantalla del operador. |
 | `controller/MonitorController` + `monitor-view.fxml` | Monitor de flota del administrador. |
-| `JornadaApplication` | Arranque de desarrollo con las dos pantallas; desde la corrección de RF-11 ambas exigen una sesión válida. |
 
 ### Cálculo de horas y semáforo
 
@@ -756,7 +755,7 @@ Las horas no se guardan en columnas: se suman los intervalos de la bitácora `re
 - **Descanso pendiente (amarillo):** el manejo acumulado alcanza el 80 % de `operadores.horas_max_conduccion` (RF-08).
 - **Retraso (rojo):** la proyección de llegada (`ahora + tiempo_estimado − manejo`) supera `cargas.fecha_limite_cliente`.
 - **A tiempo (verde):** no se cumple ninguna de las dos condiciones anteriores.
-- **Reanudar bloqueado (RF-07):** mientras el descanso acumulado no alcance `operadores.horas_min_descanso`.
+- **Reanudar (RF-07):** disponible durante una pausa manual; los descansos fragmentados siguen acumulándose respecto a `operadores.horas_min_descanso`.
 - **Confirmar entrega:** registra el evento, deja el viaje en `FINALIZADO` y, si existe un viaje encadenado (`id_viaje_previo`), lo pasa a `EN_CURSO`; si no hay encadenado, la unidad y el operador vuelven a `DISPONIBLE`.
 
 ### Pantallas
@@ -767,7 +766,7 @@ Las horas no se guardan en columnas: se suman los intervalos de la bitácora `re
 | Cabina web | Viaje activo, jornada, mapa MapLibre inclinado, ruta ORS e indicaciones, botones de jornada, alerta y cambio de contraseña. | 5 s |
 | Monitor de flota | Pestañas de viajes activos, unidades y operadores; viajes con unidad, operador, carga, ruta, límite del cliente, manejo acumulado, semáforo y estado; filtro de texto y leyenda de colores. | 2 s |
 
-La aplicación principal se inicia con el login (`mvn clean javafx:run`). Los arranques alternativos (`JornadaApplication`, `FlotaApplication`, etc.) ya no permiten saltarse RF-11: si no hay una sesión válida, las pantallas muestran acceso denegado y no consultan datos.
+La aplicación se inicia con `Launcher` o `./mvnw javafx:run`. El login establece la sesión y abre las pantallas autorizadas para la cuenta; sin una sesión válida, los controladores muestran acceso denegado y no consultan datos.
 
 ### Consultas HQL del módulo
 
