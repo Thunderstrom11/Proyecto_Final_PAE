@@ -3,6 +3,7 @@
 
     const API = '/api';
     const REFRESH_MS = 5000;
+    const LLEGADA_METROS = 100;
     const STORAGE = {
         token: 'fleetroute.token',
         operador: 'fleetroute.operador',
@@ -31,6 +32,7 @@
         map: null,
         mapLoaded: false,
         routeMarkers: [],
+        markerOrigen: null,
         userMarker: null,
         lastPosition: null,
         route: null,
@@ -44,7 +46,7 @@
         followButton: null,
         mapResizeObserver: null,
         lastRecalcAt: 0,
-        recalculating: false,
+        navTicket: 0,
         geoWatch: null,
         voiceEnabled: true,
         currentStep: 0,
@@ -1007,7 +1009,7 @@
     }
 
     async function recalcularRutaNavegacion(forzar = false) {
-        if (!state.navActive || state.recalculating) {
+        if (!state.navActive) {
             return;
         }
         const objetivo = state.navPhase === 'hacia-origen' ? 'origen' : 'destino';
@@ -1015,8 +1017,8 @@
         if (!forzar && ahora - state.lastRecalcAt < 20000) {
             return;
         }
-        state.recalculating = true;
         state.lastRecalcAt = ahora;
+        const ticket = ++state.navTicket;
         try {
             const posicion = state.lastPosition
                 ? { lat: state.lastPosition.lat, lng: state.lastPosition.lng }
@@ -1030,7 +1032,7 @@
                 params.set('lon', posicion.lng.toFixed(6));
             }
             const respuesta = await api('/operador/ruta?' + params.toString());
-            if (!state.navActive) {
+            if (!state.navActive || ticket !== state.navTicket) {
                 return;
             }
             state.route = respuesta;
@@ -1039,14 +1041,29 @@
             renderSteps(respuesta);
             hideRouteFallback();
         } catch (error) {
+            if (ticket !== state.navTicket) {
+                return;
+            }
             if (error.status === 401) {
                 clearSession();
                 showLogin('Tu sesión expiró. Inicia sesión nuevamente.');
                 return;
             }
             toast(error.message || 'No se pudo calcular la ruta de navegación.', true);
-        } finally {
-            state.recalculating = false;
+        }
+    }
+
+    function apagarMarcadorOrigen() {
+        const marcador = state.markerOrigen;
+        if (marcador && marcador.getElement()) {
+            marcador.getElement().classList.add('muted');
+        }
+    }
+
+    function restaurarMarcadorOrigen() {
+        const marcador = state.markerOrigen;
+        if (marcador && marcador.getElement()) {
+            marcador.getElement().classList.remove('muted');
         }
     }
 
@@ -1054,10 +1071,16 @@
         if (objetivo === 'origen' && !state.arrivedOrigin) {
             state.arrivedOrigin = true;
             const nombre = state.panel?.viaje?.origen || 'el punto A';
+            apagarMarcadorOrigen();
             mostrarLlegada('Has llegado al punto A',
-                `Estás en ${nombre}. Ya puedes iniciar el trayecto y comenzar a contar las horas de manejo.`);
+                `Estás en ${nombre}. La ruta hacia el punto B ya está trazada; inicia el trayecto para comenzar a contar las horas de manejo.`);
             speakInstruction('Has llegado al punto de origen. Ya puedes iniciar el trayecto.');
             habilitarAcciones(state.panel?.jornada);
+            if (state.navActive) {
+                state.navPhase = 'hacia-destino';
+                state.routeTarget = null;
+                recalcularRutaNavegacion(true);
+            }
             return;
         }
         if (objetivo === 'destino' && !state.arrivedDestination) {
@@ -1073,8 +1096,10 @@
         withMapReady(() => {
             state.routeMarkers.forEach(marker => marker.remove());
             state.routeMarkers = [];
+            state.markerOrigen = null;
             if (origen) {
-                state.routeMarkers.push(createNodeMarker(viaje.origen || 'Origen', 'origin', origen));
+                state.markerOrigen = createNodeMarker(viaje.origen || 'Origen', 'origin', origen);
+                state.routeMarkers.push(state.markerOrigen);
             }
             if (destino) {
                 state.routeMarkers.push(createNodeMarker(viaje.destino || 'Destino', 'destination', destino));
@@ -1295,6 +1320,7 @@
         }
         state.geoWatch = null;
         state.navActive = false;
+        state.navTicket++;
         state.navPhase = null;
         state.routeTarget = null;
         state.arrivedOrigin = false;
@@ -1303,6 +1329,7 @@
         state.lastPosition = null;
         ocultarLlegada();
         actualizarBotonSeguir();
+        restaurarMarcadorOrigen();
         limpiarRutaNavegacion();
         if (state.userMarker) {
             state.userMarker.remove();
@@ -1364,7 +1391,7 @@
         }
 
         const objetivo = state.navPhase === 'hacia-origen' ? origenViaje() : destinoViaje();
-        if (objetivo && distanceMeters(lat, lng, objetivo[1], objetivo[0]) < 90) {
+        if (objetivo && distanceMeters(lat, lng, objetivo[1], objetivo[0]) < LLEGADA_METROS) {
             manejarLlegada(state.navPhase === 'hacia-origen' ? 'origen' : 'destino');
         }
 
@@ -1592,6 +1619,7 @@
         }
         state.mapLoaded = false;
         state.followButton = null;
+        state.markerOrigen = null;
         state.lastPosition = null;
     }
 

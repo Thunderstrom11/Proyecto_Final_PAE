@@ -19,8 +19,8 @@ import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
 /**
- * Provincias, departamentos y ciudades de cada país, listos para registrarse como ubicaciones.
- * Los datos vienen incluidos en la aplicación, así que no hace falta conexión a internet.
+ * Catálogo de países para habilitar como ubicación: cada país aporta una sola ubicación
+ * con un centro aproximado. Los datos vienen incluidos en la aplicación, sin conexión.
  */
 public final class DivisionesMundo {
 
@@ -38,13 +38,13 @@ public final class DivisionesMundo {
     public record Resumen(int paises, int ubicaciones) {
     }
 
-    /** Cuántas ubicaciones aporta un país. Devuelve 0 si no hay datos para él. */
+    /** Cuántas ubicaciones aporta un país: una, si hay datos para él. */
     public static synchronized int cantidad(String pais) {
         String codigo = codigo(pais);
-        return codigo == null ? 0 : totales().getOrDefault(codigo, 0);
+        return codigo == null || totales().getOrDefault(codigo, 0) == 0 ? 0 : 1;
     }
 
-    /** Provincias y ciudades del país, en el orden en que se guardan. */
+    /** Ubicación del país (centro aproximado de sus divisiones). */
     public static synchronized List<Ubicacion> de(String pais) {
         String codigo = codigo(pais);
         if (codigo == null) {
@@ -68,7 +68,9 @@ public final class DivisionesMundo {
     }
 
     private static List<Ubicacion> leer(String codigo, String pais) {
-        List<Ubicacion> lista = new ArrayList<>();
+        double sumaLatitud = 0;
+        double sumaLongitud = 0;
+        int total = 0;
         try (BufferedReader lector = abrir()) {
             String linea;
             while ((linea = lector.readLine()) != null) {
@@ -76,16 +78,32 @@ public final class DivisionesMundo {
                 if (campos.length < 5 || !codigo.equals(campos[1])) {
                     continue;
                 }
+                Double latitud;
+                Double longitud;
                 if ("P".equals(campos[0])) {
-                    lista.add(ubicacion(campos[2], campos[2], pais, campos[3], campos[4]));
+                    latitud = decimal(campos[3]);
+                    longitud = decimal(campos[4]);
                 } else if ("C".equals(campos[0]) && campos.length >= 6) {
-                    lista.add(ubicacion(campos[3], campos[2], pais, campos[4], campos[5]));
+                    latitud = decimal(campos[4]);
+                    longitud = decimal(campos[5]);
+                } else {
+                    continue;
+                }
+                if (latitud != null && longitud != null) {
+                    sumaLatitud += latitud;
+                    sumaLongitud += longitud;
+                    total++;
                 }
             }
         } catch (IOException | RuntimeException e) {
             return List.of();
         }
-        return List.copyOf(lista);
+        if (total == 0) {
+            return List.of();
+        }
+        double latitud = Math.round(sumaLatitud / total * 100000d) / 100000d;
+        double longitud = Math.round(sumaLongitud / total * 100000d) / 100000d;
+        return List.of(new Ubicacion(pais, pais, pais, latitud, longitud));
     }
 
     private static Map<String, Integer> totales() {
@@ -138,11 +156,6 @@ public final class DivisionesMundo {
                 .map(Map.Entry::getValue)
                 .findFirst()
                 .orElse(null);
-    }
-
-    private static Ubicacion ubicacion(String nombre, String departamento, String pais,
-                                       String latitud, String longitud) {
-        return new Ubicacion(nombre, departamento, pais, decimal(latitud), decimal(longitud));
     }
 
     private static Double decimal(String texto) {

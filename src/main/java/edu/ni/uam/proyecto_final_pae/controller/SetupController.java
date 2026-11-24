@@ -7,6 +7,7 @@ import edu.ni.uam.proyecto_final_pae.config.PersistenciaException;
 import edu.ni.uam.proyecto_final_pae.config.PreparadorBase;
 import edu.ni.uam.proyecto_final_pae.config.Transaccion;
 import edu.ni.uam.proyecto_final_pae.dao.ClienteDAO;
+import edu.ni.uam.proyecto_final_pae.dao.EmpresaDAO;
 import edu.ni.uam.proyecto_final_pae.dao.PaisDAO;
 import edu.ni.uam.proyecto_final_pae.dao.OperadorDAO;
 import edu.ni.uam.proyecto_final_pae.dao.RutaDAO;
@@ -360,9 +361,9 @@ public class SetupController {
             case BASE -> "El sistema guarda todo en PostgreSQL. Si no lo tiene, instálelo desde postgresql.org/download y anote la contraseña que eligió para el usuario postgres. Escriba esa contraseña aquí y pulse Siguiente: el sistema crea la base, las tablas y los catálogos por usted.";
             case EMPRESA -> "Con estos datos aparece la empresa en el sistema. El país y la zona horaria definen cómo se registran las horas. La moneda se usa para mostrar los cobros.";
             case ADMIN -> "Esta cuenta maneja el sistema completo. La contraseña se guarda cifrada con BCrypt.";
-            case PAISES -> "Elija los países donde trabaja la empresa. Al guardar se registran sus provincias, "
-                    + "departamentos y ciudades como ubicaciones del sistema. Los países de Centroamérica no vienen "
-                    + "marcados: márquelos si los necesita. Este paso es opcional.";
+            case PAISES -> "Elija los países donde trabaja la empresa. Al guardar, cada país queda como una "
+                    + "ubicación con su centro aproximado, lista para usarse como origen o destino. Los países de "
+                    + "Centroamérica no vienen marcados: márquelos si los necesita. Este paso es opcional.";
             case UBICACIONES -> "Puedes agregar ubicaciones sueltas que no estén en la lista del país. Este paso es opcional.";
             case UNIDADES -> "Los camiones con los que va a trabajar la empresa. Quedan disponibles para asignar viajes.";
             case OPERADORES -> "Los choferes y sus reglas de descanso. Cada uno recibe su cuenta con la cédula como usuario y la contraseña "
@@ -405,23 +406,30 @@ public class SetupController {
         new Thread(tarea, "probar-base").start();
     }
 
+    private record BasePreparada(String mensaje, boolean configurada) { }
+
     private void prepararBase() {
         PreparadorBase.Conexion conexion = leerConexion();
         btnSiguiente.setDisable(true);
         btnProbar.setDisable(true);
         lblMensaje.setText("");
-        Task<String> tarea = new Task<>() {
+        Task<BasePreparada> tarea = new Task<>() {
             @Override
-            protected String call() {
-                return PreparadorBase.preparar(conexion, this::updateMessage);
+            protected BasePreparada call() {
+                String mensaje = PreparadorBase.preparar(conexion, this::updateMessage);
+                return new BasePreparada(mensaje, new EmpresaDAO().configurada());
             }
         };
         lblEstadoBase.textProperty().bind(tarea.messageProperty());
         tarea.setOnSucceeded(evento -> {
             lblEstadoBase.textProperty().unbind();
-            lblEstadoBase.setText(tarea.getValue());
+            lblEstadoBase.setText(tarea.getValue().mensaje());
             btnSiguiente.setDisable(false);
             btnProbar.setDisable(false);
+            if (tarea.getValue().configurada()) {
+                Navegacion.abrirLogin(Navegacion.stageDe(btnSiguiente), "Conexión preparada. Inicie sesión con su cuenta.");
+                return;
+            }
             construirPasos();
             indice = 0;
             mostrarPaso();
@@ -596,7 +604,8 @@ public class SetupController {
         Window duenio = btnSiguiente.getScene() == null ? null : btnSiguiente.getScene().getWindow();
         Optional<List<String>> eleccion = DialogoPaises.elegir(duenio, paisesElegidos,
                 "Países de la empresa", "Elija los países donde trabaja la empresa",
-                "Al guardar se registran las provincias, departamentos y ciudades de cada país marcado. "
+                "Al guardar, cada país marcado se registra como una sola ubicación (con un centro "
+                        + "aproximado) para usarlo como origen o destino. "
                         + "Los países de Centroamérica no vienen marcados: elíjalos si los necesita.");
         if (eleccion.isEmpty()) {
             return;
@@ -607,7 +616,7 @@ public class SetupController {
     private void generarPaises(List<String> seleccion) {
         btnElegirPaises.setDisable(true);
         btnSiguiente.setDisable(true);
-        lblPaisesEstado.setText("Agregando las provincias y ciudades de los países marcados...");
+        lblPaisesEstado.setText("Agregando los países marcados como ubicaciones...");
         Task<DivisionesMundo.Resumen> tarea = new Task<>() {
             @Override
             protected DivisionesMundo.Resumen call() {
@@ -636,7 +645,7 @@ public class SetupController {
     private String describirPaises(DivisionesMundo.Resumen resumen) {
         String paises = String.join(", ", paisesElegidos);
         if (resumen.ubicaciones() == 0) {
-            return "Países activos: " + paises + ". Esos países ya tenían cargadas sus ubicaciones.";
+            return "Países activos: " + paises + ". Esos países ya estaban registrados como ubicación.";
         }
         return "Países activos: " + paises + ". Ubicaciones agregadas: " + resumen.ubicaciones() + ".";
     }
@@ -1048,7 +1057,7 @@ public class SetupController {
                 .append("\n");
         texto.append("Ubicaciones nuevas: ").append(nuevasUbicaciones.size()).append("\n");
         if (ubicacionesGeneradas > 0) {
-            texto.append("Ubicaciones por país: ").append(ubicacionesGeneradas).append("\n");
+            texto.append("Ubicaciones de países: ").append(ubicacionesGeneradas).append("\n");
         }
         texto.append("Unidades nuevas: ").append(nuevasUnidades.size()).append("\n");
         texto.append("Operadores nuevos: ").append(nuevosOperadores.size()).append("\n");

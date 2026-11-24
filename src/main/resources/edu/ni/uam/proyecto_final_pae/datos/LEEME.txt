@@ -1,7 +1,7 @@
 mundo.tsv.gz
 
-Provincias, departamentos y ciudades que el sistema carga como ubicaciones cuando se
-activa un país.
+Datos geográficos utilizados para calcular el centro aproximado de cada país
+habilitado. La aplicación registra una ubicación por país.
 
 Origen de los datos
   Base de datos "Countries States Cities Database" de dr5hn.

@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * Persistencia de la bitacora de jornada (registro_jornada).
  *
- * <p><b>Consulta HQL #1 de este modulo:</b> {@link #listarPorViaje(Integer)} recupera
+ * <p>{@link #listarPorViaje(Integer)} recupera
  * los eventos de un viaje junto con su tipo ({@code join fetch r.tipoEvento}), que es la
  * relacion RegistroJornada - TipoEvento.</p>
  */
@@ -74,7 +74,7 @@ public class RegistroJornadaDAO extends GenericDAO<RegistroJornada, Integer> {
 
     /**
      * Inserta un evento resolviendo su tipo por NOMBRE en cat_tipo_evento
-     * (nunca se queman IDs de catalogo). El num_evento lo calcula la aplicacion (y el trigger, si existe).
+     * sin fijar IDs de catálogo. El trigger trg_rj_num_evento asigna el consecutivo del viaje.
      */
     public RegistroJornada registrar(Integer idViaje, String nombreTipoEvento, LocalDateTime fechaHora, String observacion) {
         return Transaccion.ejecutar(sesion -> {

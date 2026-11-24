@@ -121,7 +121,7 @@
                     <graphic><FontIcon iconLiteral="fas-globe-americas"/></graphic>
                 </Label>
                 <Label styleClass="status-label" wrapText="true"
-                       text="Se crean las provincias, departamentos y ciudades de cada país marcado."/>
+                       text="Cada país marcado se agrega como una sola ubicación con un centro aproximado."/>
                 <Button fx:id="btnElegirPaises" text="Elegir países" maxWidth="Infinity" styleClass="btn-secondary" onAction="#elegirPaises">
                     <graphic><FontIcon iconLiteral="fas-globe-americas"/></graphic>
                 </Button>

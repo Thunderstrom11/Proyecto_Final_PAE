@@ -121,7 +121,8 @@ public final class DialogoPaises {
             total += DivisionesMundo.cantidad(pais);
         }
         String cuantos = paises.size() == 1 ? "1 país marcado" : paises.size() + " países marcados";
-        return cuantos + " · " + total + " ubicaciones en total.";
+        String cuantas = total == 1 ? "1 ubicación" : total + " ubicaciones";
+        return cuantos + " · " + cuantas + " en total.";
     }
 
     private static String normalizar(String texto) {

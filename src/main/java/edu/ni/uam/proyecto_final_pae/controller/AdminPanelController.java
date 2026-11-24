@@ -53,7 +53,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
 /**
- * Panel administrativo exclusivo del administrador principal (N.º 5).
+ * Panel administrativo exclusivo del administrador principal.
  *
  * <p>Gestiona cuentas de administradores y operadores, el permiso de reportes financieros,
  * las ubicaciones de origen/destino con sus coordenadas y las rutas con su tiempo estimado.</p>
@@ -61,7 +61,7 @@ import java.util.Optional;
 public class AdminPanelController {
 
     private static final String USER_AGENT =
-            "FleetRouteProAcademic/1.0 (contacto: estudiante-uam)";
+            "FleetRoutePro/1.0 (+https://github.com/Thunderstrom11/Proyecto_Final_PAE)";
 
     private final UsuarioDAO usuarioDAO = new UsuarioDAO();
     private final OperadorDAO operadorDAO = new OperadorDAO();
@@ -529,8 +529,9 @@ public class AdminPanelController {
         Window duenio = lblEstado.getScene() == null ? null : lblEstado.getScene().getWindow();
         Optional<List<String>> eleccion = DialogoPaises.elegir(duenio, activos, "Países activos",
                 "Activar o desactivar países",
-                "Marque los países donde la empresa tiene ubicaciones. Al guardar se agregan sus "
-                        + "provincias y ciudades al sistema y al mapa. Los lugares que ya existen no se tocan.");
+                "Marque los países donde la empresa tiene ubicaciones. Al guardar, cada país se "
+                        + "agrega como una sola ubicación en el sistema y en el mapa. "
+                        + "Los lugares que ya existen no se tocan.");
         if (eleccion.isEmpty()) {
             return;
         }
@@ -540,7 +541,7 @@ public class AdminPanelController {
     /** Guarda los países marcados y agrega las ubicaciones que falten, sin congelar la ventana. */
     private void guardarPaises(List<String> seleccion) {
         String paisPrevio = resolverPais();
-        lblEstado.setText("Agregando las provincias y ciudades de los países seleccionados...");
+        lblEstado.setText("Agregando los países seleccionados como ubicaciones...");
         btnPaises.setDisable(true);
         Task<DivisionesMundo.Resumen> tarea = new Task<>() {
             @Override
