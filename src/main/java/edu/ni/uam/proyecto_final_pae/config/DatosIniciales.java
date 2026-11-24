@@ -8,8 +8,7 @@ import org.hibernate.Transaction;
 import java.util.function.Function;
 
 /**
- * Inserta los catalogos y las ubicaciones de ejemplo cuando las tablas estan vacias.
- * Es idempotente: solo agrega lo que falta.
+ * Inserta únicamente los catálogos necesarios para las reglas de negocio.
  * Los maestros (clientes, unidades, operadores) y los usuarios se cargan desde
  * el asistente de configuracion o con el script SQL.
  */
@@ -31,27 +30,6 @@ final class DatosIniciales {
                         "INICIO_TRAYECTO", "PAUSA_DESCANSO", "REANUDAR", "CONFIRMAR_ENTREGA");
                 sesion.flush();
 
-                asegurarUbicacion(sesion, "Managua", "Managua", "Nicaragua", 12.1364, -86.2514);
-                asegurarUbicacion(sesion, "León", "León", "Nicaragua", 12.4379, -86.8780);
-                asegurarUbicacion(sesion, "Granada", "Granada", "Nicaragua", 11.9344, -85.9560);
-                asegurarUbicacion(sesion, "Masaya", "Masaya", "Nicaragua", 11.9744, -86.0941);
-                asegurarUbicacion(sesion, "Estelí", "Estelí", "Nicaragua", 13.0919, -86.3539);
-                asegurarUbicacion(sesion, "Matagalpa", "Matagalpa", "Nicaragua", 12.9256, -85.9174);
-                asegurarUbicacion(sesion, "Chinandega", "Chinandega", "Nicaragua", 12.6290, -87.1310);
-                asegurarUbicacion(sesion, "Rivas", "Rivas", "Nicaragua", 11.4372, -85.8260);
-                asegurarUbicacion(sesion, "Ciudad de Guatemala", "Guatemala", "Guatemala", 14.6349, -90.5069);
-                asegurarUbicacion(sesion, "Quetzaltenango", "Quetzaltenango", "Guatemala", 14.8347, -91.5180);
-                asegurarUbicacion(sesion, "San Salvador", "San Salvador", "El Salvador", 13.6929, -89.2182);
-                asegurarUbicacion(sesion, "Santa Ana", "Santa Ana", "El Salvador", 13.9942, -89.5597);
-                asegurarUbicacion(sesion, "Tegucigalpa", "Francisco Morazán", "Honduras", 14.0723, -87.1921);
-                asegurarUbicacion(sesion, "San Pedro Sula", "Cortés", "Honduras", 15.5040, -88.0250);
-                asegurarUbicacion(sesion, "San José", "San José", "Costa Rica", 9.9281, -84.0907);
-                asegurarUbicacion(sesion, "Liberia", "Guanacaste", "Costa Rica", 10.6346, -85.4400);
-                asegurarUbicacion(sesion, "Ciudad de Panamá", "Panamá", "Panamá", 8.9824, -79.5199);
-                asegurarUbicacion(sesion, "David", "Chiriquí", "Panamá", 8.4333, -82.4333);
-                asegurarUbicacion(sesion, "Belmopán", "Cayo", "Belice", 17.2510, -88.7590);
-                asegurarUbicacion(sesion, "Ciudad de Belice", "Belice", "Belice", 17.5046, -88.1962);
-                asegurarPaisesActivos(sesion);
                 asegurarAdminPrincipal(sesion);
                 tx.commit();
             } catch (RuntimeException e) {
@@ -70,49 +48,6 @@ final class DatosIniciales {
                     .setParameter("n", nombre).getSingleResult();
             if (existentes == 0) {
                 sesion.persist(nuevo.apply(nombre));
-            }
-        }
-    }
-
-    private static void asegurarUbicacion(Session sesion, String nombre, String departamento,
-                                          String pais, double latitud, double longitud) {
-        Long existentes = sesion.createQuery(
-                        "select count(u) from Ubicacion u where u.nombre = :n and u.departamento = :d", Long.class)
-                .setParameter("n", nombre)
-                .setParameter("d", departamento)
-                .getSingleResult();
-        if (existentes == 0) {
-            sesion.persist(new Ubicacion(nombre, departamento, pais, latitud, longitud));
-        } else {
-            sesion.createMutationQuery("update Ubicacion u set u.pais = :pais, u.latitud = :lat, u.longitud = :lon "
-                            + "where u.nombre = :n and u.departamento = :d")
-                    .setParameter("pais", pais)
-                    .setParameter("lat", latitud)
-                    .setParameter("lon", longitud)
-                    .setParameter("n", nombre)
-                    .setParameter("d", departamento)
-                    .executeUpdate();
-        }
-    }
-
-    /** Si es la primera vez, activa los países que ya tienen ubicaciones registradas. */
-    private static void asegurarPaisesActivos(Session sesion) {
-        Long total = sesion.createQuery(
-                        "select count(p) from PaisHabilitado p", Long.class)
-                .getSingleResult();
-        if (total > 0) {
-            return;
-        }
-        java.util.List<String> paises = sesion.createQuery(
-                        "select distinct u.pais from Ubicacion u order by u.pais", String.class)
-                .getResultList();
-        if (paises.isEmpty()) {
-            sesion.persist(new PaisHabilitado("Nicaragua"));
-            return;
-        }
-        for (String pais : paises) {
-            if (pais != null && !pais.isBlank()) {
-                sesion.persist(new PaisHabilitado(pais));
             }
         }
     }

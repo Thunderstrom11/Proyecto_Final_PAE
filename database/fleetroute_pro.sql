@@ -2,7 +2,6 @@
 --  FleetRoute Pro — Esquema de Base de Datos
 --  Motor: PostgreSQL 14+
 --  Codificación: UTF-8
---  Proyecto Final PAE — UAM
 --
 --  Este script:
 --    1. Elimina y recrea las tablas (solo para desarrollo).
@@ -11,10 +10,10 @@
 --    4. Inserta catálogos y datos de ejemplo.
 --
 --  IMPORTANTE:
---    - El script NO crea la base de datos. Créala antes:
+--    - Requiere una base de datos existente:
 --        createdb -U postgres fleetroute_pro
 --        psql -U postgres -d fleetroute_pro -v ON_ERROR_STOP=1 -f database/fleetroute_pro.sql
---    - Contiene DROP TABLE: úsalo en desarrollo o haz respaldo antes.
+--    - Contiene DROP TABLE: destinado a desarrollo; requiere respaldo previo.
 -- =====================================================================
 
 SET client_encoding = 'UTF8';
@@ -23,7 +22,7 @@ SET TIME ZONE 'America/Managua';
 BEGIN;
 
 -- Necesaria para los hashes BCrypt de los usuarios de ejemplo.
--- Si tu usuario no puede crear extensiones, ejecútala como superusuario.
+-- Requiere permisos para crear extensiones o ejecución por un superusuario.
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 
@@ -413,8 +412,8 @@ FOR EACH ROW EXECUTE FUNCTION fn_asignar_num_evento();
 -- =====================================================================
 --  * Alerta de fatiga cuando la conducción acumulada supera el 80 %
 --    de operadores.horas_max_conduccion (RF-08).
---  * Bloquear REANUDAR si el descanso acumulado es menor que
---    operadores.horas_min_descanso (RF-07).
+--  * Acumular los descansos fragmentados; una pausa manual puede reanudarse
+--    antes de completar operadores.horas_min_descanso (RF-07).
 --  * No asignar unidades ni operadores que no estén DISPONIBLE (RF-04).
 --  * Al crear un viaje, pasar unidad y operador a EN_RUTA; al finalizar
 --    sin viaje encadenado, devolverlos a DISPONIBLE (RF-04/RF-09).
@@ -490,7 +489,7 @@ INSERT INTO cat_tipo_evento (nombre) VALUES
 
 
 -- =====================================================================
--- 9. SEED — Datos de ejemplo (puedes eliminarlos en producción)
+-- 9. SEED — Datos de ejemplo
 -- =====================================================================
 
 INSERT INTO ubicaciones (nombre, departamento) VALUES
@@ -526,7 +525,7 @@ VALUES (
     (SELECT id_estado_operador FROM cat_estado_operador WHERE nombre = 'DISPONIBLE')
 );
 
--- Usuarios de demostración. Cambia estas contraseñas en producción.
+-- Usuarios de demostración con contraseñas temporales para pruebas.
 -- El hash se genera con BCrypt (pgcrypto); la aplicación debe verificar
 -- con un algoritmo BCrypt compatible. El primer administrador es el principal:
 -- solo él puede gestionar cuentas y permisos en el panel administrativo.

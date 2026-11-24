@@ -17,7 +17,7 @@ import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Crea la base si no existe y aplica el esquema si esta vacia; no modifica bases con datos. */
+/** Crea una base vacía o actualiza el esquema existente sin borrar datos. */
 public final class PreparadorBase {
 
     /** Datos de conexion del asistente. */
@@ -28,11 +28,22 @@ public final class PreparadorBase {
     public record Estado(boolean servidorOk, boolean baseExiste, int tablas, String detalle) {
     }
 
-    public static final int TABLAS_ESPERADAS = 15;
+    public static final int TABLAS_ESPERADAS = 17;
 
     private static final String TABLAS = "'cat_estado_unidad', 'cat_estado_operador', 'cat_estado_carga', "
             + "'cat_estado_viaje', 'cat_tipo_evento', 'empresa', 'clientes', 'ubicaciones', 'rutas', "
+            + "'unidades', 'operadores', 'usuarios', 'cargas', 'viajes', 'registro_jornada', "
+            + "'paises_habilitados', 'alertas_operador'";
+    private static final String TABLAS_BASE = "'cat_estado_unidad', 'cat_estado_operador', 'cat_estado_carga', "
+            + "'cat_estado_viaje', 'cat_tipo_evento', 'empresa', 'clientes', 'ubicaciones', "
             + "'unidades', 'operadores', 'usuarios', 'cargas', 'viajes', 'registro_jornada'";
+    private static final int CANTIDAD_TABLAS_BASE = 14;
+    private static final Map<String, List<String>> COLUMNAS_ACTUALES = Map.of(
+            "usuarios", List.of("es_principal", "puede_ver_reportes"),
+            "ubicaciones", List.of("pais", "latitud", "longitud", "categoria", "color"),
+            "empresa", List.of("moneda", "pais", "zona_horaria"),
+            "clientes", List.of("direccion", "activo"),
+            "rutas", List.of("precio"));
 
     private static final Pattern PATRON_URL = Pattern.compile("jdbc:postgresql://([^/:?]+):(\\d+)/([^?;\\s]+)");
     private static final Pattern NOMBRE_BASE = Pattern.compile("[A-Za-z_][A-Za-z0-9_]{0,62}");
@@ -62,6 +73,7 @@ public final class PreparadorBase {
 
     /** Revisa el servidor y la base sin modificar nada. */
     public static Estado revisar(Conexion conexion) {
+        validar(conexion);
         try (Connection servidor = conectar(conexion, "postgres")) {
             boolean existe = existeBase(servidor, conexion.base());
             if (!existe) {
@@ -74,13 +86,17 @@ public final class PreparadorBase {
                     return new Estado(true, true, 0,
                             "Conexión correcta. La base " + conexion.base() + " está vacía y se llenará con las tablas al continuar.");
                 }
-                if (tablas == TABLAS_ESPERADAS) {
+                if (tablas == TABLAS_ESPERADAS && !requiereActualizacion(base)) {
                     return new Estado(true, true, tablas,
                             "Conexión correcta. La base " + conexion.base() + " ya tiene todas las tablas.");
                 }
+                if (contarTablas(base, TABLAS_BASE) == CANTIDAD_TABLAS_BASE) {
+                    return new Estado(true, true, tablas,
+                            "Conexión correcta. El esquema se actualizará al continuar, conservando los datos existentes.");
+                }
                 return new Estado(true, true, tablas,
                         "Conexión correcta, pero la base " + conexion.base() + " tiene " + tablas + " de "
-                                + TABLAS_ESPERADAS + " tablas. Use un nombre de base nuevo o elimine la base incompleta.");
+                                + TABLAS_ESPERADAS + " tablas. Use una base nueva o revise el esquema incompleto sin borrar sus datos.");
             }
         } catch (SQLException e) {
             return new Estado(false, false, 0, traducir(e));
@@ -92,6 +108,7 @@ public final class PreparadorBase {
         validar(conexion);
         boolean creada = false;
         boolean esquemaNuevo = false;
+        boolean actualizada = false;
         progreso.accept("Conectando con el servidor PostgreSQL...");
         try (Connection servidor = conectar(conexion, "postgres")) {
             if (!existeBase(servidor, conexion.base())) {
@@ -106,15 +123,22 @@ public final class PreparadorBase {
         }
         try (Connection base = conectar(conexion, conexion.base())) {
             int tablas = contarTablas(base);
-            if (tablas > 0 && tablas < TABLAS_ESPERADAS) {
+            if (tablas > 0 && contarTablas(base, TABLAS_BASE) != CANTIDAD_TABLAS_BASE) {
                 throw new IllegalArgumentException("La base " + conexion.base() + " tiene " + tablas + " de "
-                        + TABLAS_ESPERADAS + " tablas y no se puede completar sola. Escriba un nombre de base nuevo, "
-                        + "por ejemplo " + conexion.base() + "2, o elimine la base incompleta desde pgAdmin.");
+                        + TABLAS_ESPERADAS + " tablas y no corresponde a un esquema anterior completo. "
+                        + "Use una base nueva o revise las tablas faltantes sin borrar sus datos.");
             }
             if (tablas == 0) {
+                if (contarTablasPublicas(base) != 0) {
+                    throw new IllegalArgumentException("La base contiene tablas de otra aplicación. Use una base vacía para FleetRoute.");
+                }
                 progreso.accept("Creando tablas, catálogos, índices y triggers...");
                 aplicarEsquema(base);
                 esquemaNuevo = true;
+            } else if (requiereActualizacion(base)) {
+                progreso.accept("Actualizando el esquema sin borrar los datos...");
+                aplicarScript(base, "/database/actualizar_esquema.sql", false);
+                actualizada = true;
             }
         } catch (SQLException e) {
             throw new IllegalArgumentException(traducir(e), e);
@@ -124,7 +148,7 @@ public final class PreparadorBase {
                 "DB_URL", url(conexion, conexion.base()),
                 "DB_USER", conexion.usuario(),
                 "DB_PASSWORD", conexion.password()));
-        progreso.accept("Preparando catálogos y ubicaciones de ejemplo...");
+        progreso.accept("Preparando los catálogos del sistema...");
         HibernateUtil.cerrar();
         HibernateUtil.factory();
         ZonaHoraria.recargar();
@@ -133,6 +157,9 @@ public final class PreparadorBase {
         }
         if (esquemaNuevo) {
             return "Tablas y catálogos creados dentro de la base que ya existía.";
+        }
+        if (actualizada) {
+            return "Esquema actualizado. Se conservaron los datos y la conexión quedó guardada.";
         }
         return "La base ya estaba completa. La conexión quedó guardada.";
     }
@@ -178,19 +205,65 @@ public final class PreparadorBase {
     }
 
     private static int contarTablas(Connection base) throws SQLException {
+        return contarTablas(base, TABLAS);
+    }
+
+    private static int contarTablas(Connection base, String nombres) throws SQLException {
         try (Statement sentencia = base.createStatement();
              ResultSet filas = sentencia.executeQuery(
-                     "select count(*) from information_schema.tables where table_schema = 'public' and table_name in ("
-                             + TABLAS + ")")) {
+                     "select count(*) from information_schema.tables where table_schema = 'public' "
+                             + "and table_type = 'BASE TABLE' and table_name in (" + nombres + ")")) {
             filas.next();
             return filas.getInt(1);
         }
     }
 
+    private static int contarTablasPublicas(Connection base) throws SQLException {
+        try (Statement sentencia = base.createStatement(); ResultSet filas = sentencia.executeQuery(
+                "select count(*) from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE'")) {
+            filas.next();
+            return filas.getInt(1);
+        }
+    }
+
+    private static boolean requiereActualizacion(Connection base) throws SQLException {
+        if (contarTablas(base) != TABLAS_ESPERADAS) return true;
+        for (var tabla : COLUMNAS_ACTUALES.entrySet()) {
+            List<String> columnas = new ArrayList<>();
+            try (ResultSet filas = base.getMetaData().getColumns(null, "public", tabla.getKey(), "%")) {
+                while (filas.next()) columnas.add(filas.getString("COLUMN_NAME"));
+            }
+            if (!columnas.containsAll(tabla.getValue())) return true;
+        }
+        try (Statement sentencia = base.createStatement(); ResultSet filas = sentencia.executeQuery(
+                "SELECT NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.ubicaciones'::regclass "
+                        + "AND conname = 'uq_ubicacion' AND contype = 'u' AND pg_get_constraintdef(oid) LIKE '%pais%')")) {
+            filas.next();
+            return filas.getBoolean(1);
+        }
+    }
+
+    /** Solo migra una base reconocible del proyecto; Hibernate valida el resto del esquema. */
+    static void actualizarEsquemaExistente(String jdbcUrl, String usuario, String password) throws SQLException {
+        Properties propiedades = new Properties();
+        propiedades.setProperty("user", usuario);
+        propiedades.setProperty("password", password);
+        propiedades.setProperty("connectTimeout", "5");
+        try (Connection base = DriverManager.getConnection(jdbcUrl, propiedades)) {
+            if (contarTablas(base, TABLAS_BASE) == CANTIDAD_TABLAS_BASE && requiereActualizacion(base)) {
+                aplicarScript(base, "/database/actualizar_esquema.sql", false);
+            }
+        }
+    }
+
     /** Ejecuta el script incluido en la aplicacion, sin los datos de ejemplo ni las cuentas demo. */
     private static void aplicarEsquema(Connection base) throws SQLException {
+        aplicarScript(base, "/database/fleetroute_pro.sql", true);
+    }
+
+    private static void aplicarScript(Connection base, String recurso, boolean omitirDemo) throws SQLException {
         String script;
-        try (InputStream archivo = PreparadorBase.class.getResourceAsStream("/database/fleetroute_pro.sql")) {
+        try (InputStream archivo = PreparadorBase.class.getResourceAsStream(recurso)) {
             if (archivo == null) {
                 throw new IllegalStateException("No se encontró el script de esquema dentro de la aplicación.");
             }
@@ -201,9 +274,11 @@ public final class PreparadorBase {
         boolean autoCommit = base.getAutoCommit();
         base.setAutoCommit(false);
         try (Statement sentencia = base.createStatement()) {
+            if (!omitirDemo) sentencia.execute("SELECT pg_advisory_xact_lock(7675489721)");
             for (String parte : sentencias(script)) {
                 String limpia = parte.strip();
-                if (limpia.equalsIgnoreCase("begin") || limpia.equalsIgnoreCase("commit") || esSemillaDemo(limpia)) {
+                if (limpia.equalsIgnoreCase("begin") || limpia.equalsIgnoreCase("commit")
+                        || (omitirDemo && esSemillaDemo(limpia))) {
                     continue;
                 }
                 sentencia.execute(limpia);
