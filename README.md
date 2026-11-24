@@ -100,6 +100,7 @@ Ambos roles inician sesión con credenciales almacenadas en la base de datos; la
 - **Pre-asignación de viajes:** encolamiento de la siguiente carga validando la consistencia geográfica de la ruta.
 - **Monitor de flota en vivo:** tablero semaforizado con el estado de unidades, operadores y viajes activos.
 - **Reportes financieros:** resumen, facturación por operador/unidad, evolución y detalle de viajes finalizados; filtros combinados, gráficos, vista previa paginada y exportación PDF.
+- **Reporte operativo de viajes:** botón **Exportar PDF** en Gestión de viajes; incluye carga, operador, unidad, origen, destino, estado y fecha límite de entrega para los viajes visibles, con fecha y hora de generación.
 - **Gestión de unidades, operadores y cargas:** alta, consulta, actualización y baja.
 - **Gestión de clientes:** pestaña con todos los campos de `clientes` (empresa, contacto, teléfono, email, dirección y activo), con validaciones y bajas protegidas por integridad referencial.
 - **Panel administrativo:** cuentas de administradores y operadores, permisos de reportes, restablecimiento de contraseñas, países activos con buscador (cada país se agrega como una sola ubicación con un centro aproximado, sin provincias ni ciudades), ubicaciones editables con mapa satelital de solo lectura y rutas con tiempo estimado y precio sugerido. Incluye borrados masivos de cuentas filtradas, ubicaciones y rutas protegidos con la contraseña del administrador.
@@ -500,6 +501,15 @@ En Windows, sustituya `./mvnw` por `.\mvnw.cmd`. Estas pruebas crean sus propias
 5. Pulsa **Exportar PDF** para guardar el mismo documento previsualizado, con fecha y hora de generación, filtros y moneda de la empresa.
 
 Las plantillas [financiero.jrxml](src/main/resources/edu/ni/uam/proyecto_final_pae/reportes/financiero.jrxml) y [detalle.jrxml](src/main/resources/edu/ni/uam/proyecto_final_pae/reportes/detalle.jrxml) utilizan el formato de JasperReports 7.0.8. `JasperReporteService` las compila desde recursos, utiliza los resultados tipados de `ReporteService` y genera el PDF. Maven incluye el motor, el compilador JDT y las extensiones PDF, gráficos y fuentes de la misma versión.
+
+### Reporte operativo desde Gestión de viajes
+
+1. Inicia sesión como administrador y abre **Viajes** desde Flota.
+2. Selecciona **Todos**, **Activos** o **Finalizados** y aplica las búsquedas por unidad, operador, carga o ruta y los rangos de cobro que necesites. Puedes ordenar la tabla antes de exportar.
+3. Pulsa **Exportar PDF**, arriba a la derecha de **Gestión de viajes**, y elige dónde guardarlo. El botón se deshabilita cuando no hay filas o mientras se genera el documento.
+4. Comprueba carga, operador, unidad, origen, destino, estado y **fecha límite de entrega**. Esta última corresponde al plazo pactado de la carga. La fecha y hora de generación aparecen en el encabezado y en el pie de cada página.
+
+La plantilla independiente [viajes.jrxml](src/main/resources/edu/ni/uam/proyecto_final_pae/reportes/viajes.jrxml) se genera con `ReporteViajesService`, también en JasperReports 7.0.8. El reporte usa una copia de las filas visibles, conservando filtros y orden. Incluye los estados programado, en curso, pausado, finalizado y cancelado según la selección de la pantalla. Admite hasta 10,000 filas por exportación; si se supera ese límite, solicita aplicar más filtros. Tiene los mismos permisos de administrador que Gestión de viajes; el permiso específico de reportes financieros se conserva para el módulo financiero.
 
 ---
 
