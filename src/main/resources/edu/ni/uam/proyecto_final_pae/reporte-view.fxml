@@ -2,8 +2,8 @@
 <?import java.net.URL?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
-<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.*?>
+<?import javafx.embed.swing.SwingNode?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 <BorderPane fx:id="raiz" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="edu.ni.uam.proyecto_final_pae.controller.ReporteController" prefWidth="1120" prefHeight="820">
@@ -11,11 +11,7 @@
     <padding><Insets top="14" right="14" bottom="14" left="14"/></padding>
     <top>
         <VBox spacing="10">
-            <HBox spacing="10" alignment="CENTER_LEFT">
-                <Label text="Reportes financieros" styleClass="page-title"/>
-                <Region HBox.hgrow="ALWAYS"/>
-                <Button text="Cerrar" styleClass="btn-ghost" onAction="#cerrar"><graphic><FontIcon iconLiteral="fas-times"/></graphic></Button>
-            </HBox>
+            <Label text="Reportes" styleClass="page-title"/>
             <VBox fx:id="panelFiltros" spacing="8">
                 <FlowPane hgap="8" vgap="8" alignment="CENTER_LEFT">
                     <Label text="Reporte" labelFor="$cmbTipo"/>
@@ -26,12 +22,13 @@
                     <ComboBox fx:id="cmbAgrupacion" prefWidth="165" accessibleText="Agrupación temporal"/>
                 </FlowPane>
                 <FlowPane hgap="8" vgap="8" alignment="CENTER_LEFT">
-                    <Label text="Finalización: desde" labelFor="$dpDesde"/>
-                    <DatePicker fx:id="dpDesde" prefWidth="140" accessibleText="Fecha de finalización desde"/>
+                    <CheckBox fx:id="chkFiltrarFechas" text="Filtrar por fecha de creación"/>
+                    <Label fx:id="lblDesde" text="Finalización: desde" labelFor="$dpDesde"/>
+                    <DatePicker fx:id="dpDesde" prefWidth="140" accessibleText="Fecha desde"/>
                     <Label text="hasta" labelFor="$dpHasta"/>
-                    <DatePicker fx:id="dpHasta" prefWidth="140" accessibleText="Fecha de finalización hasta"/>
-                    <Button text="Mes actual" styleClass="btn-ghost" onAction="#mesActual"/>
-                    <Button text="Mes anterior" styleClass="btn-ghost" onAction="#mesAnterior"/>
+                    <DatePicker fx:id="dpHasta" prefWidth="140" accessibleText="Fecha hasta"/>
+                    <Button fx:id="btnMesActual" text="Mes actual" styleClass="btn-ghost" onAction="#mesActual"/>
+                    <Button fx:id="btnMesAnterior" text="Mes anterior" styleClass="btn-ghost" onAction="#mesAnterior"/>
                 </FlowPane>
                 <FlowPane hgap="8" vgap="8" alignment="CENTER_LEFT">
                     <Label text="Operador" labelFor="$cmbOperador"/>
@@ -40,35 +37,27 @@
                     <ComboBox fx:id="cmbUnidad" prefWidth="155" accessibleText="Filtrar por unidad"/>
                     <Label text="Cliente" labelFor="$cmbCliente"/>
                     <ComboBox fx:id="cmbCliente" prefWidth="230" accessibleText="Filtrar por cliente"/>
+                </FlowPane>
+                <FlowPane hgap="8" vgap="8" alignment="CENTER_LEFT">
+                    <Label text="Estado" labelFor="$cmbEstado"/>
+                    <ComboBox fx:id="cmbEstado" prefWidth="180" accessibleText="Estado de los viajes"/>
                     <Label fx:id="lblCarga" text="Carga" labelFor="$txtCarga"/>
-                    <TextField fx:id="txtCarga" prefWidth="145" promptText="Número exacto" accessibleText="Número exacto de carga"/>
+                    <TextField fx:id="txtCarga" prefWidth="180" promptText="Número exacto" accessibleText="Número exacto de carga"/>
                 </FlowPane>
             </VBox>
             <HBox spacing="10" alignment="CENTER_LEFT">
                 <Button fx:id="btnGenerar" text="Generar vista previa" styleClass="btn-primary" onAction="#generar"><graphic><FontIcon iconLiteral="fas-chart-bar"/></graphic></Button>
-                <Button fx:id="btnExportar" text="Exportar PDF" styleClass="btn-secondary" onAction="#exportar"><graphic><FontIcon iconLiteral="fas-file-pdf"/></graphic></Button>
                 <ProgressIndicator fx:id="progreso" prefWidth="24" prefHeight="24" visible="false" managed="false"/>
+                <Label fx:id="lblTotales" wrapText="true" style="-fx-font-weight: bold;"/>
             </HBox>
-            <Label fx:id="lblTotales" wrapText="true" style="-fx-font-weight: bold;"/>
             <Label fx:id="lblEstado" wrapText="true" styleClass="status-label"/>
             <padding><Insets bottom="10"/></padding>
         </VBox>
     </top>
     <center>
-        <ScrollPane fx:id="visor" pannable="true" style="-fx-background: #e7ecf2; -fx-background-color: #e7ecf2;">
-            <content><StackPane style="-fx-padding: 16;"><ImageView fx:id="imagenPagina" preserveRatio="true" smooth="true" accessibleText="Página del reporte financiero"/></StackPane></content>
-        </ScrollPane>
+        <StackPane minWidth="0" minHeight="0" style="-fx-background-color: #e7ecf2;">
+            <SwingNode fx:id="visorJasper" visible="false" focusTraversable="true" accessibleText="Visor nativo de JasperReports"/>
+            <Label fx:id="lblSinPrevia" text="Seleccione un reporte y genere la vista previa." styleClass="status-label"/>
+        </StackPane>
     </center>
-    <bottom>
-        <HBox spacing="10" alignment="CENTER" style="-fx-padding: 10 0 0 0;">
-            <Button fx:id="btnAnterior" text="Anterior" onAction="#anterior"/>
-            <Label fx:id="lblPagina" text="Sin vista previa"/>
-            <Button fx:id="btnSiguiente" text="Siguiente" onAction="#siguiente"/>
-            <Region HBox.hgrow="ALWAYS"/>
-            <Button fx:id="btnAlejar" text="−" accessibleText="Alejar página" onAction="#alejar"/>
-            <Label fx:id="lblZoom" text="100%"/>
-            <Button fx:id="btnAcercar" text="+" accessibleText="Acercar página" onAction="#acercar"/>
-            <Button fx:id="btnAjustar" text="Ajustar al ancho" onAction="#ajustar"/>
-        </HBox>
-    </bottom>
 </BorderPane>

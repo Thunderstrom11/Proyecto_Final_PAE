@@ -5,7 +5,7 @@ import java.util.List;
 public enum TipoReporte {
     RESUMEN("Resumen financiero"), OPERADOR("Facturación por operador"),
     UNIDAD("Facturación por unidad"), EVOLUCION("Evolución de facturación"),
-    DETALLE("Detalle de viajes finalizados");
+    DETALLE("Detalle de viajes finalizados"), GESTION_VIAJES("Gestión de viajes");
 
     private final String titulo;
 
@@ -16,11 +16,13 @@ public enum TipoReporte {
             case OPERADOR, UNIDAD -> List.of(TipoGrafico.BARRAS, TipoGrafico.NINGUNO);
             case RESUMEN -> List.of(TipoGrafico.COLUMNAS, TipoGrafico.NINGUNO);
             case EVOLUCION -> List.of(TipoGrafico.LINEAS, TipoGrafico.COLUMNAS, TipoGrafico.NINGUNO);
-            case DETALLE -> List.of(TipoGrafico.NINGUNO);
+            case DETALLE, GESTION_VIAJES -> List.of(TipoGrafico.NINGUNO);
         };
     }
 
     public boolean temporal() { return this == RESUMEN || this == EVOLUCION; }
+    public boolean financiero() { return this != GESTION_VIAJES; }
+    public boolean detallado() { return this == DETALLE || this == GESTION_VIAJES; }
 
     @Override public String toString() { return titulo; }
 }

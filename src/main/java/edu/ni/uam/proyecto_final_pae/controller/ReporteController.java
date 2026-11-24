@@ -4,39 +4,41 @@ import edu.ni.uam.proyecto_final_pae.config.ZonaHoraria;
 import edu.ni.uam.proyecto_final_pae.reportes.*;
 import edu.ni.uam.proyecto_final_pae.service.JasperReporteService;
 import edu.ni.uam.proyecto_final_pae.service.ReporteService;
+import edu.ni.uam.proyecto_final_pae.service.ReporteViajesService;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
-import javafx.embed.swing.SwingFXUtils;
+import javafx.embed.swing.SwingNode;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
-import javafx.stage.FileChooser;
-import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
-import java.io.File;
+import net.sf.jasperreports.swing.JRViewer;
+import javax.swing.SwingUtilities;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** Captura de filtros y visor; las consultas, Jasper y el render se ejecutan en tareas. */
+/** Filtros JavaFX y visor JRViewer nativo; cada toolkit se utiliza desde su propio hilo. */
 public class ReporteController {
     private final ReporteService reportes;
     private final JasperReporteService jasper;
-    private final ExecutorService trabajo = ejecutor("fleetroute-reportes");
-    private final ExecutorService render = ejecutor("fleetroute-paginas");
+    private final ReporteViajesService viajes;
+    private final ExecutorService trabajo = Executors.newSingleThreadExecutor(tarea -> {
+        Thread hilo = new Thread(tarea, "fleetroute-reportes");
+        hilo.setDaemon(true);
+        return hilo;
+    });
     private Task<?> generacion;
-    private Task<Image> renderizado;
-    private DocumentoReporte documento;
-    private long revision;
-    private long revisionPagina;
-    private int pagina;
-    private float zoom = 1;
+    private DocumentoGenerado documento;
+    private JRViewer visorActual;
+    private volatile long revision;
+    private volatile boolean cerrado;
     private boolean listo;
-    private boolean cerrado;
-    private boolean exportando;
+    private boolean generando;
+    private TipoReporte tipoConfigurado;
 
     @FXML private BorderPane raiz;
     @FXML private VBox panelFiltros;
@@ -44,38 +46,38 @@ public class ReporteController {
     @FXML private ComboBox<OpcionReporte> cmbOperador, cmbUnidad, cmbCliente;
     @FXML private ComboBox<AgrupacionTemporal> cmbAgrupacion;
     @FXML private ComboBox<TipoGrafico> cmbGrafico;
+    @FXML private ComboBox<EstadoReporte> cmbEstado;
+    @FXML private CheckBox chkFiltrarFechas;
     @FXML private DatePicker dpDesde, dpHasta;
     @FXML private TextField txtCarga;
-    @FXML private Label lblAgrupacion, lblCarga, lblEstado, lblTotales, lblPagina, lblZoom;
-    @FXML private ImageView imagenPagina;
-    @FXML private ScrollPane visor;
-    @FXML private Button btnGenerar, btnExportar, btnAnterior, btnSiguiente, btnAcercar, btnAlejar, btnAjustar;
+    @FXML private Label lblAgrupacion, lblCarga, lblEstado, lblTotales, lblDesde, lblSinPrevia;
+    @FXML private SwingNode visorJasper;
+    @FXML private Button btnGenerar, btnMesActual, btnMesAnterior;
     @FXML private ProgressIndicator progreso;
 
-    public ReporteController() { this(new ReporteService(), new JasperReporteService()); }
-    public ReporteController(ReporteService reportes, JasperReporteService jasper) {
+    public ReporteController() { this(new ReporteService(), new JasperReporteService(), new ReporteViajesService()); }
+    public ReporteController(ReporteService reportes, JasperReporteService jasper) { this(reportes, jasper, new ReporteViajesService()); }
+    public ReporteController(ReporteService reportes, JasperReporteService jasper, ReporteViajesService viajes) {
         this.reportes = reportes;
         this.jasper = jasper;
-    }
-
-    private static ExecutorService ejecutor(String nombre) {
-        return Executors.newSingleThreadExecutor(tarea -> {
-            Thread hilo = new Thread(tarea, nombre);
-            hilo.setDaemon(true);
-            return hilo;
-        });
+        this.viajes = viajes;
     }
 
     @FXML private void initialize() {
-        cmbTipo.setItems(FXCollections.observableArrayList(TipoReporte.values()));
+        try {
+            boolean financieros = ReporteService.puedeVerFinancieros();
+            cmbTipo.setItems(FXCollections.observableArrayList(Arrays.stream(TipoReporte.values())
+                    .filter(tipo -> financieros || !tipo.financiero()).toList()));
+        } catch (SecurityException e) { lblEstado.setText(e.getMessage()); btnGenerar.setDisable(true); return; }
         cmbAgrupacion.setItems(FXCollections.observableArrayList(AgrupacionTemporal.values()));
         cmbAgrupacion.setValue(AgrupacionTemporal.MENSUAL);
-        cmbTipo.setValue(TipoReporte.RESUMEN);
+        cmbTipo.getSelectionModel().selectFirst();
         configurarTipo();
         cmbTipo.valueProperty().addListener((o, a, b) -> { configurarTipo(); invalidar(); });
-        for (ComboBox<?> combo : new ComboBox<?>[]{cmbOperador, cmbUnidad, cmbCliente, cmbAgrupacion, cmbGrafico}) {
+        for (ComboBox<?> combo : new ComboBox<?>[]{cmbOperador, cmbUnidad, cmbCliente, cmbAgrupacion, cmbGrafico, cmbEstado}) {
             combo.valueProperty().addListener((o, a, b) -> invalidar());
         }
+        chkFiltrarFechas.selectedProperty().addListener((o, a, b) -> { configurarFechas(); invalidar(); });
         dpDesde.valueProperty().addListener((o, a, b) -> invalidar());
         dpHasta.valueProperty().addListener((o, a, b) -> invalidar());
         dpDesde.getEditor().textProperty().addListener((o, a, b) -> invalidar());
@@ -89,16 +91,17 @@ public class ReporteController {
                 if (escena.getWindow() != null) escena.getWindow().addEventHandler(WindowEvent.WINDOW_HIDDEN, evento -> liberar());
             }
         });
-        actualizarBotones();
         cargarCatalogos();
     }
 
     private record Inicializacion(CatalogosReporte catalogos, LocalDate hoy) { }
+    private record ResultadoVista(DocumentoGenerado documento, String totales, boolean vacio) { }
 
     private void cargarCatalogos() {
         panelFiltros.setDisable(true);
         indicarCarga(true);
-        lblEstado.setText("Cargando opciones del reporte…");
+        btnGenerar.setDisable(true);
+        lblEstado.setText("Cargando opciones de reportes…");
         Task<Inicializacion> tarea = new Task<>() {
             @Override protected Inicializacion call() {
                 return new Inicializacion(reportes.catalogos(), LocalDate.now(ZonaHoraria.actual()));
@@ -117,8 +120,8 @@ public class ReporteController {
             btnGenerar.setText("Generar vista previa");
             panelFiltros.setDisable(false);
             indicarCarga(false);
-            lblEstado.setText("Configure los filtros y genere la vista previa. Solo viajes finalizados.");
-            actualizarBotones();
+            lblEstado.setText("Seleccione el reporte y los filtros. Genere la vista previa para usar el visor Jasper.");
+            actualizarBoton();
         });
         tarea.setOnFailed(evento -> {
             if (!cerrado) {
@@ -144,76 +147,84 @@ public class ReporteController {
         TipoGrafico anterior = cmbGrafico.getValue();
         cmbGrafico.getItems().setAll(tipo.graficos());
         cmbGrafico.setValue(anterior != null && tipo.graficos().contains(anterior) ? anterior : tipo.graficos().get(0));
-        cmbAgrupacion.setVisible(tipo.temporal());
-        cmbAgrupacion.setManaged(tipo.temporal());
-        lblAgrupacion.setVisible(tipo.temporal());
-        lblAgrupacion.setManaged(tipo.temporal());
-        boolean detalle = tipo == TipoReporte.DETALLE;
-        txtCarga.setVisible(detalle);
-        txtCarga.setManaged(detalle);
-        lblCarga.setVisible(detalle);
-        lblCarga.setManaged(detalle);
-        if (!detalle) txtCarga.clear();
+        cmbGrafico.setDisable(tipo.graficos().size() == 1);
+        cmbAgrupacion.setVisible(tipo.temporal()); cmbAgrupacion.setManaged(tipo.temporal());
+        lblAgrupacion.setVisible(tipo.temporal()); lblAgrupacion.setManaged(tipo.temporal());
+        txtCarga.setVisible(tipo.detallado()); txtCarga.setManaged(tipo.detallado());
+        lblCarga.setVisible(tipo.detallado()); lblCarga.setManaged(tipo.detallado());
+        if (!tipo.detallado()) txtCarga.clear();
+        boolean operativo = !tipo.financiero();
+        chkFiltrarFechas.setVisible(operativo); chkFiltrarFechas.setManaged(operativo);
+        if (tipoConfigurado != tipo) {
+            cmbEstado.getItems().setAll(operativo ? java.util.List.of(EstadoReporte.values()) : java.util.List.of(EstadoReporte.FINALIZADO));
+            cmbEstado.setValue(operativo ? EstadoReporte.TODOS : EstadoReporte.FINALIZADO);
+        }
+        cmbEstado.setDisable(!operativo);
+        tipoConfigurado = tipo;
+        configurarFechas();
+    }
+
+    private void configurarFechas() {
+        boolean operativo = cmbTipo.getValue() == TipoReporte.GESTION_VIAJES;
+        lblDesde.setText(operativo ? "Creación del viaje: desde" : "Finalización: desde");
+        boolean sinFechas = operativo && !chkFiltrarFechas.isSelected();
+        dpDesde.setDisable(sinFechas); dpHasta.setDisable(sinFechas);
+        btnMesActual.setDisable(sinFechas); btnMesAnterior.setDisable(sinFechas);
     }
 
     private void invalidar() {
         revision++;
-        revisionPagina++;
         documento = null;
-        imagenPagina.setImage(null);
+        limpiarVisor();
         lblTotales.setText("");
-        if (renderizado != null) renderizado.cancel(true);
         if (listo) {
             if (generacion != null) generacion.cancel(true);
+            generando = false;
             indicarCarga(false);
             lblEstado.setText("Los filtros cambiaron. Genere una nueva vista previa.");
         }
-        actualizarBotones();
+        actualizarBoton();
     }
 
     @FXML private void generar() {
-        if (cerrado || exportando) return;
-        if (!listo) { btnGenerar.setDisable(true); cargarCatalogos(); return; }
+        if (cerrado || generando) return;
+        if (!listo) { cargarCatalogos(); return; }
         try {
-            ReporteService.requerirPermiso();
-            try {
-                dpDesde.commitValue();
-                dpHasta.commitValue();
-            } catch (java.time.format.DateTimeParseException e) {
-                throw new IllegalArgumentException("Ingrese fechas de finalización válidas o selecciónelas en el calendario.");
+            boolean usarFechas = cmbTipo.getValue().financiero() || chkFiltrarFechas.isSelected();
+            if (usarFechas) {
+                try { dpDesde.commitValue(); dpHasta.commitValue(); }
+                catch (java.time.format.DateTimeParseException e) { throw new IllegalArgumentException("Ingrese fechas válidas o selecciónelas en el calendario."); }
             }
-            FiltroReporte filtro = new FiltroReporte(cmbTipo.getValue(), dpDesde.getValue(), dpHasta.getValue(),
-                    cmbOperador.getValue(), cmbUnidad.getValue(), cmbCliente.getValue(), txtCarga.getText(),
-                    cmbAgrupacion.getValue(), cmbGrafico.getValue());
+            FiltroReporte filtro = new FiltroReporte(cmbTipo.getValue(), usarFechas ? dpDesde.getValue() : null,
+                    usarFechas ? dpHasta.getValue() : null, cmbOperador.getValue(), cmbUnidad.getValue(), cmbCliente.getValue(),
+                    txtCarga.getText(), cmbAgrupacion.getValue(), cmbGrafico.getValue(), cmbEstado.getValue());
             invalidar();
             long solicitud = revision;
-            indicarCarga(true);
-            btnGenerar.setDisable(true);
+            generando = true; indicarCarga(true); actualizarBoton();
             lblEstado.setText("Consultando viajes y generando el documento…");
-            Task<DocumentoReporte> tarea = new Task<>() {
-                @Override protected DocumentoReporte call() {
-                    ResultadoReporte datos = reportes.generar(filtro);
-                    return isCancelled() ? null : jasper.generar(datos);
+            Task<ResultadoVista> tarea = new Task<>() {
+                @Override protected ResultadoVista call() {
+                    if (!filtro.tipo().financiero()) {
+                        var doc = viajes.generar(filtro);
+                        return new ResultadoVista(doc, "Viajes incluidos: " + doc.viajes(), doc.viajes() == 0);
+                    }
+                    var datos = reportes.generar(filtro);
+                    if (isCancelled()) return null;
+                    return new ResultadoVista(jasper.generar(datos), "Total facturado: " + FormatoReporte.dinero(datos.total(), datos.moneda())
+                            + " | Viajes: " + datos.viajes() + " | Promedio: " + FormatoReporte.dinero(datos.promedio(), datos.moneda()), datos.vacio());
                 }
             };
             generacion = tarea;
             tarea.setOnSucceeded(evento -> {
                 if (cerrado || solicitud != revision || tarea.getValue() == null) return;
-                documento = tarea.getValue();
-                indicarCarga(false);
-                pagina = 0;
-                zoom = 1;
-                var datos = documento.datos();
-                lblTotales.setText("Total facturado: " + FormatoReporte.dinero(datos.total(), datos.moneda())
-                        + " | Viajes: " + datos.viajes() + " | Promedio: " + FormatoReporte.dinero(datos.promedio(), datos.moneda()));
-                lblEstado.setText(datos.vacio() ? "No hay viajes que coincidan con los filtros."
-                        : "Vista previa generada. El PDF conservará este documento.");
-                mostrarPagina();
+                var resultado = tarea.getValue();
+                documento = resultado.documento();
+                lblTotales.setText(resultado.totales());
+                montarVisor(resultado, solicitud);
             });
             tarea.setOnFailed(evento -> {
                 if (!cerrado && solicitud == revision) {
-                    indicarCarga(false);
-                    actualizarBotones();
+                    generando = false; indicarCarga(false); actualizarBoton();
                     mostrarError("No se pudo generar el reporte", tarea.getException());
                 }
             });
@@ -221,128 +232,66 @@ public class ReporteController {
         } catch (RuntimeException e) { mostrarError("Revise la configuración del reporte", e); }
     }
 
-    private void mostrarPagina() {
-        if (documento == null || cerrado) return;
-        if (renderizado != null) renderizado.cancel(true);
-        DocumentoReporte actual = documento;
-        int numero = pagina;
-        float escala = zoom;
-        long solicitud = ++revisionPagina;
-        imagenPagina.setImage(null);
-        Task<Image> tarea = new Task<>() {
-            @Override protected Image call() { return SwingFXUtils.toFXImage(jasper.pagina(actual, numero, escala), null); }
-        };
-        renderizado = tarea;
-        tarea.setOnSucceeded(evento -> {
-            if (!cerrado && solicitud == revisionPagina && documento == actual) {
-                imagenPagina.setImage(tarea.getValue());
-                visor.setVvalue(0);
-                visor.setHvalue(0);
+    private void montarVisor(ResultadoVista resultado, long solicitud) {
+        DocumentoGenerado actual = resultado.documento();
+        SwingUtilities.invokeLater(() -> {
+            if (cerrado || solicitud != revision) return;
+            try {
+                var nuevo = new VisorJasper(actual.impresion(), () -> {
+                    if (cerrado || solicitud != revision) throw new SecurityException("La vista previa ya no está vigente. Genere otra vez el reporte.");
+                    ReporteService.validarDocumento(actual);
+                }, error -> Platform.runLater(() -> {
+                    if (!cerrado && documento == actual) { invalidar(); lblEstado.setText(error.getMessage()); }
+                }));
+                Platform.runLater(() -> {
+                    if (cerrado || solicitud != revision) { SwingUtilities.invokeLater(nuevo::clear); return; }
+                    visorActual = nuevo;
+                    visorJasper.setContent(nuevo);
+                    visorJasper.setVisible(true);
+                    SwingUtilities.invokeLater(() -> { nuevo.revalidate(); nuevo.repaint(); });
+                    lblSinPrevia.setVisible(false);
+                    generando = false; indicarCarga(false); actualizarBoton();
+                    lblEstado.setText((resultado.vacio() ? "No hay viajes que coincidan con los filtros. " : "")
+                            + "Use la barra del visor Jasper para guardar, imprimir y navegar.");
+                });
+            } catch (RuntimeException e) {
+                Platform.runLater(() -> {
+                    if (!cerrado && solicitud == revision) { invalidar(); mostrarError("No se pudo abrir el visor Jasper", e); }
+                });
             }
         });
-        tarea.setOnFailed(evento -> {
-            if (!cerrado && solicitud == revisionPagina) {
-                invalidar();
-                mostrarError("No se pudo mostrar el reporte", tarea.getException());
-            }
-        });
-        render.submit(tarea);
-        actualizarBotones();
     }
 
-    @FXML private void exportar() {
-        if (documento == null || cerrado || exportando) return;
-        try {
-            ReporteService.requerirPermiso();
-            FileChooser selector = new FileChooser();
-            selector.setTitle("Exportar reporte a PDF");
-            selector.getExtensionFilters().add(new FileChooser.ExtensionFilter("Documento PDF", "*.pdf"));
-            selector.setInitialFileName(documento.nombreArchivo());
-            File archivo = selector.showSaveDialog(raiz.getScene().getWindow());
-            if (archivo == null) return;
-            if (!archivo.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".pdf")) archivo = new File(archivo.getPath() + ".pdf");
-            if (archivo.exists()) {
-                Alert confirmar = new Alert(Alert.AlertType.CONFIRMATION, "¿Reemplazar " + archivo.getName() + "?", ButtonType.YES, ButtonType.NO);
-                confirmar.initOwner(raiz.getScene().getWindow());
-                confirmar.setHeaderText("El archivo ya existe");
-                if (confirmar.showAndWait().orElse(ButtonType.NO) != ButtonType.YES) return;
-            }
-            DocumentoReporte actual = documento;
-            java.nio.file.Path destino = archivo.toPath();
-            exportando = true;
-            panelFiltros.setDisable(true);
-            indicarCarga(true);
-            actualizarBotones();
-            Task<Void> tarea = new Task<>() {
-                @Override protected Void call() { jasper.exportar(actual, destino); return null; }
-            };
-            tarea.setOnSucceeded(evento -> terminarExportacion("PDF guardado en " + destino));
-            tarea.setOnFailed(evento -> {
-                terminarExportacion("No se pudo guardar el PDF.");
-                if (!cerrado) mostrarError("No se pudo exportar el reporte", tarea.getException());
-            });
-            trabajo.submit(tarea);
-        } catch (RuntimeException e) { mostrarError("No se pudo exportar el reporte", e); }
-    }
-
-    private void terminarExportacion(String mensaje) {
-        if (cerrado) return;
-        exportando = false;
-        panelFiltros.setDisable(false);
-        indicarCarga(false);
-        lblEstado.setText(mensaje);
-        actualizarBotones();
+    private void limpiarVisor() {
+        visorJasper.setVisible(false);
+        visorJasper.setContent(null);
+        lblSinPrevia.setVisible(true);
+        JRViewer anterior = visorActual;
+        visorActual = null;
+        if (anterior != null) SwingUtilities.invokeLater(anterior::clear);
     }
 
     @FXML private void mesActual() { seleccionarMes(0); }
     @FXML private void mesAnterior() { seleccionarMes(-1); }
     private void seleccionarMes(int desplazamiento) {
         LocalDate inicio = LocalDate.now(ZonaHoraria.actual()).withDayOfMonth(1).plusMonths(desplazamiento);
-        dpDesde.setValue(inicio);
-        dpHasta.setValue(inicio.withDayOfMonth(inicio.lengthOfMonth()));
+        dpDesde.setValue(inicio); dpHasta.setValue(inicio.withDayOfMonth(inicio.lengthOfMonth()));
     }
-    @FXML private void anterior() { if (documento != null && pagina > 0) { pagina--; mostrarPagina(); } }
-    @FXML private void siguiente() { if (documento != null && pagina + 1 < documento.paginas()) { pagina++; mostrarPagina(); } }
-    @FXML private void acercar() { zoom = Math.min(2f, zoom + .25f); mostrarPagina(); }
-    @FXML private void alejar() { zoom = Math.max(.25f, zoom - .25f); mostrarPagina(); }
-    @FXML private void ajustar() {
-        if (documento == null) return;
-        zoom = (float) Math.max(.25, Math.min(2, (visor.getViewportBounds().getWidth() - 32) / documento.impresion().getPageWidth()));
-        mostrarPagina();
-    }
-
-    private void actualizarBotones() {
-        boolean sinDocumento = documento == null;
-        btnGenerar.setDisable(!listo || exportando);
-        btnExportar.setDisable(sinDocumento || exportando);
-        btnAnterior.setDisable(sinDocumento || pagina == 0);
-        btnSiguiente.setDisable(sinDocumento || pagina + 1 >= documento.paginas());
-        btnAcercar.setDisable(sinDocumento || zoom >= 2);
-        btnAlejar.setDisable(sinDocumento || zoom <= .25f);
-        btnAjustar.setDisable(sinDocumento);
-        lblPagina.setText(sinDocumento ? "Sin vista previa" : "Página " + (pagina + 1) + " de " + documento.paginas());
-        lblZoom.setText(Math.round(zoom * 100) + "%");
-    }
-
+    private void actualizarBoton() { btnGenerar.setDisable(!listo || generando); }
     private void indicarCarga(boolean cargando) { progreso.setVisible(cargando); progreso.setManaged(cargando); }
     private void mostrarError(String titulo, Throwable error) {
         if (error instanceof SecurityException) invalidar();
         lblEstado.setText(titulo + ": " + (error.getMessage() == null ? "Intente de nuevo." : error.getMessage()));
         Alert alerta = new Alert(Alert.AlertType.ERROR, lblEstado.getText(), ButtonType.OK);
         if (raiz.getScene() != null) alerta.initOwner(raiz.getScene().getWindow());
-        alerta.setHeaderText(titulo);
-        alerta.showAndWait();
+        alerta.setHeaderText(titulo); alerta.showAndWait();
     }
-    @FXML private void cerrar() { liberar(); ((Stage) raiz.getScene().getWindow()).close(); }
     private void liberar() {
-        cerrado = true;
-        revision++;
-        revisionPagina++;
+        if (cerrado) return;
+        cerrado = true; revision++;
         if (generacion != null) generacion.cancel(true);
-        if (renderizado != null) renderizado.cancel(true);
-        trabajo.shutdownNow();
-        render.shutdownNow();
-        documento = null;
-        imagenPagina.setImage(null);
+        trabajo.shutdownNow(); documento = null;
+        // Dejar que SwingNode termine WINDOW_HIDDEN antes de desmontar su ventana nativa.
+        Platform.runLater(this::limpiarVisor);
     }
 }

@@ -27,14 +27,25 @@ public class ReporteService {
         return usuario;
     }
 
+    public static boolean puedeVerFinancieros() {
+        Usuario usuario = SesionActual.requerir(RolUsuario.ADMIN);
+        return Boolean.TRUE.equals(usuario.getEsPrincipal()) || Boolean.TRUE.equals(usuario.getPuedeVerReportes());
+    }
+
+    public static void validarDocumento(DocumentoGenerado documento) {
+        Usuario usuario = documento instanceof DocumentoReporte ? requerirPermiso() : SesionActual.requerir(RolUsuario.ADMIN);
+        if (usuario != documento.solicitante()) throw new SecurityException("El reporte pertenece a otra sesión. Genere una nueva vista previa.");
+    }
+
     public CatalogosReporte catalogos() {
-        Usuario solicitante = requerirPermiso();
+        Usuario solicitante = SesionActual.requerir(RolUsuario.ADMIN);
         CatalogosReporte opciones = dao.catalogos();
-        if (requerirPermiso() != solicitante) throw new SecurityException("La sesión cambió al cargar los filtros.");
+        if (SesionActual.requerir(RolUsuario.ADMIN) != solicitante) throw new SecurityException("La sesión cambió al cargar los filtros.");
         return opciones;
     }
 
     public ResultadoReporte generar(FiltroReporte filtro) {
+        if (!filtro.tipo().financiero()) throw new IllegalArgumentException("Use el servicio de Gestión de viajes para este reporte.");
         Usuario solicitante = requerirPermiso();
         var empresa = new EmpresaDAO().obtener().orElseThrow(() ->
                 new IllegalStateException("Configure los datos de la empresa antes de generar reportes."));
@@ -57,6 +68,7 @@ public class ReporteService {
             case UNIDAD -> agrupar(viajes, false);
             case RESUMEN, EVOLUCION -> periodos(filtro, viajes);
             case DETALLE -> List.of();
+            case GESTION_VIAJES -> throw new IllegalArgumentException("Este reporte no calcula indicadores financieros.");
         };
         List<FilaReporte> series = filas;
         if (!filtro.tipo().temporal() && filas.size() > 10) {
