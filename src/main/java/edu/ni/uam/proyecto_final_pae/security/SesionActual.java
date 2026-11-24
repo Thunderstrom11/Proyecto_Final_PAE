@@ -11,8 +11,8 @@ public final class SesionActual {
 
     private static final Duration INACTIVIDAD_MAXIMA = Duration.ofMinutes(15);
 
-    private static Usuario usuario;
-    private static Instant ultimaActividad;
+    private static volatile Usuario usuario;
+    private static volatile Instant ultimaActividad;
 
     private SesionActual() {
     }

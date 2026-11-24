@@ -1468,7 +1468,7 @@ public class FlotaController {
             advertencia("Su cuenta no tiene permiso para ver el reporte financiero.");
             return;
         }
-        abrirVista("reporte-view.fxml", "Reporte financiero", 900, 680);
+        abrirVista("reporte-view.fxml", "Reportes financieros", 1120, 820);
     }
 
     @FXML

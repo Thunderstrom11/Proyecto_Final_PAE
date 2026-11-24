@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport name="ReporteOperativoViajes" pageWidth="842" pageHeight="595" orientation="Landscape" columnWidth="782" leftMargin="30" rightMargin="30" topMargin="24" bottomMargin="24" whenNoDataType="AllSectionsNoDetail">
+    <style name="Base" default="true" fontName="DejaVu Sans" fontSize="9.0" forecolor="#20344A"/>
+    <style name="Celda" fontName="DejaVu Sans" fontSize="8.0"><box leftPadding="5" rightPadding="5" topPadding="5" bottomPadding="5"><bottomPen lineWidth="0.4" lineColor="#DDE4EB"/></box></style>
+    <style name="Encabezado" mode="Opaque" backcolor="#EAF0F7" bold="true" fontSize="9.0" vTextAlign="Middle"><box leftPadding="5" rightPadding="5"/></style>
+    <parameter name="EMPRESA" class="java.lang.String"/>
+    <parameter name="GENERADO" class="java.lang.String"/>
+    <parameter name="FILTROS" class="java.lang.String"/>
+    <parameter name="TOTAL" class="java.lang.String"/>
+    <parameter name="VACIO" class="java.lang.Boolean"/>
+    <field name="viaje" class="java.lang.String"/>
+    <field name="carga" class="java.lang.String"/>
+    <field name="operador" class="java.lang.String"/>
+    <field name="unidad" class="java.lang.String"/>
+    <field name="origen" class="java.lang.String"/>
+    <field name="destino" class="java.lang.String"/>
+    <field name="estado" class="java.lang.String"/>
+    <field name="limite" class="java.lang.String"/>
+    <title height="174" splitType="Stretch">
+        <element kind="textField" x="0" y="0" width="782" height="28" fontSize="18.0" bold="true" textAdjust="StretchHeight"><expression><![CDATA[$P{EMPRESA}]]></expression></element>
+        <element kind="staticText" positionType="Float" x="0" y="34" width="782" height="27" fontSize="16.0" bold="true"><text><![CDATA[Reporte de viajes]]></text></element>
+        <element kind="textField" positionType="Float" x="0" y="66" width="782" height="18" fontSize="9.0" forecolor="#586B7E"><expression><![CDATA[$P{GENERADO}]]></expression></element>
+        <element kind="textField" positionType="Float" x="0" y="88" width="782" height="34" textAdjust="StretchHeight"><expression><![CDATA[$P{FILTROS}]]></expression></element>
+        <element kind="textField" positionType="Float" x="0" y="130" width="782" height="20" bold="true" fontSize="11.0"><expression><![CDATA[$P{TOTAL}]]></expression></element>
+        <element kind="staticText" positionType="Float" x="0" y="152" width="782" height="20" forecolor="#586B7E"><printWhenExpression><![CDATA[$P{VACIO}]]></printWhenExpression><text><![CDATA[No hay viajes que coincidan con los filtros.]]></text></element>
+    </title>
+    <pageHeader height="20">
+        <element kind="textField" x="0" y="0" width="782" height="16" textAdjust="StretchHeight" fontSize="8.0" forecolor="#586B7E"><printWhenExpression><![CDATA[$V{PAGE_NUMBER} > 1]]></printWhenExpression><expression><![CDATA[$P{EMPRESA} + " | Reporte de viajes"]]></expression></element>
+    </pageHeader>
+    <columnHeader height="32">
+        <element kind="staticText" x="0" y="0" width="70" height="32" style="Encabezado"><text><![CDATA[Viaje]]></text></element>
+        <element kind="staticText" x="70" y="0" width="95" height="32" style="Encabezado"><text><![CDATA[Carga]]></text></element>
+        <element kind="staticText" x="165" y="0" width="130" height="32" style="Encabezado"><text><![CDATA[Operador]]></text></element>
+        <element kind="staticText" x="295" y="0" width="65" height="32" style="Encabezado"><text><![CDATA[Unidad]]></text></element>
+        <element kind="staticText" x="360" y="0" width="120" height="32" style="Encabezado"><text><![CDATA[Origen]]></text></element>
+        <element kind="staticText" x="480" y="0" width="120" height="32" style="Encabezado"><text><![CDATA[Destino]]></text></element>
+        <element kind="staticText" x="600" y="0" width="80" height="32" style="Encabezado"><text><![CDATA[Estado]]></text></element>
+        <element kind="staticText" x="680" y="0" width="102" height="32" style="Encabezado"><text><![CDATA[Fecha límite de entrega]]></text></element>
+    </columnHeader>
+    <detail>
+        <band height="28" splitType="Prevent">
+            <element kind="textField" x="0" y="0" width="70" height="28" textAdjust="StretchHeight" stretchType="ContainerHeight" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{viaje}]]></expression></element>
+            <element kind="textField" x="70" y="0" width="95" height="28" textAdjust="StretchHeight" stretchType="ContainerHeight" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{carga}]]></expression></element>
+            <element kind="textField" x="165" y="0" width="130" height="28" textAdjust="StretchHeight" stretchType="ContainerHeight" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{operador}]]></expression></element>
+            <element kind="textField" x="295" y="0" width="65" height="28" textAdjust="StretchHeight" stretchType="ContainerHeight" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{unidad}]]></expression></element>
+            <element kind="textField" x="360" y="0" width="120" height="28" textAdjust="StretchHeight" stretchType="ContainerHeight" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{origen}]]></expression></element>
+            <element kind="textField" x="480" y="0" width="120" height="28" textAdjust="StretchHeight" stretchType="ContainerHeight" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{destino}]]></expression></element>
+            <element kind="textField" x="600" y="0" width="80" height="28" textAdjust="StretchHeight" stretchType="ContainerHeight" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{estado}]]></expression></element>
+            <element kind="textField" x="680" y="0" width="102" height="28" textAdjust="StretchHeight" stretchType="ContainerHeight" vTextAlign="Middle" style="Celda"><expression><![CDATA[$F{limite}]]></expression></element>
+        </band>
+    </detail>
+    <pageFooter height="25">
+        <element kind="textField" x="0" y="8" width="640" height="16" fontSize="8.0" forecolor="#586B7E"><expression><![CDATA[$P{GENERADO}]]></expression></element>
+        <element kind="textField" x="652" y="8" width="130" height="16" hTextAlign="Right" fontSize="8.0"><expression><![CDATA["Página " + $V{PAGE_NUMBER}]]></expression></element>
+    </pageFooter>
+</jasperReport>
