@@ -31,7 +31,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 
-/** Reporte financiero de viajes finalizados (RF de control financiero, movido a la pantalla inicial). */
+/** Reporte financiero de viajes finalizados, con filtros de fecha y exportación a PDF. */
 public class ReporteController {
 
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/uuuu");

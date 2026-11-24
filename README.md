@@ -8,8 +8,6 @@
 
 > **Sistema de Despacho de Cargas, Control de Jornadas y Encadenamiento de Rutas**
 
-Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escritorio** · 2026
-
 ---
 
 ## Información importante del entorno
@@ -18,7 +16,7 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 - **Base de datos:** se utiliza **PostgreSQL 14+** como sistema gestor de base de datos; el esquema tiene **17 tablas**.
 - **Script de base de datos:** el repositorio incluye [`database/fleetroute_pro.sql`](database/fleetroute_pro.sql), con la creación de tablas, restricciones, triggers, índices, catálogos y datos de ejemplo.
 - **Extensión:** el script crea `pgcrypto` para generar los hashes BCrypt de los usuarios de demostración.
-- **Conexión a la base de datos:** se realiza mediante un archivo **`.env`**. Cada integrante mantiene su propio archivo `.env` en su equipo con sus credenciales locales de PostgreSQL (usuario, contraseña, puerto, etc.). Este archivo **no se sube al repositorio**.
+- **Conexión a la base de datos:** se realiza mediante un archivo **`.env`**. Cada instalación utiliza sus credenciales locales de PostgreSQL (usuario, contraseña, puerto, etc.). Este archivo **no se sube al repositorio**.
 - **Archivo de ejemplo:** se incluye **`.env.example`** como plantilla. Cualquier persona que descargue el proyecto debe copiarlo, renombrarlo a `.env` y colocar en él sus propias credenciales.
 - **API y cabina web:** el módulo `api-operador/` publica la API REST y la vista web del operador en `http://localhost:8080`. Usa la misma base PostgreSQL y requiere `OPENROUTESERVICE_API_KEY` para la navegación turn-by-turn.
 - **Acceso desde otros dispositivos:** se puede publicar con Cloudflare Quick Tunnel. La app de escritorio incluye el botón **Iniciar Conexión** en la vista de flota: arranca la API si todavía no responde en `localhost:8080`, abre el túnel, muestra el estado con un punto de color y copia el enlace público con un clic en el icono de cadena. Para que el botón pueda arrancar la API, el JAR debe estar compilado una vez y la app debe ejecutarse con **JDK 21 o superior**.
@@ -28,7 +26,7 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 ## Tabla de contenido
 
 - [Descripción general](#descripción-general)
-- [Integrantes](#integrantes)
+- [Colaboradores](#colaboradores)
 - [Stack tecnológico](#stack-tecnológico)
 - [Funcionalidades por rol](#funcionalidades-por-rol)
 - [Requerimientos funcionales](#requerimientos-funcionales)
@@ -60,9 +58,9 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 
 ---
 
-## Integrantes
+## Colaboradores
 
-| # | Estudiante                      |
+| # | Colaborador                     |
 |---|---------------------------------|
 | 1 | Diego Marcello Chamendy Chow    |
 | 2 | Carlos Eduardo Rodríguez Flores |
@@ -88,7 +86,7 @@ Proyecto final de la asignatura **PAE — Programación de Aplicaciones de Escri
 | Acceso externo | Cloudflare Quick Tunnel (HTTP/2 sobre TCP) |
 | Arquitectura | Capas: Vista → Servicios → DAO → Modelo; API por capas |
 
-> **Nota de stack:** la rúbrica de entrega exige mapeo ORM con JPA y operaciones de persistencia con Hibernate. Por eso el acceso a datos se implementa con Hibernate ORM sobre el driver JDBC de PostgreSQL, manteniendo el patrón DAO.
+> **Persistencia:** las entidades del escritorio se mapean con anotaciones JPA y los DAO realizan las operaciones mediante Hibernate ORM sobre el driver JDBC de PostgreSQL. La API utiliza Spring JDBC.
 
 ---
 
@@ -221,7 +219,7 @@ Proyecto_Final_PAE/
 │   └── src/test/               # Pruebas de cálculo y parseo de rutas
 ├── database/
 │   └── fleetroute_pro.sql      # Esquema, catálogos, triggers y datos de ejemplo
-├── evidencias/                 # Capturas de la entrega de Hibernate
+├── evidencias/                 # Capturas de estructura, consultas y persistencia
 ├── src/
 │   ├── main/
 │   │   ├── java/edu/ni/uam/proyecto_final_pae/
@@ -292,7 +290,7 @@ La base de datos `fleetroute_pro` tiene **17 tablas**. El esquema completo, las 
 
 > Los campos `id_estado_*` y `id_tipo_evento` son claves foráneas a estos catálogos; equivalen a los campos `estado` y `tipo_evento` del PDF, pero evitan texto libre.
 >
-> La interfaz puede mostrar estos valores en formato legible (por ejemplo, `EN_RUTA` como “En Ruta”). No hardcodees los IDs: consulta el catálogo por `nombre`.
+> La interfaz muestra estos valores en formato legible (por ejemplo, `EN_RUTA` como “En Ruta”). Los estados se resuelven por `nombre`, sin fijar sus IDs numéricos en el código.
 
 ### Relaciones principales
 
@@ -327,7 +325,7 @@ La base de datos `fleetroute_pro` tiene **17 tablas**. El esquema completo, las 
 ## Explicación del ORM y las transacciones
 
 Un ORM como Hibernate permite trabajar con objetos Java y evita escribir SQL manual para cada operación; Hibernate traduce las entidades y el HQL al SQL del motor y convierte los tipos automáticamente.
-Una `Session` es una conversación corta con la base: se abre, se usa y se cierra con try-with-resources.
+Una `Session` representa el contexto de persistencia de una operación; se abre y se cierra con try-with-resources.
 Una `Transaction` agrupa una o más operaciones; si todo termina bien se hace commit y, si ocurre una excepción, se hace rollback para no dejar datos a medias.
 Los DAO abren la sesión y la transacción por cada operación, de modo que la interfaz no manipula conexiones directamente.
 Las relaciones `LAZY` no se cargan hasta que se accede a ellas; si la sesión ya se cerró, aparece `LazyInitializationException`.
@@ -370,9 +368,9 @@ cd Proyecto_Final_PAE
 
 ### 2. Crear la base de datos
 
-**Opción recomendada — que la aplicación la cree por usted.** No hace falta tocar `psql` ni pgAdmin. Instale PostgreSQL, anote la contraseña que eligió para el usuario `postgres` durante la instalación y ejecute la aplicación. En el primer arranque el asistente abre el paso **Conexión y base de datos**: escriba esa contraseña y pulse Siguiente. El sistema crea la base si no existe, aplica el esquema completo si está vacía y guarda la conexión en `.env`. Si la base ya tiene tablas con datos, el asistente no la modifica. Las opciones de abajo quedan como alternativa manual para desarrollo.
+**Opción recomendada — asistente de configuración.** Con PostgreSQL instalado, el primer arranque permite indicar el servidor, puerto, usuario y contraseña en el paso **Conexión y base de datos**. El sistema crea la base si no existe, aplica el esquema completo si está vacía y guarda la conexión en `.env`. Las bases existentes compatibles reciben las actualizaciones de esquema necesarias sin borrar registros. Las siguientes opciones permiten la instalación manual para desarrollo.
 
-El script `database/fleetroute_pro.sql` crea las tablas, restricciones, índices, triggers, catálogos y datos de ejemplo. **Incluye `DROP TABLE`**, así que úsalo en desarrollo o haz un respaldo antes.
+El script `database/fleetroute_pro.sql` crea las tablas, restricciones, índices, triggers, catálogos y datos de ejemplo. **Incluye `DROP TABLE`**: está destinado a desarrollo y requiere un respaldo previo si la base contiene datos.
 
 > Hibernate está configurado con `hibernate.hbm2ddl.auto=validate`: el esquema debe existir y coincidir con el SQL. Esto evita que la aplicación cree una versión más débil sin los CHECK, índices, triggers o restricciones de unicidad.
 
@@ -392,13 +390,13 @@ psql -U postgres -d fleetroute_pro -v ON_ERROR_STOP=1 -f database/fleetroute_pro
 
 Las ubicaciones y los países elegidos pertenecen al usuario: los arranques siguientes no restauran ejemplos eliminados ni cambian sus coordenadas.
 
-> El script no crea la base de datos; solo el esquema y los datos. En Windows, si `psql` no se reconoce, agrega la carpeta `bin` de PostgreSQL al `PATH` o ejecuta los comandos desde la ruta de instalación.
+> El script no crea la base de datos; solo el esquema y los datos. En Windows, si `psql` no se reconoce, agregar la carpeta `bin` de PostgreSQL al `PATH` o ejecutar los comandos desde la ruta de instalación.
 >
 > Si el usuario de PostgreSQL no puede crear la extensión `pgcrypto`, ejecuta `CREATE EXTENSION pgcrypto;` como superusuario antes de volver a correr el script.
 
 ### 3. Configurar las credenciales
 
-Si usó la opción recomendada, el asistente ya escribió el `.env` con la conexión que usted indicó y puede saltar al paso 4.
+Cuando la conexión se guarda desde el asistente, el archivo `.env` ya está configurado y la instalación continúa en el paso 4.
 
 Copia el archivo de ejemplo y renómbralo a `.env`:
 
@@ -414,7 +412,7 @@ copy .env.example .env
 cp .env.example .env
 ```
 
-Edita `.env` con los datos de **tu** instancia local de PostgreSQL:
+Configurar `.env` con los datos de la instancia local de PostgreSQL:
 
 ```env
 DB_URL=jdbc:postgresql://localhost:5432/fleetroute_pro
@@ -422,7 +420,7 @@ DB_USER=postgres
 DB_PASSWORD=tu_contrasena
 ```
 
-> Cada integrante debe crear su propio `.env` con sus credenciales. El archivo `.env` está incluido en `.gitignore` y **nunca debe subirse al repositorio**.
+> Cada instalación requiere un `.env` con sus credenciales locales. El archivo `.env` está incluido en `.gitignore` y **no debe subirse al repositorio**.
 
 ### 4. Compilar y ejecutar
 
@@ -442,21 +440,22 @@ Desde la raíz del proyecto, con JDK 21+ en `JAVA_HOME`, compile los dos módulo
 ./mvnw verify javafx:run
 ```
 
-El wrapper incluye la misma versión de Maven para ambos módulos. Si falta JDK 21, la compilación muestra el requisito antes de intentar arrancar la API. Cada integrante usa su PostgreSQL local: al abrir por primera vez, el asistente permite crear la base y guardar su propia conexión en `.env`. No copie las credenciales de otro integrante.
+El wrapper incluye la misma versión de Maven para ambos módulos. Si falta JDK 21, la compilación muestra el requisito antes de intentar arrancar la API. Cada instalación utiliza su conexión local de PostgreSQL; el asistente permite crear la base y guardar esa conexión en `.env`.
 
 ### 5. Primera ejecución (asistente de configuración)
 
 Si la base de datos no existe, está vacía o la tabla `empresa` aún no tiene datos, la aplicación abre un **asistente de configuración inicial** antes del login. Tiene pasos con barra de avance, botón Atrás y la opción de omitir los pasos opcionales:
 
-1. **Conexión y base de datos:** solo aparece cuando falta la base o el esquema. Pide servidor, puerto, usuario y contraseña de PostgreSQL, con instrucciones en orden para quien lo instala por primera vez. El botón Probar conexión explica en lenguaje claro qué se encontró. Al pulsar Siguiente el sistema crea la base si no existe, aplica el esquema completo si está vacía y guarda la conexión en `.env`. Una base que ya tiene tablas con datos nunca se modifica.
+1. **Conexión y base de datos:** aparece cuando falta la base, el esquema o una conexión válida. Pide servidor, puerto, usuario y contraseña de PostgreSQL. El botón Probar conexión muestra el estado de la base. Al pulsar Siguiente el sistema crea la base si no existe, aplica el esquema completo si está vacía y guarda la conexión en `.env`. En bases existentes compatibles, actualiza el esquema sin borrar registros.
 2. **Datos de la empresa:** nombre (obligatorio), RUC, teléfono, correo, dirección, país, zona horaria y moneda de los cobros. El país y la zona definen cómo se registran las horas y las fechas. Se guardan en la tabla `empresa`.
 3. **Cuenta de administrador:** solo si no existe ningún administrador activo. Pide usuario y contraseña (mínimo 8 caracteres, con confirmación) y la guarda con hash BCrypt.
-4. **Ubicaciones (opcional):** las 20 ubicaciones base de Centroamérica ya están cargadas; el paso permite agregar orígenes o destinos propios, con latitud y longitud opcionales.
-5. **Unidades (opcional):** número, placas, modelo, capacidad y los vencimientos del seguro y la revisión mecánica. Se crean en estado `DISPONIBLE`.
-6. **Operadores (opcional):** cédula, nombre, teléfono, licencia (número, categoría y vencimiento), contacto de emergencia y horas de manejo y descanso. A cada uno se le crea su cuenta de acceso (usuario = cédula) con la contraseña temporal `operador123!`, que el administrador puede restablecer desde el panel administrativo.
-7. **Clientes (opcional):** las empresas que contratan fletes, con contacto, teléfono, correo y dirección.
-8. **Tarifas por ruta (opcional):** origen, destino, horas y precio. Al crear un viaje, la ruta elegida propone el tiempo y el cobro.
-9. **Resumen:** muestra lo que se guardará y escribe todo en una sola transacción. Antes de operar conviene guardar un respaldo de la base.
+4. **Países (opcional):** permite habilitar los países donde opera la empresa. Al guardar, cada país aporta una ubicación con su centro aproximado.
+5. **Ubicaciones (opcional):** permite agregar orígenes o destinos propios. Los países y ubicaciones de demostración no se insertan automáticamente.
+6. **Unidades (opcional):** número, placas, modelo, capacidad y los vencimientos del seguro y la revisión mecánica. Se crean en estado `DISPONIBLE`.
+7. **Operadores (opcional):** cédula, nombre, teléfono, licencia (número, categoría y vencimiento), contacto de emergencia y horas de manejo y descanso. A cada uno se le crea su cuenta de acceso (usuario = cédula) con la contraseña temporal `operador123!`, que el administrador puede restablecer desde el panel administrativo.
+8. **Clientes (opcional):** las empresas que contratan fletes, con contacto, teléfono, correo y dirección.
+9. **Tarifas por ruta (opcional):** origen, destino, horas y precio. Al crear un viaje, la ruta elegida propone el tiempo y el cobro.
+10. **Resumen:** presenta los datos pendientes y finaliza la configuración. La conexión y los países ya guardados se conservan.
 
 Al terminar, el asistente entrega el control al login. En ejecuciones posteriores la aplicación va directo al login.
 
@@ -495,7 +494,7 @@ En Windows, sustituya `./mvnw` por `.\mvnw.cmd`. Estas pruebas crean sus propias
 ## Reporte financiero con JasperReports
 
 1. Ejecuta `mvn clean javafx:run` e inicia sesión como administrador principal o administrador con permiso para ver reportes financieros.
-2. En la pantalla de Flota, abre **Reporte financiero**. Usa **Desde** y **Hasta** para filtrar por fecha de finalización. Ambos días se incluyen y puedes dejar cualquiera de los campos vacío.
+2. En la pantalla de Flota, seleccionar **Reporte financiero**. Los campos **Desde** y **Hasta** filtran por fecha de finalización; ambos días se incluyen y cualquiera de los campos puede quedar vacío.
 3. Pulsa **Exportar PDF** y elige dónde guardar el archivo. El PDF incluye el período, el total en la moneda de la empresa y ambos desgloses, por operador y por unidad. Para la demo, elige un período con al menos un viaje finalizado para ver filas de ejemplo.
 
 Para cambiar el diseño, importa [reporte-financiero.jrxml](src/main/resources/edu/ni/uam/proyecto_final_pae/reportes/reporte-financiero.jrxml) a un proyecto de **Jaspersoft Studio Community Edition 6.21.5** y ábrelo en la pestaña **Design**. Guarda el diseño en la ruta original del repositorio y vuelve a ejecutar la aplicación para probar el PDF con datos reales. [Jaspersoft Studio Community Edition 6.21.5](https://community.jaspersoft.com/files/file/113-jaspersoft-studio-community-edition/)
@@ -644,13 +643,13 @@ cloudflared tunnel --url http://localhost:8080 --protocol http2 --edge-ip-versio
 
 `--protocol http2 --edge-ip-version 4` fuerza HTTP/2 sobre TCP y IPv4. Es necesario cuando la red bloquea QUIC/UDP 7844; sin esos parámetros el túnel puede quedarse en `Unable to establish connection with edge`. Si el túnel está arriba pero la API no, la URL responde **502 Bad Gateway**: comprueba `http://localhost:8080/api/salud`.
 
-> El enlace de Quick Tunnel es temporal y cambia cada vez que se inicia. Cualquier persona con la URL puede llegar al login, así que usa datos de demostración, cierra el túnel al terminar y no publiques credenciales ni información real.
+> El enlace de Quick Tunnel es temporal y cambia cada vez que se inicia. La URL pública permite acceder al login; para pruebas, utilizar datos de demostración, cerrar el túnel al terminar y mantener las credenciales fuera del repositorio.
 
 ---
 
 ## Datos de ejemplo
 
-El script inserta los catálogos y un conjunto mínimo de datos para probar el sistema. Cuando la base la crea el asistente, los maestros y las cuentas de ejemplo no se insertan: el asistente los define con usted paso a paso.
+El script inserta los catálogos y un conjunto mínimo de datos para probar el sistema. Cuando la base la crea el asistente, los maestros y las cuentas de ejemplo no se insertan: se registran durante la configuración inicial.
 
 | Dato | Valor |
 |------|-------|
@@ -661,11 +660,11 @@ El script inserta los catálogos y un conjunto mínimo de datos para probar el s
 | Usuario administrador | `admin` / `Admin123!` |
 | Usuario operador | `operador` / `operador123!` |
 
-> Las contraseñas de ejemplo se almacenan con hash BCrypt. **Cámbialas antes de usar el sistema fuera del entorno académico.** Si quieres un esquema vacío, elimina la sección 9 del script: en el primer arranque el asistente de configuración crea la cuenta de administrador.
+> Las contraseñas de ejemplo se almacenan con hash BCrypt y deben reemplazarse antes de utilizar datos reales. Para iniciar sin registros de demostración, el asistente crea la base y la cuenta de administrador.
 >
 > El script no crea viajes de prueba: crea la unidad y el operador para que el administrador registre el primer viaje desde la aplicación.
 >
-> Las ubicaciones y el cliente son catálogos de apoyo. Si el módulo Administrador no incluye su mantenimiento, puedes agregar más registros con SQL o ampliar la interfaz; los viajes siempre deben usar ubicaciones existentes.
+> Las ubicaciones y los clientes se gestionan desde las pantallas administrativas. Los viajes referencian ubicaciones existentes.
 
 ---
 
@@ -690,7 +689,7 @@ DB_PASSWORD=tu_contrasena
 OPENROUTESERVICE_API_KEY=
 ```
 
-> La aplicación de escritorio lee las tres claves de conexión mediante `config/Entorno`; si cambias el nombre de alguna, `HibernateUtil` no podrá iniciar la conexión. La API importa el mismo `.env` y además usa `OPENROUTESERVICE_API_KEY`.
+> La aplicación de escritorio lee las tres claves de conexión mediante `config/Entorno`; sus nombres deben coincidir con los de la plantilla. La API importa el mismo `.env` y además usa `OPENROUTESERVICE_API_KEY`.
 
 > El esquema usa `TIMESTAMP` en hora local de Nicaragua (`America/Managua`) y el script configura esa zona. Hibernate fija `hibernate.jdbc.time_zone=America/Managua` para que las fechas de los eventos sean consistentes.
 
@@ -789,7 +788,7 @@ La aplicación se inicia con `Launcher` o `./mvnw javafx:run`. El login establec
     order by c.fechaLimiteCliente
    ```
 
-> `FlotaDAO` consulta `Viaje`, `Unidad` y `Operador` porque esas entidades pertenecen a los módulos de flota y viajes. Los nombres de atributo esperados están documentados al inicio de la clase: si esos módulos usan otros nombres, se corrige únicamente ese archivo.
+> `FlotaDAO` relaciona viajes, unidades, operadores, cargas y ubicaciones para obtener los datos que muestran la cabina y el monitor.
 
 ### Datos de demo para la cabina
 
@@ -824,9 +823,6 @@ FROM cargas c2, cargas c1, viajes v1, unidades u, operadores o
 WHERE c2.numero_carga = 'C-DEMO-2' AND c1.numero_carga = 'C-DEMO-1'
   AND v1.id_carga = c1.id_carga AND u.numero_unidad = 'U-001' AND o.cedula = '001-000000-0001A';
 ```
-
-> El operador de ejemplo tiene `horas_min_descanso = 8`. Para mostrar **Reanudar** en la demo sin esperar 8 horas reales, baja el mínimo temporalmente:
-> `UPDATE operadores SET horas_min_descanso = 0.05 WHERE cedula = '001-000000-0001A';`
 
 ---
 
@@ -893,9 +889,3 @@ La evidencia se generó con `hbm2ddl.auto=create` y `show_sql=true` sobre una ba
 - **Documento de Requerimientos — FleetRoute Pro v1.0:** objetivo general, requerimientos funcionales y no funcionales, reglas de negocio y modelo relacional.
 - **README.md:** guía de instalación, configuración y uso del sistema.
 - **`database/fleetroute_pro.sql`:** 17 tablas, catálogos, restricciones, índices, triggers y datos de ejemplo.
-
----
-
-## Licencia
-
-Proyecto académico desarrollado para la asignatura **PAE — Programación de Aplicaciones de Escritorio**. Su uso está destinado a fines educativos.

@@ -60,7 +60,7 @@ public class LugarPickerController {
 
     private final NominatimService buscador = NominatimService.compartido();
     private static final String USER_AGENT =
-            "FleetRouteProAcademic/1.0 (contacto: estudiante-uam)";
+            "FleetRoutePro/1.0 (+https://github.com/Thunderstrom11/Proyecto_Final_PAE)";
     private static final String COLOR_POR_DEFECTO = "#0891B2";
     private static final List<String> CATEGORIAS = List.of(
             "Casa", "Negocio", "Oficina", "Bodega", "Almacén", "Tienda",

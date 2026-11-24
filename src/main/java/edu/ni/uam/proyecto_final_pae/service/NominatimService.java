@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 public final class NominatimService implements AutoCloseable {
     private static final NominatimService COMPARTIDO = new NominatimService(
             URI.create("https://nominatim.openstreetmap.org"), Duration.ofSeconds(1));
-    private static final String USER_AGENT = "FleetRouteProAcademic/1.0 (contacto: estudiante-uam)";
+    private static final String USER_AGENT = "FleetRoutePro/1.0 (+https://github.com/Thunderstrom11/Proyecto_Final_PAE)";
     private final URI base;
     private final long intervalo;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
