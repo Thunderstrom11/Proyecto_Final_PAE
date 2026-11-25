@@ -7,7 +7,10 @@ import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.CategoryLabelPositions;
 import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.chart.renderer.category.LineAndShapeRenderer;
+import org.jfree.chart.ui.RectangleInsets;
 import org.jfree.data.category.DefaultCategoryDataset;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.image.BufferedImage;
@@ -150,14 +153,20 @@ public class JasperReporteService {
                 : ChartFactory.createBarChart(null, null, datos.moneda(), dataset,
                     horizontal ? PlotOrientation.HORIZONTAL : PlotOrientation.VERTICAL, false, false, false);
         grafico.setBackgroundPaint(Color.WHITE);
+        if (horizontal) grafico.setPadding(new RectangleInsets(8, 8, 8, 48));
         var plot = grafico.getCategoryPlot();
         plot.setBackgroundPaint(Color.WHITE);
         plot.setRangeGridlinePaint(new Color(225, 231, 239));
         plot.setOutlineVisible(false);
         plot.getRenderer().setSeriesPaint(0, new Color(35, 105, 170));
-        plot.getDomainAxis().setTickLabelFont(new Font("DejaVu Sans", Font.PLAIN, horizontal ? 12 : 10));
-        plot.getRangeAxis().setTickLabelFont(new Font("DejaVu Sans", Font.PLAIN, 11));
-        plot.getDomainAxis().setMaximumCategoryLabelLines(horizontal ? 3 : 2);
+        if (plot.getRenderer() instanceof LineAndShapeRenderer lineas) {
+            lineas.setDefaultShapesVisible(true);
+            lineas.setSeriesStroke(0, new BasicStroke(2.5f));
+        }
+        plot.getDomainAxis().setTickLabelFont(new Font("DejaVu Sans", Font.PLAIN, horizontal ? 14 : 18));
+        plot.getRangeAxis().setTickLabelFont(new Font("DejaVu Sans", Font.PLAIN, 18));
+        plot.getRangeAxis().setLabelFont(new Font("DejaVu Sans", Font.PLAIN, 20));
+        plot.getDomainAxis().setMaximumCategoryLabelLines(2);
         if (!horizontal) plot.getDomainAxis().setCategoryLabelPositions(CategoryLabelPositions.UP_45);
         return grafico.createBufferedImage(1080, 500);
     }
