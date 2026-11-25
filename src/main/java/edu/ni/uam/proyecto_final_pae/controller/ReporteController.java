@@ -3,6 +3,7 @@ package edu.ni.uam.proyecto_final_pae.controller;
 import edu.ni.uam.proyecto_final_pae.config.ZonaHoraria;
 import edu.ni.uam.proyecto_final_pae.reportes.*;
 import edu.ni.uam.proyecto_final_pae.service.JasperReporteService;
+import edu.ni.uam.proyecto_final_pae.service.ReporteJornadasService;
 import edu.ni.uam.proyecto_final_pae.service.ReporteService;
 import edu.ni.uam.proyecto_final_pae.service.ReporteViajesService;
 import edu.ni.uam.proyecto_final_pae.service.ReporteEntregasService;
@@ -28,6 +29,7 @@ public class ReporteController {
     private final JasperReporteService jasper;
     private final ReporteViajesService viajes;
     private final ReporteEntregasService entregas;
+    private final ReporteJornadasService jornadas = new ReporteJornadasService();
     private final ExecutorService trabajo = Executors.newSingleThreadExecutor(tarea -> {
         Thread hilo = new Thread(tarea, "fleetroute-reportes");
         hilo.setDaemon(true);
@@ -159,10 +161,14 @@ public class ReporteController {
         txtCarga.setVisible(tipo.detallado()); txtCarga.setManaged(tipo.detallado());
         lblCarga.setVisible(tipo.detallado()); lblCarga.setManaged(tipo.detallado());
         if (!tipo.detallado()) txtCarga.clear();
-        boolean operativo = tipo == TipoReporte.GESTION_VIAJES;
+        boolean operativo = !tipo.finalizados();
         chkFiltrarFechas.setVisible(operativo); chkFiltrarFechas.setManaged(operativo);
         if (tipoConfigurado != tipo) {
-            cmbEstado.getItems().setAll(operativo ? java.util.List.of(EstadoReporte.values()) : java.util.List.of(EstadoReporte.FINALIZADO));
+            // Un viaje con bitácora ya salió de PROGRAMADO, por eso ese estado no aplica a jornadas.
+            var estados = !operativo ? java.util.List.of(EstadoReporte.FINALIZADO) : tipo == TipoReporte.JORNADAS
+                    ? Arrays.stream(EstadoReporte.values()).filter(e -> e != EstadoReporte.PROGRAMADO).toList()
+                    : java.util.List.of(EstadoReporte.values());
+            cmbEstado.getItems().setAll(estados);
             cmbEstado.setValue(operativo ? EstadoReporte.TODOS : EstadoReporte.FINALIZADO);
         }
         cmbEstado.setDisable(!operativo);
@@ -171,8 +177,10 @@ public class ReporteController {
     }
 
     private void configurarFechas() {
-        boolean operativo = cmbTipo.getValue() == TipoReporte.GESTION_VIAJES;
-        lblDesde.setText(operativo ? "Creación del viaje: desde" : "Finalización: desde");
+        TipoReporte tipo = cmbTipo.getValue();
+        boolean operativo = tipo != null && !tipo.finalizados();
+        if (tipo != null) lblDesde.setText(tipo.etiquetaFecha() + ": desde");
+        if (operativo) chkFiltrarFechas.setText("Filtrar por fecha de " + (tipo == TipoReporte.JORNADAS ? "inicio" : "creación"));
         boolean sinFechas = operativo && !chkFiltrarFechas.isSelected();
         dpDesde.setDisable(sinFechas); dpHasta.setDisable(sinFechas);
         btnMesActual.setDisable(sinFechas); btnMesAnterior.setDisable(sinFechas);
@@ -213,6 +221,11 @@ public class ReporteController {
                     if (filtro.tipo() == TipoReporte.CUMPLIMIENTO_ENTREGAS) {
                         var doc = entregas.generar(filtro);
                         return new ResultadoVista(doc, doc.resumen().descripcion(), doc.resumen().viajes() == 0);
+                    }
+                    if (filtro.tipo() == TipoReporte.JORNADAS) {
+                        var doc = jornadas.generar(filtro);
+                        return new ResultadoVista(doc, "Viajes evaluados: " + doc.viajes()
+                                + " | Con incumplimiento: " + doc.incumplimientos(), doc.viajes() == 0);
                     }
                     if (filtro.tipo() == TipoReporte.GESTION_VIAJES) {
                         var doc = viajes.generar(filtro);

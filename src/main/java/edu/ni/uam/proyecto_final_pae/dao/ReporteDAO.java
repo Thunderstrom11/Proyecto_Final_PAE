@@ -65,6 +65,55 @@ public class ReporteDAO {
         });
     }
 
+    /**
+     * Viajes con al menos un evento de jornada y su bitácora completa. Se leen en dos consultas
+     * con el mismo filtro para no traer una fila por evento con todos los datos del viaje.
+     */
+    public List<ViajeJornada> consultarJornadas(FiltroReporte filtro) {
+        if (filtro.tipo() != TipoReporte.JORNADAS) throw new IllegalArgumentException("Seleccione Jornadas y descanso de operadores.");
+        String condiciones = " from Viaje v join v.carga c left join c.cliente cl join v.operador o join v.unidad u join v.estado e"
+                + " where exists (select 1 from RegistroJornada rj where rj.viaje = v)"
+                + (filtro.desde() == null ? "" : " and v.fechaInicio >= :desde and v.fechaInicio < :hasta")
+                + (filtro.operador().id() == null ? "" : " and o.id = :operador")
+                + (filtro.unidad().id() == null ? "" : " and u.id = :unidad")
+                + (filtro.cliente().id() == null ? "" : filtro.cliente().id() == 0 ? " and cl.id is null" : " and cl.id = :cliente")
+                + (filtro.numeroCarga().isEmpty() ? "" : " and lower(c.numeroCarga) = :carga")
+                + (filtro.estado().estados().isEmpty() ? "" : " and e.nombre in :estados");
+        return Transaccion.consultar(sesion -> {
+            var consulta = sesion.createQuery("select new edu.ni.uam.proyecto_final_pae.reportes.ViajeJornada("
+                            + "v.id, c.numeroCarga, o.id, o.nombre, u.numeroUnidad, e.nombre, v.fechaInicio, "
+                            + "o.horasMaxConduccion, o.horasMinDescanso)" + condiciones + " order by o.nombre, o.id, v.fechaInicio, v.id",
+                    ViajeJornada.class).setMaxResults(FiltroReporte.MAX_FILAS + 1).setTimeout(60).setReadOnly(true);
+            parametros(consulta, filtro);
+            List<ViajeJornada> viajes = consulta.getResultList();
+            if (viajes.size() > FiltroReporte.MAX_FILAS) throw new IllegalArgumentException(
+                    "La selección supera " + FiltroReporte.MAX_FILAS + " viajes. Reduzca el período o aplique más filtros.");
+            if (viajes.isEmpty()) return viajes;
+
+            var eventos = sesion.createQuery("select r.viaje.id, t.nombre, r.fechaHora from RegistroJornada r join r.tipoEvento t"
+                            + " where r.viaje.id in (select v.id" + condiciones + ") order by r.viaje.id, r.numEvento",
+                    Object[].class).setTimeout(60).setReadOnly(true);
+            parametros(eventos, filtro);
+            java.util.Map<Integer, List<ViajeJornada.Evento>> bitacoras = new java.util.HashMap<>();
+            for (Object[] fila : eventos.getResultList()) {
+                bitacoras.computeIfAbsent((Integer) fila[0], id -> new java.util.ArrayList<>())
+                        .add(new ViajeJornada.Evento((String) fila[1], (java.time.LocalDateTime) fila[2]));
+            }
+            return viajes.stream().map(v -> v.conEventos(bitacoras.getOrDefault(v.id(), List.of()))).toList();
+        });
+    }
+
+    private static void parametros(org.hibernate.query.Query<?> consulta, FiltroReporte filtro) {
+        if (filtro.desde() != null) {
+            consulta.setParameter("desde", filtro.desdeInclusivo()).setParameter("hasta", filtro.hastaExclusivo());
+        }
+        if (filtro.operador().id() != null) consulta.setParameter("operador", filtro.operador().id());
+        if (filtro.unidad().id() != null) consulta.setParameter("unidad", filtro.unidad().id());
+        if (filtro.cliente().id() != null && filtro.cliente().id() != 0) consulta.setParameter("cliente", filtro.cliente().id());
+        if (!filtro.numeroCarga().isEmpty()) consulta.setParameter("carga", filtro.numeroCarga().toLowerCase(java.util.Locale.ROOT));
+        if (!filtro.estado().estados().isEmpty()) consulta.setParameter("estados", filtro.estado().estados());
+    }
+
     public List<ViajeReporte> consultar(FiltroReporte filtro) {
         return Transaccion.consultar(sesion -> {
             String hql = "select new edu.ni.uam.proyecto_final_pae.reportes.ViajeReporte("

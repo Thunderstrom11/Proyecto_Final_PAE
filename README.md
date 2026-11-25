@@ -102,6 +102,7 @@ Ambos roles inician sesión con credenciales almacenadas en la base de datos; la
 - **Reportes financieros:** resumen, facturación por operador/unidad, evolución y detalle de viajes finalizados; filtros combinados, gráficos y visor nativo de JasperReports con navegación, zoom, impresión y guardado.
 - **Reporte operativo de viajes:** opción **Gestión de viajes** en la ventana **Reportes**; incluye carga, operador, unidad, origen, destino, estado y fecha límite de entrega, con filtros propios y fecha y hora de generación.
 - **Cumplimiento de entregas:** reporte Jasper de viajes finalizados con fecha límite, fecha de finalización, resultado y atraso; resume entregas puntuales, tardías y porcentaje de cumplimiento.
+- **Reporte de jornadas y descanso:** opción **Jornadas y descanso de operadores** en **Reportes**; evalúa la bitácora de cada viaje contra las horas máximas de manejo continuo y el descanso mínimo del operador, agrupado por operador con subtotales e incumplimientos resaltados.
 - **Gestión de unidades, operadores y cargas:** alta, consulta, actualización y baja.
 - **Gestión de clientes:** pestaña con todos los campos de `clientes` (empresa, contacto, teléfono, email, dirección y activo), con validaciones y bajas protegidas por integridad referencial.
 - **Panel administrativo:** cuentas de administradores y operadores, permisos de reportes, restablecimiento de contraseñas, países activos con buscador (cada país se agrega como una sola ubicación con un centro aproximado, sin provincias ni ciudades), ubicaciones editables con mapa satelital de solo lectura y rutas con tiempo estimado y precio sugerido. Incluye borrados masivos de cuentas filtradas, ubicaciones y rutas protegidos con la contraseña del administrador.
@@ -496,7 +497,7 @@ En Windows, sustituya `./mvnw` por `.\mvnw.cmd`. Estas pruebas crean sus propias
 ## Reportes con visor nativo de JasperReports
 
 1. Ejecuta `mvn clean javafx:run` e inicia sesión como administrador.
-2. En la barra superior de Flota, pulsa el ícono **Reportes**. El administrador principal y los administradores con permiso financiero pueden seleccionar resumen, facturación por operador, facturación por unidad, evolución, detalle de viajes finalizados, gestión de viajes o cumplimiento de entregas. Los demás administradores pueden consultar gestión de viajes y cumplimiento de entregas.
+2. En la barra superior de Flota, pulsa el ícono **Reportes**. El administrador principal y los administradores con permiso financiero pueden seleccionar los cinco reportes financieros y los tres operativos: gestión de viajes, cumplimiento de entregas y jornadas y descanso de operadores. Los demás administradores pueden consultar los tres reportes operativos.
 3. Para los reportes financieros define ambas fechas de finalización, operador, unidad y cliente. El último día se incluye completo. Para detalle también puedes filtrar por número exacto de carga.
 4. Pulsa **Generar vista previa**. La barra nativa del visor Jasper permite navegar páginas, cambiar el zoom, ajustar al ancho o a la página e imprimir. Modificar los filtros invalida el documento anterior; vuelve a generar la vista previa.
 5. Usa el ícono de **Guardar** del visor y selecciona **PDF** u otro formato disponible, como CSV o Excel. Se guarda el mismo documento previsualizado, con fecha y hora de generación, filtros y moneda de la empresa.
@@ -523,6 +524,20 @@ La plantilla independiente [viajes.jrxml](src/main/resources/edu/ni/uam/proyecto
 La plantilla [entregas.jrxml](src/main/resources/edu/ni/uam/proyecto_final_pae/reportes/entregas.jrxml) se genera con `ReporteEntregasService` y consulta únicamente viajes **FINALIZADO** con fecha de finalización dentro del período. Compara con el plazo vigente de la carga, no con una versión histórica del plazo. Admite hasta 10,000 filas y está disponible para los administradores sin requerir permiso financiero. No modifica la base de datos.
 
 La [guía breve de la base de datos](docs/base-de-datos.html) explica las 17 tablas y el recorrido de un viaje. Es un HTML independiente, adaptable a móviles y con lectura nocturna.
+
+### Reporte de Jornadas y descanso de operadores
+
+Controla el cumplimiento de las reglas de fatiga (RF-06, RF-07 y RF-08) a partir de `registro_jornada`, la misma bitácora que usan la cabina y el monitor.
+
+1. Abre **Reportes** desde Flota y selecciona **Jornadas y descanso de operadores**.
+2. Filtra por operador, unidad, cliente, número exacto de carga y estado (activos, en curso, pausado, finalizado o cancelado). Por defecto se consultan todas las fechas; activa **Filtrar por fecha de inicio** para limitar por el inicio del viaje.
+3. Solo se incluyen viajes con al menos un evento de jornada. El documento se agrupa por operador y muestra sus límites, un subtotal por operador y, por viaje: manejo total, tramo continuo más largo (con el % de su límite), descanso acumulado frente al requerido, número de pausas y el resultado.
+4. Criterios del resultado (con 5 minutos de tolerancia para la pausa automática):
+   - **Exceso de manejo continuo:** un tramo de `INICIO_TRAYECTO`/`REANUDAR` hasta `PAUSA_DESCANSO`/`CONFIRMAR_ENTREGA` supera `operadores.horas_max_conduccion`.
+   - **Descanso insuficiente:** por cada ciclo completo de `horas_max_conduccion` tras el cual el operador siguió manejando se exigen `horas_min_descanso`; los descansos fragmentados se suman.
+   - Los viajes en curso o pausados se calculan hasta la hora de generación y se marcan con `*`.
+
+La plantilla [jornadas.jrxml](src/main/resources/edu/ni/uam/proyecto_final_pae/reportes/jornadas.jrxml) se llena con `ReporteJornadasService`; el cálculo es puro y está cubierto por `ReporteJornadasServiceTest`.
 
 ---
 

@@ -6,7 +6,8 @@ public enum TipoReporte {
     RESUMEN("Resumen financiero"), OPERADOR("Facturación por operador"),
     UNIDAD("Facturación por unidad"), EVOLUCION("Evolución de facturación"),
     DETALLE("Detalle de viajes finalizados"), GESTION_VIAJES("Gestión de viajes"),
-    CUMPLIMIENTO_ENTREGAS("Cumplimiento de entregas");
+    CUMPLIMIENTO_ENTREGAS("Cumplimiento de entregas"),
+    JORNADAS("Jornadas y descanso de operadores");
 
     private final String titulo;
 
@@ -17,14 +18,23 @@ public enum TipoReporte {
             case OPERADOR, UNIDAD -> List.of(TipoGrafico.BARRAS, TipoGrafico.NINGUNO);
             case RESUMEN -> List.of(TipoGrafico.COLUMNAS, TipoGrafico.NINGUNO);
             case EVOLUCION -> List.of(TipoGrafico.LINEAS, TipoGrafico.COLUMNAS, TipoGrafico.NINGUNO);
-            case DETALLE, GESTION_VIAJES, CUMPLIMIENTO_ENTREGAS -> List.of(TipoGrafico.NINGUNO);
+            case DETALLE, GESTION_VIAJES, CUMPLIMIENTO_ENTREGAS, JORNADAS -> List.of(TipoGrafico.NINGUNO);
         };
     }
 
     public boolean temporal() { return this == RESUMEN || this == EVOLUCION; }
-    public boolean financiero() { return this != GESTION_VIAJES && this != CUMPLIMIENTO_ENTREGAS; }
-    public boolean finalizados() { return this != GESTION_VIAJES; }
-    public boolean detallado() { return this == DETALLE || this == GESTION_VIAJES || this == CUMPLIMIENTO_ENTREGAS; }
+    public boolean financiero() { return this != GESTION_VIAJES && this != CUMPLIMIENTO_ENTREGAS && this != JORNADAS; }
+    public boolean finalizados() { return financiero() || this == CUMPLIMIENTO_ENTREGAS; }
+    public boolean detallado() { return this == DETALLE || this == GESTION_VIAJES || this == CUMPLIMIENTO_ENTREGAS || this == JORNADAS; }
+
+    /** Fecha del viaje sobre la que se aplica el período. */
+    public String etiquetaFecha() {
+        return switch (this) {
+            case GESTION_VIAJES -> "Creación del viaje";
+            case JORNADAS -> "Inicio del viaje";
+            default -> "Finalización";
+        };
+    }
 
     @Override public String toString() { return titulo; }
 }
