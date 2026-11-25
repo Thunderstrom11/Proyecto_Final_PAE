@@ -38,7 +38,7 @@
 - [Explicación del ORM y las transacciones](#explicación-del-orm-y-las-transacciones)
 - [Requisitos previos](#requisitos-previos)
 - [Instalación y ejecución](#instalación-y-ejecución)
-- [Reporte financiero con JasperReports](#reporte-financiero-con-jasperreports)
+- [Reportes con visor nativo de JasperReports](#reportes-con-visor-nativo-de-jasperreports)
 - [API y cabina web del operador](#api-y-cabina-web-del-operador)
 - [Datos de ejemplo](#datos-de-ejemplo)
 - [Variables de entorno](#variables-de-entorno)
@@ -99,8 +99,8 @@ Ambos roles inician sesión con credenciales almacenadas en la base de datos; la
 - **Planificador de asignaciones:** vinculación de unidad, operador y carga en un mismo viaje.
 - **Pre-asignación de viajes:** encolamiento de la siguiente carga validando la consistencia geográfica de la ruta.
 - **Monitor de flota en vivo:** tablero semaforizado con el estado de unidades, operadores y viajes activos.
-- **Reportes financieros:** resumen, facturación por operador/unidad, evolución y detalle de viajes finalizados; filtros combinados, gráficos, vista previa paginada y exportación PDF.
-- **Reporte operativo de viajes:** botón **Exportar PDF** en Gestión de viajes; incluye carga, operador, unidad, origen, destino, estado y fecha límite de entrega para los viajes visibles, con fecha y hora de generación.
+- **Reportes financieros:** resumen, facturación por operador/unidad, evolución y detalle de viajes finalizados; filtros combinados, gráficos y visor nativo de JasperReports con navegación, zoom, impresión y guardado.
+- **Reporte operativo de viajes:** opción **Gestión de viajes** en la ventana **Reportes**; incluye carga, operador, unidad, origen, destino, estado y fecha límite de entrega, con filtros propios y fecha y hora de generación.
 - **Gestión de unidades, operadores y cargas:** alta, consulta, actualización y baja.
 - **Gestión de clientes:** pestaña con todos los campos de `clientes` (empresa, contacto, teléfono, email, dirección y activo), con validaciones y bajas protegidas por integridad referencial.
 - **Panel administrativo:** cuentas de administradores y operadores, permisos de reportes, restablecimiento de contraseñas, países activos con buscador (cada país se agrega como una sola ubicación con un centro aproximado, sin provincias ni ciudades), ubicaciones editables con mapa satelital de solo lectura y rutas con tiempo estimado y precio sugerido. Incluye borrados masivos de cuentas filtradas, ubicaciones y rutas protegidos con la contraseña del administrador.
@@ -492,24 +492,25 @@ En Windows, sustituya `./mvnw` por `.\mvnw.cmd`. Estas pruebas crean sus propias
 
 ---
 
-## Reporte financiero con JasperReports
+## Reportes con visor nativo de JasperReports
 
-1. Ejecuta `mvn clean javafx:run` e inicia sesión como administrador principal o administrador con permiso para ver reportes financieros.
-2. En la barra superior de Flota, pulsa el ícono **Reporte financiero**. Selecciona resumen, facturación por operador, facturación por unidad, evolución o detalle de viajes finalizados.
-3. Define ambas fechas de finalización, operador, unidad y cliente. El último día se incluye completo. Para detalle también puedes filtrar por número exacto de carga.
-4. Pulsa **Generar vista previa**. Puedes navegar páginas, cambiar el zoom y ajustar al ancho. Modificar los filtros invalida el documento anterior.
-5. Pulsa **Exportar PDF** para guardar el mismo documento previsualizado, con fecha y hora de generación, filtros y moneda de la empresa.
+1. Ejecuta `mvn clean javafx:run` e inicia sesión como administrador.
+2. En la barra superior de Flota, pulsa el ícono **Reportes**. El administrador principal y los administradores con permiso financiero pueden seleccionar resumen, facturación por operador, facturación por unidad, evolución, detalle de viajes finalizados o gestión de viajes. Los demás administradores pueden consultar gestión de viajes.
+3. Para los reportes financieros define ambas fechas de finalización, operador, unidad y cliente. El último día se incluye completo. Para detalle también puedes filtrar por número exacto de carga.
+4. Pulsa **Generar vista previa**. La barra nativa del visor Jasper permite navegar páginas, cambiar el zoom, ajustar al ancho o a la página e imprimir. Modificar los filtros invalida el documento anterior; vuelve a generar la vista previa.
+5. Usa el ícono de **Guardar** del visor y selecciona **PDF** u otro formato disponible, como CSV o Excel. Se guarda el mismo documento previsualizado, con fecha y hora de generación, filtros y moneda de la empresa.
+6. Cierra la ventana con el control normal del sistema en la barra de título.
 
-Las plantillas [financiero.jrxml](src/main/resources/edu/ni/uam/proyecto_final_pae/reportes/financiero.jrxml) y [detalle.jrxml](src/main/resources/edu/ni/uam/proyecto_final_pae/reportes/detalle.jrxml) utilizan el formato de JasperReports 7.0.8. `JasperReporteService` las compila desde recursos, utiliza los resultados tipados de `ReporteService` y genera el PDF. Maven incluye el motor, el compilador JDT y las extensiones PDF, gráficos y fuentes de la misma versión.
+Las plantillas [financiero.jrxml](src/main/resources/edu/ni/uam/proyecto_final_pae/reportes/financiero.jrxml) y [detalle.jrxml](src/main/resources/edu/ni/uam/proyecto_final_pae/reportes/detalle.jrxml) utilizan el formato de JasperReports 7.0.8. `JasperReporteService` las compila desde recursos y utiliza los resultados tipados de `ReporteService`. El componente `JRViewer` se integra en JavaFX mediante `SwingNode`. Maven incluye el motor, el compilador JDT y las extensiones PDF, gráficos, fuentes y Excel de la misma versión.
 
-### Reporte operativo desde Gestión de viajes
+### Reporte de Gestión de viajes
 
-1. Inicia sesión como administrador y abre **Viajes** desde Flota.
-2. Selecciona **Todos**, **Activos** o **Finalizados** y aplica las búsquedas por unidad, operador, carga o ruta y los rangos de cobro que necesites. Puedes ordenar la tabla antes de exportar.
-3. Pulsa **Exportar PDF**, arriba a la derecha de **Gestión de viajes**, y elige dónde guardarlo. El botón se deshabilita cuando no hay filas o mientras se genera el documento.
+1. Inicia sesión como administrador, abre **Reportes** desde Flota y selecciona **Gestión de viajes**.
+2. Combina los filtros de operador, unidad, cliente, número exacto de carga y estado. **Activos** incluye programados, en curso y pausados. Por defecto se consultan todas las fechas; activa **Filtrar por fecha de creación** si necesitas un rango. Las fechas corresponden a la creación del viaje y el último día se incluye completo.
+3. Pulsa **Generar vista previa** y usa la barra nativa para guardar o imprimir. La pantalla de Gestión de viajes concentra las operaciones sobre los viajes; su reporte se consulta desde Reportes.
 4. Comprueba carga, operador, unidad, origen, destino, estado y **fecha límite de entrega**. Esta última corresponde al plazo pactado de la carga. La fecha y hora de generación aparecen en el encabezado y en el pie de cada página.
 
-La plantilla independiente [viajes.jrxml](src/main/resources/edu/ni/uam/proyecto_final_pae/reportes/viajes.jrxml) se genera con `ReporteViajesService`, también en JasperReports 7.0.8. El reporte usa una copia de las filas visibles, conservando filtros y orden. Incluye los estados programado, en curso, pausado, finalizado y cancelado según la selección de la pantalla. Admite hasta 10,000 filas por exportación; si se supera ese límite, solicita aplicar más filtros. Tiene los mismos permisos de administrador que Gestión de viajes; el permiso específico de reportes financieros se conserva para el módulo financiero.
+La plantilla independiente [viajes.jrxml](src/main/resources/edu/ni/uam/proyecto_final_pae/reportes/viajes.jrxml) se genera con `ReporteViajesService`, también en JasperReports 7.0.8. Consulta PostgreSQL con los filtros de Reportes y ordena por identificador de viaje. Incluye los estados programado, en curso, pausado, finalizado y cancelado según la selección. Admite hasta 10,000 filas por reporte; si se supera ese límite, solicita aplicar más filtros. Tiene los mismos permisos de administrador que Gestión de viajes; el permiso específico de reportes financieros se conserva para los reportes financieros.
 
 ---
 

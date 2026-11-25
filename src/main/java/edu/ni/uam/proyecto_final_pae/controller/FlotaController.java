@@ -37,6 +37,7 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
+import javafx.stage.Screen;
 import javafx.util.Duration;
 import org.kordamp.ikonli.javafx.FontIcon;
 
@@ -208,11 +209,8 @@ public class FlotaController {
         }
         Usuario usuarioActual = SesionActual.getUsuario();
         boolean principal = Boolean.TRUE.equals(usuarioActual.getEsPrincipal());
-        boolean conReportes = principal || Boolean.TRUE.equals(usuarioActual.getPuedeVerReportes());
         btnPanelAdmin.setVisible(principal);
         btnPanelAdmin.setManaged(principal);
-        btnReporte.setVisible(conReportes);
-        btnReporte.setManaged(conReportes);
 
         configurarConexionTunel();
         configurarFiltros();
@@ -1462,13 +1460,9 @@ public class FlotaController {
         if (!sesionAdmin()) {
             return;
         }
-        Usuario usuario = SesionActual.getUsuario();
-        if (!Boolean.TRUE.equals(usuario.getEsPrincipal())
-                && !Boolean.TRUE.equals(usuario.getPuedeVerReportes())) {
-            advertencia("Su cuenta no tiene permiso para ver el reporte financiero.");
-            return;
-        }
-        abrirVista("reporte-view.fxml", "Reportes financieros", 1120, 820);
+        var area = Screen.getPrimary().getVisualBounds();
+        abrirVista("reporte-view.fxml", "Reportes", Math.min(1120, area.getWidth() - 40),
+                Math.min(820, area.getHeight() - 80));
     }
 
     @FXML

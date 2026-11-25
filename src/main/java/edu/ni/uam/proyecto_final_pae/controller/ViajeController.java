@@ -9,8 +9,6 @@ import edu.ni.uam.proyecto_final_pae.dao.ViajeDAO;
 import edu.ni.uam.proyecto_final_pae.model.*;
 import edu.ni.uam.proyecto_final_pae.security.SesionActual;
 import edu.ni.uam.proyecto_final_pae.service.JornadaService;
-import edu.ni.uam.proyecto_final_pae.service.ReporteViajesService;
-import edu.ni.uam.proyecto_final_pae.reportes.FilaViajeOperativo;
 import edu.ni.uam.proyecto_final_pae.util.ComboBuscador;
 import edu.ni.uam.proyecto_final_pae.util.Tooltips;
 import javafx.animation.KeyFrame;
@@ -19,15 +17,12 @@ import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
-import javafx.collections.ListChangeListener;
-import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.Modality;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import java.awt.Desktop;
@@ -45,9 +40,6 @@ public class ViajeController {
     private final RutaDAO rutaDAO = new RutaDAO();
     private final EmpresaDAO empresaDAO = new EmpresaDAO();
     private final JornadaService jornadaService = new JornadaService();
-    private final ReporteViajesService reporteViajesService = new ReporteViajesService();
-    private Task<Void> exportacionViajes;
-    private final ListChangeListener<Viaje> cambiosExportacion = cambio -> actualizarExportacion();
 
     private Timeline reloj;
     private String moneda = "NIO";
@@ -101,17 +93,9 @@ public class ViajeController {
     @FXML private Button btnCancelarViaje;
     @FXML private Button btnCrear;
     @FXML private Button btnLimpiar;
-    @FXML private Button btnExportarViajes;
 
     @FXML
     private void initialize() {
-        tabla.itemsProperty().addListener((o, antes, despues) -> {
-            if (antes != null) antes.removeListener(cambiosExportacion);
-            if (despues != null) despues.addListener(cambiosExportacion);
-            actualizarExportacion();
-        });
-        tabla.getItems().addListener(cambiosExportacion);
-        actualizarExportacion();
         if (!sesionAdmin()) {
             return;
         }
@@ -250,79 +234,6 @@ public class ViajeController {
     }
 
     // ------------------- acciones viajes
-
-    @FXML
-    private void exportarPdf() {
-        if (!sesionAdmin() || exportacionViajes != null || tabla.getItems().isEmpty()) return;
-        try {
-            Usuario solicitante = SesionActual.requerir(RolUsuario.ADMIN);
-            if (tabla.getItems().size() > ReporteViajesService.MAX_FILAS) throw new IllegalArgumentException(
-                    "El reporte admite hasta " + ReporteViajesService.MAX_FILAS + " viajes. Aplique más filtros antes de exportar.");
-            String filtros = filtrosExportacion();
-            List<FilaViajeOperativo> filas = tabla.getItems().stream().map(FilaViajeOperativo::de).toList();
-            var ventana = tabla.getScene().getWindow();
-            FileChooser selector = new FileChooser();
-            selector.setTitle("Exportar viajes a PDF");
-            selector.setInitialFileName("FleetRoute_viajes.pdf");
-            selector.getExtensionFilters().add(new FileChooser.ExtensionFilter("Documento PDF", "*.pdf"));
-            java.io.File archivo = selector.showSaveDialog(ventana);
-            if (archivo == null) return;
-            if (!archivo.getName().toLowerCase(Locale.ROOT).endsWith(".pdf")) archivo = new java.io.File(archivo.getPath() + ".pdf");
-            if (archivo.exists()) {
-                Alert confirmar = new Alert(Alert.AlertType.CONFIRMATION,
-                        "¿Reemplazar " + archivo.getName() + "?", ButtonType.YES, ButtonType.NO);
-                confirmar.initOwner(ventana);
-                confirmar.setHeaderText("El archivo ya existe");
-                if (confirmar.showAndWait().orElse(ButtonType.NO) != ButtonType.YES) return;
-            }
-            var destino = archivo.toPath();
-            Task<Void> tarea = new Task<>() {
-                @Override protected Void call() {
-                    if (SesionActual.requerir(RolUsuario.ADMIN) != solicitante) throw new SecurityException("La sesión cambió antes de exportar.");
-                    var documento = reporteViajesService.generar(filas, filtros);
-                    reporteViajesService.exportar(documento, destino);
-                    return null;
-                }
-            };
-            tarea.setOnSucceeded(evento -> {
-                exportacionViajes = null;
-                actualizarExportacion();
-                lblEstado.setText("PDF guardado en " + destino.toAbsolutePath());
-            });
-            tarea.setOnFailed(evento -> {
-                exportacionViajes = null;
-                actualizarExportacion();
-                if (ventana.isShowing()) error("No se pudo exportar el reporte de viajes", tarea.getException());
-                else lblEstado.setText("No se pudo exportar el reporte de viajes.");
-            });
-            exportacionViajes = tarea;
-            actualizarExportacion();
-            lblEstado.setText("Generando PDF de " + filas.size() + " viaje(s)…");
-            Thread hilo = new Thread(tarea, "fleetroute-exportar-viajes");
-            hilo.setDaemon(true);
-            hilo.start();
-        } catch (IllegalArgumentException | SecurityException e) {
-            advertencia(e.getMessage());
-        }
-    }
-
-    private void actualizarExportacion() {
-        if (btnExportarViajes == null) return;
-        btnExportarViajes.setDisable(exportacionViajes != null || tabla.getItems() == null || tabla.getItems().isEmpty());
-        btnExportarViajes.setText(exportacionViajes == null ? "Exportar PDF" : "Generando PDF…");
-    }
-
-    private String filtrosExportacion() {
-        BigDecimal minimo = numeroFiltro(txtCobroMin.getText()), maximo = numeroFiltro(txtCobroMax.getText());
-        if (!txtCobroMin.getText().isBlank() && minimo == null) throw new IllegalArgumentException("Corrija el cobro mínimo antes de exportar.");
-        if (!txtCobroMax.getText().isBlank() && maximo == null) throw new IllegalArgumentException("Corrija el cobro máximo antes de exportar.");
-        String estado = filtroEstado == null ? "Todos" : "ACTIVO".equals(filtroEstado) ? "Activos" : "Finalizados";
-        return "Estado: " + estado
-                + (txtBuscarViaje.getText().isBlank() ? "" : " | Búsqueda: " + txtBuscarViaje.getText().trim())
-                + (txtBuscarRuta.getText().isBlank() ? "" : " | " + (rbOrigen.isSelected() ? "Origen: " : "Destino: ") + txtBuscarRuta.getText().trim())
-                + (minimo == null ? "" : " | Cobro mínimo (" + moneda + "): " + minimo.toPlainString())
-                + (maximo == null ? "" : " | Cobro máximo (" + moneda + "): " + maximo.toPlainString());
-    }
 
     @FXML private void verTodos() {
         if (!sesionAdmin()) {

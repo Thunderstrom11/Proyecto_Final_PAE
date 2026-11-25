@@ -27,14 +27,26 @@ public record FilaViajeOperativo(Integer id, String carga, String operador, Stri
                 viaje.getCarga() == null ? null : viaje.getCarga().getFechaLimiteCliente());
     }
 
+    /** Constructor de proyección HQL: evita transportar entidades Hibernate al visor. */
+    public FilaViajeOperativo(Integer id, String carga, String operador, Integer operadorId, String unidad,
+                              String origen, String departamentoOrigen, String paisOrigen,
+                              String destino, String departamentoDestino, String paisDestino,
+                              String estado, LocalDateTime fechaLimite) {
+        this(id, carga, operador + " (#" + operadorId + ")", unidad,
+                lugar(origen, departamentoOrigen, paisOrigen), lugar(destino, departamentoDestino, paisDestino), estado, fechaLimite);
+    }
+
     private static String texto(String valor) { return valor == null || valor.isBlank() ? "Sin registro" : valor; }
 
     private static String lugar(Ubicacion ubicacion) {
         if (ubicacion == null) return null;
-        String nombre = texto(ubicacion.getNombre());
-        if (ubicacion.getDepartamento() != null && !ubicacion.getDepartamento().isBlank()
-                && !ubicacion.getDepartamento().equalsIgnoreCase(nombre)) nombre += " · " + ubicacion.getDepartamento();
-        if (ubicacion.getPais() != null && !ubicacion.getPais().isBlank()) nombre += " · " + ubicacion.getPais();
+        return lugar(ubicacion.getNombre(), ubicacion.getDepartamento(), ubicacion.getPais());
+    }
+
+    private static String lugar(String valor, String departamento, String pais) {
+        String nombre = texto(valor);
+        if (departamento != null && !departamento.isBlank() && !departamento.equalsIgnoreCase(nombre)) nombre += " · " + departamento;
+        if (pais != null && !pais.isBlank()) nombre += " · " + pais;
         return nombre;
     }
 }

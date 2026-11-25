@@ -31,7 +31,7 @@
                 </Button>
                 <Button fx:id="btnReporte" onAction="#abrirReporte" styleClass="icon-button">
                     <graphic><FontIcon iconLiteral="fas-chart-pie" iconSize="18" /></graphic>
-                    <tooltip><Tooltip text="Reporte financiero" /></tooltip>
+                    <tooltip><Tooltip text="Reportes" /></tooltip>
                 </Button>
                 <Button fx:id="btnPanelAdmin" onAction="#abrirPanelAdmin" styleClass="icon-button">
                     <graphic><FontIcon iconLiteral="fas-user-cog" iconSize="18" /></graphic>

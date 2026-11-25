@@ -2,10 +2,12 @@ package edu.ni.uam.proyecto_final_pae.service;
 
 import edu.ni.uam.proyecto_final_pae.config.ZonaHoraria;
 import edu.ni.uam.proyecto_final_pae.dao.EmpresaDAO;
+import edu.ni.uam.proyecto_final_pae.dao.ReporteDAO;
 import edu.ni.uam.proyecto_final_pae.model.RolUsuario;
 import edu.ni.uam.proyecto_final_pae.model.Usuario;
 import edu.ni.uam.proyecto_final_pae.reportes.DocumentoViajes;
 import edu.ni.uam.proyecto_final_pae.reportes.FilaViajeOperativo;
+import edu.ni.uam.proyecto_final_pae.reportes.FiltroReporte;
 import edu.ni.uam.proyecto_final_pae.security.SesionActual;
 import net.sf.jasperreports.engine.*;
 import net.sf.jasperreports.engine.data.JRMapCollectionDataSource;
@@ -20,6 +22,15 @@ public class ReporteViajesService {
     public static final int MAX_FILAS = 10_000;
     private static final DateTimeFormatter FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private JasperReport plantilla;
+
+    public DocumentoViajes generar(FiltroReporte filtro) {
+        Usuario solicitante = SesionActual.requerir(RolUsuario.ADMIN);
+        var filas = new ReporteDAO().consultarOperativos(filtro);
+        if (SesionActual.requerir(RolUsuario.ADMIN) != solicitante) throw new SecurityException("La sesión cambió durante la consulta.");
+        var documento = generar(filas, filtro.descripcion());
+        if (documento.solicitante() != solicitante) throw new SecurityException("La sesión cambió durante la generación.");
+        return documento;
+    }
 
     public DocumentoViajes generar(List<FilaViajeOperativo> seleccion, String filtros) {
         Usuario solicitante = SesionActual.requerir(RolUsuario.ADMIN);
@@ -82,8 +93,6 @@ public class ReporteViajesService {
     }
 
     private void validar(DocumentoViajes documento) {
-        if (SesionActual.requerir(RolUsuario.ADMIN) != documento.solicitante()) {
-            throw new SecurityException("El reporte pertenece a otra sesión. Genere una nueva exportación.");
-        }
+        ReporteService.validarDocumento(documento);
     }
 }

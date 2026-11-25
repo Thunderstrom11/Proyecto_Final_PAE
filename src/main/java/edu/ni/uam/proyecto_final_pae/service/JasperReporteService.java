@@ -104,9 +104,7 @@ public class JasperReporteService {
     }
 
     private void validar(DocumentoReporte documento) {
-        if (ReporteService.requerirPermiso() != documento.solicitante()) {
-            throw new SecurityException("El reporte pertenece a otra sesión. Genere una nueva vista previa.");
-        }
+        ReporteService.validarDocumento(documento);
     }
 
     private Collection<Map<String, ?>> filas(ResultadoReporte datos) {
