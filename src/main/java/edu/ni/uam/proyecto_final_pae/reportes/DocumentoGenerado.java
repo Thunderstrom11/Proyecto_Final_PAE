@@ -4,7 +4,7 @@ import edu.ni.uam.proyecto_final_pae.model.Usuario;
 import net.sf.jasperreports.engine.JasperPrint;
 
 /** Documento asociado a la sesión que lo generó, listo para el visor Jasper. */
-public sealed interface DocumentoGenerado permits DocumentoReporte, DocumentoViajes {
+public sealed interface DocumentoGenerado permits DocumentoReporte, DocumentoViajes, DocumentoJornadas {
     JasperPrint impresion();
     Usuario solicitante();
     String nombreArchivo();
