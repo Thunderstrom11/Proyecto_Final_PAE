@@ -56,7 +56,7 @@ public record FiltroReporte(TipoReporte tipo, LocalDate desde, LocalDate hasta,
     public LocalDateTime hastaExclusivo() { return hasta == null ? null : hasta.plusDays(1).atStartOfDay(); }
 
     public String descripcion() {
-        String periodo = tipo.financiero() ? "Finalización: " : "Creación del viaje: ";
+        String periodo = tipo.etiquetaFecha() + ": ";
         return periodo + (desde == null ? "Todas las fechas" : desde + " a " + hasta) + " | Estado: " + estado + "\n"
                 + "Operador: " + operador + " | Unidad: " + unidad + " | Cliente: " + cliente
                 + (numeroCarga.isEmpty() ? "" : " | Carga exacta: " + numeroCarga)

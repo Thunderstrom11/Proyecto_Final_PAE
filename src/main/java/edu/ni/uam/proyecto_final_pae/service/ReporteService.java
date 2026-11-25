@@ -45,7 +45,7 @@ public class ReporteService {
     }
 
     public ResultadoReporte generar(FiltroReporte filtro) {
-        if (!filtro.tipo().financiero()) throw new IllegalArgumentException("Use el servicio de Gestión de viajes para este reporte.");
+        if (!filtro.tipo().financiero()) throw new IllegalArgumentException("Este reporte operativo se genera con su propio servicio.");
         Usuario solicitante = requerirPermiso();
         var empresa = new EmpresaDAO().obtener().orElseThrow(() ->
                 new IllegalStateException("Configure los datos de la empresa antes de generar reportes."));
@@ -68,7 +68,7 @@ public class ReporteService {
             case UNIDAD -> agrupar(viajes, false);
             case RESUMEN, EVOLUCION -> periodos(filtro, viajes);
             case DETALLE -> List.of();
-            case GESTION_VIAJES -> throw new IllegalArgumentException("Este reporte no calcula indicadores financieros.");
+            case GESTION_VIAJES, JORNADAS -> throw new IllegalArgumentException("Este reporte no calcula indicadores financieros.");
         };
         List<FilaReporte> series = filas;
         if (!filtro.tipo().temporal() && filas.size() > 10) {
