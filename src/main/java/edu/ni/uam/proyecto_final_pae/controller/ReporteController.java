@@ -274,7 +274,10 @@ public class ReporteController {
                     SwingUtilities.invokeLater(() -> { nuevo.revalidate(); nuevo.repaint(); });
                     lblSinPrevia.setVisible(false);
                     generando = false; indicarCarga(false); actualizarBoton();
+                    boolean graficoAlFinal = actual instanceof DocumentoReporte financiero && !resultado.vacio()
+                            && financiero.datos().filtro().grafico() != TipoGrafico.NINGUNO && financiero.paginas() > 1;
                     lblEstado.setText((resultado.vacio() ? "No hay viajes que coincidan con los filtros. " : "")
+                            + (graficoAlFinal ? "El gráfico está en la última página. " : "")
                             + "Use la barra del visor Jasper para guardar, imprimir y navegar.");
                 });
             } catch (RuntimeException e) {
