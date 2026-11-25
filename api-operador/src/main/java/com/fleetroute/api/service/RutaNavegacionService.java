@@ -43,7 +43,7 @@ public class RutaNavegacionService {
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
         factory.setReadTimeout(Duration.ofSeconds(15));
         this.restClient = RestClient.builder()
-                .baseUrl("https://api.openrouteservice.org")
+                .baseUrl("https://api.heigit.org/openrouteservice")
                 .requestFactory(factory)
                 .build();
     }

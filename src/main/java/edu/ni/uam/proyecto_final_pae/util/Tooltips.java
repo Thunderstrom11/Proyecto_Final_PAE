@@ -1,20 +1,30 @@
 package edu.ni.uam.proyecto_final_pae.util;
 
+import javafx.beans.property.StringProperty;
+import javafx.collections.ListChangeListener;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.ButtonBase;
+import javafx.scene.control.Cell;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.ComboBoxBase;
+import javafx.scene.control.Control;
+import javafx.scene.control.Labeled;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
+import javafx.scene.control.skin.ComboBoxListViewSkin;
+import javafx.util.Duration;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
-/** Instala tooltips y texto accesible en botones, filtros y toggles. */
+/** Instala ayudas de acciones y permite consultar el texto completo de los controles. */
 public final class Tooltips {
 
     private static final Map<String, String> POR_ID = new HashMap<>();
     private static final Map<String, String> POR_TEXTO = new HashMap<>();
-    private static final Map<Node, Boolean> INSTALADOS = new ConcurrentHashMap<>();
+    private static final String INSTALADO = Tooltips.class.getName() + ".instalado";
 
     static {
         POR_ID.put("btnActualizar", "Reintentar la actualización automática de la cabina.");
@@ -105,23 +115,77 @@ public final class Tooltips {
     }
 
     public static void instalar(Node raiz) {
-        if (raiz == null) {
+        if (raiz == null || raiz.getProperties().putIfAbsent(INSTALADO, Boolean.TRUE) != null) {
             return;
         }
         if (raiz instanceof ButtonBase boton) {
             instalarBoton(boton);
+        } else if (raiz instanceof Labeled etiqueta) {
+            instalarTexto(etiqueta, etiqueta.textProperty());
+        } else if (raiz instanceof TextField campo && !(campo instanceof PasswordField)) {
+            instalarTexto(campo, campo.textProperty());
+        }
+        if (raiz instanceof ComboBox<?> combo) {
+            instalarTexto(combo, combo.getEditor().textProperty());
+            combo.addEventHandler(ComboBoxBase.ON_SHOWN, evento -> {
+                if (combo.getSkin() instanceof ComboBoxListViewSkin<?> skin) {
+                    instalar(skin.getPopupContent());
+                }
+            });
         }
         if (raiz instanceof Parent padre) {
             for (Node hijo : padre.getChildrenUnmodifiable()) {
                 instalar(hijo);
             }
+            padre.getChildrenUnmodifiable().addListener((ListChangeListener<Node>) cambio -> {
+                while (cambio.next()) {
+                    if (cambio.wasAdded()) {
+                        for (Node hijo : cambio.getAddedSubList()) {
+                            instalar(hijo);
+                        }
+                    }
+                }
+            });
         }
     }
 
-    private static void instalarBoton(ButtonBase boton) {
-        if (INSTALADOS.putIfAbsent(boton, Boolean.TRUE) != null) {
-            return;
+    private static void instalarTexto(Control control, StringProperty texto) {
+        Tooltip ayuda = crearTooltip("");
+        Runnable actualizar = () -> {
+            if (control.tooltipProperty().isBound()
+                    || (control.getTooltip() != null && control.getTooltip() != ayuda)) {
+                return;
+            }
+            String contenido = texto.get();
+            if (contenido == null || contenido.isBlank()
+                    || (control instanceof Cell<?> celda && celda.isEmpty())) {
+                ayuda.hide();
+                control.setTooltip(null);
+                return;
+            }
+            if (!contenido.equals(ayuda.getText())) {
+                ayuda.hide();
+                ayuda.setText(contenido);
+            }
+            control.setTooltip(ayuda);
+        };
+        texto.addListener((observable, anterior, actual) -> actualizar.run());
+        if (control instanceof Cell<?> celda) {
+            celda.emptyProperty().addListener((observable, anterior, actual) -> actualizar.run());
         }
+        actualizar.run();
+    }
+
+    private static Tooltip crearTooltip(String texto) {
+        Tooltip ayuda = new Tooltip(texto);
+        ayuda.setWrapText(true);
+        ayuda.setMaxWidth(520);
+        ayuda.setShowDelay(Duration.millis(300));
+        ayuda.setShowDuration(Duration.INDEFINITE);
+        return ayuda;
+    }
+
+    private static void instalarBoton(ButtonBase boton) {
         String texto = boton.getText() == null ? "" : boton.getText().trim();
         String ayuda = boton.getId() == null ? null : POR_ID.get(boton.getId());
         if (ayuda == null) {
@@ -138,10 +202,7 @@ public final class Tooltips {
             ayuda = "Ejecutar esta acción.";
         }
         if (boton.getTooltip() == null) {
-            Tooltip tooltip = new Tooltip(ayuda);
-            tooltip.setWrapText(true);
-            tooltip.setShowDelay(javafx.util.Duration.millis(300));
-            boton.setTooltip(tooltip);
+            boton.setTooltip(crearTooltip(ayuda));
         }
         if (boton.getAccessibleText() == null || boton.getAccessibleText().isBlank()) {
             boton.setAccessibleText(texto.isEmpty() ? ayuda : texto);
