@@ -6,6 +6,7 @@ import edu.ni.uam.proyecto_final_pae.service.JasperReporteService;
 import edu.ni.uam.proyecto_final_pae.service.ReporteJornadasService;
 import edu.ni.uam.proyecto_final_pae.service.ReporteService;
 import edu.ni.uam.proyecto_final_pae.service.ReporteViajesService;
+import edu.ni.uam.proyecto_final_pae.service.ReporteEntregasService;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
@@ -27,6 +28,7 @@ public class ReporteController {
     private final ReporteService reportes;
     private final JasperReporteService jasper;
     private final ReporteViajesService viajes;
+    private final ReporteEntregasService entregas;
     private final ReporteJornadasService jornadas = new ReporteJornadasService();
     private final ExecutorService trabajo = Executors.newSingleThreadExecutor(tarea -> {
         Thread hilo = new Thread(tarea, "fleetroute-reportes");
@@ -60,9 +62,13 @@ public class ReporteController {
     public ReporteController() { this(new ReporteService(), new JasperReporteService(), new ReporteViajesService()); }
     public ReporteController(ReporteService reportes, JasperReporteService jasper) { this(reportes, jasper, new ReporteViajesService()); }
     public ReporteController(ReporteService reportes, JasperReporteService jasper, ReporteViajesService viajes) {
+        this(reportes, jasper, viajes, new ReporteEntregasService());
+    }
+    public ReporteController(ReporteService reportes, JasperReporteService jasper, ReporteViajesService viajes, ReporteEntregasService entregas) {
         this.reportes = reportes;
         this.jasper = jasper;
         this.viajes = viajes;
+        this.entregas = entregas;
     }
 
     @FXML private void initialize() {
@@ -155,7 +161,7 @@ public class ReporteController {
         txtCarga.setVisible(tipo.detallado()); txtCarga.setManaged(tipo.detallado());
         lblCarga.setVisible(tipo.detallado()); lblCarga.setManaged(tipo.detallado());
         if (!tipo.detallado()) txtCarga.clear();
-        boolean operativo = !tipo.financiero();
+        boolean operativo = !tipo.finalizados();
         chkFiltrarFechas.setVisible(operativo); chkFiltrarFechas.setManaged(operativo);
         if (tipoConfigurado != tipo) {
             // Un viaje con bitácora ya salió de PROGRAMADO, por eso ese estado no aplica a jornadas.
@@ -172,7 +178,7 @@ public class ReporteController {
 
     private void configurarFechas() {
         TipoReporte tipo = cmbTipo.getValue();
-        boolean operativo = tipo != null && !tipo.financiero();
+        boolean operativo = tipo != null && !tipo.finalizados();
         if (tipo != null) lblDesde.setText(tipo.etiquetaFecha() + ": desde");
         if (operativo) chkFiltrarFechas.setText("Filtrar por fecha de " + (tipo == TipoReporte.JORNADAS ? "inicio" : "creación"));
         boolean sinFechas = operativo && !chkFiltrarFechas.isSelected();
@@ -198,7 +204,7 @@ public class ReporteController {
         if (cerrado || generando) return;
         if (!listo) { cargarCatalogos(); return; }
         try {
-            boolean usarFechas = cmbTipo.getValue().financiero() || chkFiltrarFechas.isSelected();
+            boolean usarFechas = cmbTipo.getValue().finalizados() || chkFiltrarFechas.isSelected();
             if (usarFechas) {
                 try { dpDesde.commitValue(); dpHasta.commitValue(); }
                 catch (java.time.format.DateTimeParseException e) { throw new IllegalArgumentException("Ingrese fechas válidas o selecciónelas en el calendario."); }
@@ -212,12 +218,16 @@ public class ReporteController {
             lblEstado.setText("Consultando viajes y generando el documento…");
             Task<ResultadoVista> tarea = new Task<>() {
                 @Override protected ResultadoVista call() {
+                    if (filtro.tipo() == TipoReporte.CUMPLIMIENTO_ENTREGAS) {
+                        var doc = entregas.generar(filtro);
+                        return new ResultadoVista(doc, doc.resumen().descripcion(), doc.resumen().viajes() == 0);
+                    }
                     if (filtro.tipo() == TipoReporte.JORNADAS) {
                         var doc = jornadas.generar(filtro);
                         return new ResultadoVista(doc, "Viajes evaluados: " + doc.viajes()
                                 + " | Con incumplimiento: " + doc.incumplimientos(), doc.viajes() == 0);
                     }
-                    if (!filtro.tipo().financiero()) {
+                    if (filtro.tipo() == TipoReporte.GESTION_VIAJES) {
                         var doc = viajes.generar(filtro);
                         return new ResultadoVista(doc, "Viajes incluidos: " + doc.viajes(), doc.viajes() == 0);
                     }

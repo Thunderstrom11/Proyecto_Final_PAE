@@ -19,7 +19,7 @@ public final class Tooltips {
     static {
         POR_ID.put("btnActualizar", "Reintentar la actualización automática de la cabina.");
         POR_ID.put("btnRefrescarFlota", "Reintentar la actualización automática de flota.");
-        POR_ID.put("btnReporte", "Abrir los reportes financieros y de Gestión de viajes.");
+        POR_ID.put("btnReporte", "Abrir los reportes financieros y operativos de viajes, entregas y jornadas.");
         POR_ID.put("btnPanelAdmin", "Abrir el panel administrativo.");
         POR_ID.put("btnLimpiarBusquedaCuenta", "Limpiar la búsqueda de cuentas.");
         POR_ID.put("btnLimpiarBusquedaUnidad", "Limpiar la búsqueda de unidades.");

@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Guía breve de las tablas, relaciones y flujo de datos de FleetRoute Pro.">
+  <title>La base de datos · FleetRoute Pro</title>
+  <script>
+    try {
+      const guardado = localStorage.getItem('fleetroute-guia-tema');
+      if (guardado === 'claro' || guardado === 'noche') document.documentElement.dataset.tema = guardado;
+    } catch (_) {}
+  </script>
+  <style>
+    :root { color-scheme: light; --fondo:#f5f6f2; --papel:#fff; --texto:#21312d; --secundario:#53655e; --borde:#d9e2db; --acento:#17664a; --suave:#e6f1e9; --codigo:#ecf0eb; }
+    :root[data-tema="noche"] { color-scheme:dark; --fondo:#131a19; --papel:#1c2522; --texto:#e9e8da; --secundario:#b3c0b5; --borde:#35443c; --acento:#9cd9b5; --suave:#25392d; --codigo:#293730; }
+    @media (prefers-color-scheme:dark) {
+      :root:not([data-tema="claro"]) { color-scheme:dark; --fondo:#131a19; --papel:#1c2522; --texto:#e9e8da; --secundario:#b3c0b5; --borde:#35443c; --acento:#9cd9b5; --suave:#25392d; --codigo:#293730; }
+    }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; scroll-padding-top:5rem; }
+    body { margin:0; background:var(--fondo); color:var(--texto); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; font-size:17px; line-height:1.75; }
+    a { color:var(--acento); text-underline-offset:3px; }
+    button, a { -webkit-tap-highlight-color:transparent; }
+    :focus-visible { outline:3px solid var(--acento); outline-offset:4px; }
+    .saltar { position:absolute; top:-6rem; left:1rem; padding:.5rem 1rem; background:var(--papel); z-index:3; }
+    .saltar:focus { top:1rem; }
+    .barra { position:sticky; top:0; z-index:2; background:var(--papel); border-bottom:1px solid var(--borde); }
+    .barra-interior { max-width:1000px; margin:auto; padding:.65rem 1.3rem; display:flex; gap:1rem; align-items:center; justify-content:space-between; }
+    .marca { font-size:.86rem; font-weight:750; letter-spacing:.02em; }
+    button { min-height:44px; padding:.55rem .85rem; border:1px solid var(--borde); border-radius:.65rem; background:var(--suave); color:var(--texto); font:inherit; font-size:.85rem; font-weight:650; cursor:pointer; }
+    main { width:min(100% - 2.5rem, 790px); margin:auto; padding:3rem 0 2rem; }
+    .etiqueta { color:var(--acento); font-size:.78rem; font-weight:800; text-transform:uppercase; letter-spacing:.14em; }
+    h1 { font-size:clamp(2rem,6vw,3.15rem); line-height:1.14; letter-spacing:-.045em; margin:.8rem 0 1.2rem; max-width:20ch; }
+    .intro { font-size:1.12rem; color:var(--secundario); max-width:63ch; }
+    .datos { display:flex; gap:.6rem; flex-wrap:wrap; margin:1.5rem 0; }
+    .datos span { border:1px solid var(--borde); border-radius:99px; padding:.25rem .7rem; font-size:.8rem; }
+    nav { display:flex; flex-wrap:wrap; gap:.3rem 1.2rem; padding:1rem 0 1.5rem; font-size:.88rem; border-bottom:1px solid var(--borde); }
+    nav a { min-height:44px; display:inline-flex; align-items:center; }
+    section { margin-top:2.4rem; }
+    h2 { font-size:1.4rem; line-height:1.3; letter-spacing:-.025em; margin:0 0 1rem; }
+    h3 { font-size:1.05rem; margin:0 0 .5rem; }
+    p { margin:.65rem 0 1rem; }
+    code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:.86em; background:var(--codigo); padding:.12rem .32rem; border-radius:.3rem; overflow-wrap:anywhere; }
+    .mapa { display:grid; grid-template-columns:1fr auto 1fr auto 1fr; gap:.5rem; align-items:center; margin:1.4rem 0; }
+    .nodo { padding:1rem .85rem; background:var(--papel); border:1px solid var(--borde); border-radius:.75rem; min-width:0; }
+    .nodo strong { display:block; color:var(--acento); }
+    .nodo small { display:block; font-size:.83rem; color:var(--secundario); line-height:1.5; margin-top:.35rem; }
+    .flecha { color:var(--acento); font-size:1.3rem; }
+    .nota { border-left:3px solid var(--acento); background:var(--suave); padding:.8rem 1rem; border-radius:0 .6rem .6rem 0; }
+    .nota p { margin:0; }
+    details { padding:.9rem 1rem; background:var(--papel); border:1px solid var(--borde); border-radius:.7rem; margin:.7rem 0; }
+    summary { cursor:pointer; font-weight:750; min-height:32px; }
+    summary span { color:var(--secundario); font-weight:450; font-size:.85rem; }
+    dl { margin:.8rem 0 .3rem; }
+    dt { margin-top:.9rem; font-weight:650; }
+    dd { margin:.2rem 0 0; color:var(--secundario); font-size:.94rem; }
+    .pasos { padding-left:1.4rem; }
+    .pasos li { padding-left:.3rem; margin:1rem 0; }
+    .pasos li::marker { color:var(--acento); font-weight:800; }
+    .conceptos { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .concepto { border-top:2px solid var(--borde); padding-top:.8rem; }
+    .concepto p { font-size:.94rem; color:var(--secundario); }
+    footer { margin-top:2.5rem; padding-top:1rem; border-top:1px solid var(--borde); font-size:.8rem; color:var(--secundario); }
+    @media (max-width:540px) {
+      body { font-size:16px; }
+      main { width:calc(100% - 2rem); padding-top:2rem; }
+      .barra-interior { padding:.55rem 1rem; }
+      .marca { max-width:13ch; line-height:1.3; }
+      .mapa { grid-template-columns:1fr; gap:.2rem; }
+      .flecha { transform:rotate(90deg); justify-self:center; line-height:1.4; }
+      .conceptos { grid-template-columns:1fr; gap:.3rem; }
+      details { padding:.85rem; }
+      summary span { display:block; margin-left:1rem; }
+    }
+    @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
+    @media print {
+      :root { --fondo:#fff!important; --papel:#fff!important; --texto:#111!important; --secundario:#333!important; --borde:#ccc!important; --acento:#164c36!important; --suave:#f2f5f2!important; --codigo:#f1f1f1!important; }
+      .barra,nav,.saltar { display:none; }
+      main { width:100%; padding:0; }
+      body { font-size:11pt; }
+      h1 { font-size:26pt; }
+      details,.nodo,.concepto { break-inside:avoid; }
+    }
+  </style>
+</head>
+<body>
+  <a class="saltar" href="#contenido">Saltar al contenido</a>
+  <header class="barra">
+    <div class="barra-interior">
+      <span class="marca">FleetRoute Pro · Guía de datos</span>
+      <button id="tema" type="button" aria-pressed="false">Modo nocturno</button>
+    </div>
+  </header>
+  <main id="contenido">
+    <div class="etiqueta">Guía breve · Lectura sin conexión</div>
+    <h1>Cómo funciona la base de datos.</h1>
+    <p class="intro">Pensala como el registro compartido de la transportista: guarda quién pidió una carga, qué camión la lleva, quién conduce y qué pasó durante el viaje.</p>
+    <div class="datos"><span>PostgreSQL</span><span>17 tablas</span><span>Una misma base para escritorio y web</span></div>
+    <nav aria-label="Contenido de la guía">
+      <a href="#relaciones">La idea principal</a><a href="#tablas">Las tablas</a><a href="#recorrido">Un viaje completo</a><a href="#reglas">Las reglas</a><a href="#codigo">Del código al reporte</a>
+    </nav>
+
+    <section id="relaciones">
+      <h2>1. El viaje es el punto de encuentro</h2>
+      <div class="mapa" aria-label="Un cliente tiene cargas y cada carga puede aparecer en viajes">
+        <div class="nodo"><strong>Cliente</strong><small>La empresa que solicita el transporte.</small></div>
+        <span class="flecha" aria-hidden="true">→</span>
+        <div class="nodo"><strong>Carga</strong><small>La mercadería, su peso y su fecha límite.</small></div>
+        <span class="flecha" aria-hidden="true">→</span>
+        <div class="nodo"><strong>Viaje</strong><small>La asignación para mover esa carga.</small></div>
+      </div>
+      <p>El viaje también apunta a una <strong>unidad</strong>, un <strong>operador</strong> y dos <strong>ubicaciones</strong>: origen y destino. Sus eventos quedan en <code>registro_jornada</code>; sus emergencias, en <code>alertas_operador</code>.</p>
+      <aside class="nota"><p>Las tablas se conectan por identificadores. Por ejemplo, <code>cargas.id_cliente</code> guarda el número del cliente. Así se relacionan sus datos sin copiar su nombre y teléfono en cada carga. El cliente de una carga es opcional.</p></aside>
+    </section>
+
+    <section id="tablas">
+      <h2>2. Qué guarda cada grupo de tablas</h2>
+      <details open>
+        <summary>La operación <span>5 tablas</span></summary>
+        <dl>
+          <dt><code>clientes</code></dt><dd>Empresas que contratan el servicio, sus contactos y si están activas.</dd>
+          <dt><code>cargas</code></dt><dd>Número de carga, descripción, peso, cliente, plazo de entrega y estado.</dd>
+          <dt><code>unidades</code></dt><dd>Camiones: número, placas, modelo, capacidad, seguro, revisión y disponibilidad.</dd>
+          <dt><code>operadores</code></dt><dd>Conductores: identificación, licencia, estado y límites de conducción y descanso.</dd>
+          <dt><code>viajes</code></dt><dd>Une los recursos anteriores y guarda el cobro, tiempo estimado, estado, inicio y finalización. Puede apuntar a un viaje previo para formar una cadena.</dd>
+        </dl>
+      </details>
+      <details>
+        <summary>Los lugares y recorridos <span>3 tablas</span></summary>
+        <dl>
+          <dt><code>ubicaciones</code></dt><dd>Lugares con país, departamento y coordenadas para el mapa.</dd>
+          <dt><code>rutas</code></dt><dd>Pares de origen y destino con tiempo estimado y precio sugerido. El viaje guarda sus propias ubicaciones, tiempo y cobro; no tiene una columna <code>id_ruta</code>.</dd>
+          <dt><code>paises_habilitados</code></dt><dd>Países disponibles para configurar y seleccionar ubicaciones.</dd>
+        </dl>
+      </details>
+      <details>
+        <summary>El historial <span>2 tablas</span></summary>
+        <dl>
+          <dt><code>registro_jornada</code></dt><dd>Bitácora ordenada de inicio, pausa, reanudación y entrega. Cada evento tiene hora, observación y un consecutivo dentro de su viaje.</dd>
+          <dt><code>alertas_operador</code></dt><dd>Emergencias con viaje, conductor, unidad, ubicación, mensaje, hora y una marca que indica si fueron atendidas.</dd>
+        </dl>
+      </details>
+      <details>
+        <summary>La configuración y el acceso <span>2 tablas</span></summary>
+        <dl>
+          <dt><code>empresa</code></dt><dd>Datos de la transportista, moneda y zona horaria que usa la aplicación.</dd>
+          <dt><code>usuarios</code></dt><dd>Cuentas ADMIN y OPERADOR. Una cuenta de operador se relaciona con su conductor. Guarda un hash BCrypt de la contraseña y permisos, incluido el acceso a reportes financieros.</dd>
+        </dl>
+      </details>
+      <details>
+        <summary>Los catálogos <span>5 tablas</span></summary>
+        <p><code>cat_estado_unidad</code>, <code>cat_estado_operador</code>, <code>cat_estado_carga</code>, <code>cat_estado_viaje</code> y <code>cat_tipo_evento</code> contienen las opciones válidas de estado o evento. Las demás tablas guardan el identificador de esa opción.</p>
+      </details>
+    </section>
+
+    <section id="recorrido">
+      <h2>3. Qué ocurre al transportar una carga</h2>
+      <ol class="pasos">
+        <li><strong>Se registra el pedido.</strong> Se crea la carga, con su peso y fecha límite. Empieza como PENDIENTE.</li>
+        <li><strong>Se hace la asignación.</strong> Se eligen camión, conductor, origen y destino. Se crea un viaje PROGRAMADO; la carga pasa a ASIGNADA y los recursos quedan reservados como EN_RUTA.</li>
+        <li><strong>El conductor inicia y registra su jornada.</strong> El viaje pasa a EN_CURSO y la carga a EN_TRANSITO. Pausar y reanudar agrega eventos al historial y actualiza los estados.</li>
+        <li><strong>Se confirma la entrega.</strong> El viaje queda FINALIZADO, se registra su fecha de fin y la carga pasa a ENTREGADA. Se liberan camión y conductor o se activa el siguiente viaje encadenado.</li>
+      </ol>
+      <p>Un viaje encadenado reutiliza el camión y el conductor del anterior. Su origen debe coincidir con el destino previo: permite planificar el siguiente trabajo desde el lugar donde quedará la unidad.</p>
+    </section>
+
+    <section id="reglas">
+      <h2>4. Cómo se evitan datos incoherentes</h2>
+      <div class="conceptos">
+        <div class="concepto"><h3>Claves y restricciones</h3><p>La clave primaria identifica una fila. La clave foránea exige que el registro relacionado exista. También hay valores únicos, campos obligatorios y comprobaciones: peso y cobro positivos, origen distinto del destino y fechas de viaje coherentes.</p></div>
+        <div class="concepto"><h3>Una transacción</h3><p>Los cambios relacionados se guardan juntos. Si falla una parte, se revierten. Así se evita, por ejemplo, crear el viaje y dejar la carga como si todavía estuviera libre.</p></div>
+      </div>
+      <p>PostgreSQL tiene dos automatismos: valida el plazo al crear o modificar una carga y asigna el consecutivo de cada evento de jornada. La aplicación comprueba otras reglas, como la disponibilidad de recursos y el encadenamiento geográfico.</p>
+    </section>
+
+    <section id="codigo">
+      <h2>5. Cómo llegan los datos a la pantalla</h2>
+      <p>En escritorio, el recorrido habitual es <strong>pantalla → servicio → DAO → Hibernate → PostgreSQL</strong>. Hibernate relaciona clases Java, como <code>Viaje</code>, con sus tablas. La cabina web llega a la misma base mediante la API, que usa Spring JDBC.</p>
+      <p>La conexión se configura en el archivo local <code>.env</code>. El setup prepara el esquema y permite configurar la empresa y la cuenta principal. Los datos de una instalación permanecen en su PostgreSQL; un commit del proyecto no copia esa base.</p>
+      <aside class="nota"><p><strong>El reporte de Cumplimiento de entregas</strong> consulta viajes finalizados en el período elegido. Compara <code>viajes.fecha_fin</code> con <code>cargas.fecha_limite_cliente</code>: si terminó antes o exactamente al límite, llegó a tiempo. El porcentaje es «a tiempo ÷ entregas con fechas completas × 100». Usa el plazo actualmente guardado en la carga.</p></aside>
+    </section>
+    <footer>Referencia del proyecto: <code>database/fleetroute_pro.sql</code>, entidades de <code>model</code>, DAO y servicios de viajes, jornadas y reportes. Esta guía funciona como un solo archivo HTML y recuerda la preferencia de lectura nocturna cuando el navegador lo permite.</footer>
+  </main>
+  <script>
+    (() => {
+      const raiz = document.documentElement;
+      const boton = document.getElementById('tema');
+      const sistema = window.matchMedia('(prefers-color-scheme: dark)');
+      const nocturno = () => raiz.dataset.tema ? raiz.dataset.tema === 'noche' : sistema.matches;
+      const actualizar = () => {
+        const activo = nocturno();
+        boton.setAttribute('aria-pressed', String(activo));
+        boton.textContent = activo ? 'Modo claro' : 'Modo nocturno';
+        boton.setAttribute('aria-label', activo ? 'Cambiar al modo claro' : 'Activar lectura nocturna');
+      };
+      boton.addEventListener('click', () => {
+        raiz.dataset.tema = nocturno() ? 'claro' : 'noche';
+        try { localStorage.setItem('fleetroute-guia-tema', raiz.dataset.tema); } catch (_) {}
+        actualizar();
+      });
+      sistema.addEventListener('change', actualizar);
+      const expandir = () => document.querySelectorAll('details').forEach(elemento => {
+        elemento.dataset.abierto = String(elemento.open); elemento.open = true;
+      });
+      window.addEventListener('beforeprint', expandir);
+      window.addEventListener('afterprint', () => document.querySelectorAll('details').forEach(elemento => {
+        elemento.open = elemento.dataset.abierto === 'true';
+      }));
+      actualizar();
+    })();
+  </script>
+</body>
+</html>

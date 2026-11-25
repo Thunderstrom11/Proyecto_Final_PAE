@@ -68,7 +68,7 @@ public class ReporteService {
             case UNIDAD -> agrupar(viajes, false);
             case RESUMEN, EVOLUCION -> periodos(filtro, viajes);
             case DETALLE -> List.of();
-            case GESTION_VIAJES, JORNADAS -> throw new IllegalArgumentException("Este reporte no calcula indicadores financieros.");
+            case GESTION_VIAJES, CUMPLIMIENTO_ENTREGAS, JORNADAS -> throw new IllegalArgumentException("Este reporte no calcula indicadores financieros.");
         };
         List<FilaReporte> series = filas;
         if (!filtro.tipo().temporal() && filas.size() > 10) {
