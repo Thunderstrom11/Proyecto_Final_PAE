@@ -119,7 +119,7 @@ public final class Navegacion {
         Alert alerta = new Alert(Alert.AlertType.INFORMATION,
                 "La sesión expiró por inactividad. Vuelva a iniciar sesión.", ButtonType.OK);
         alerta.setHeaderText("Sesión expirada");
-        alerta.showAndWait();
-        abrirLogin(stage);
+        alerta.setOnHidden(evento -> abrirLogin(stage));
+        alerta.show();
     }
 }
