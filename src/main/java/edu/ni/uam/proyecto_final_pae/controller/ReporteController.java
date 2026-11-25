@@ -5,6 +5,7 @@ import edu.ni.uam.proyecto_final_pae.reportes.*;
 import edu.ni.uam.proyecto_final_pae.service.JasperReporteService;
 import edu.ni.uam.proyecto_final_pae.service.ReporteService;
 import edu.ni.uam.proyecto_final_pae.service.ReporteViajesService;
+import edu.ni.uam.proyecto_final_pae.service.ReporteEntregasService;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
@@ -26,6 +27,7 @@ public class ReporteController {
     private final ReporteService reportes;
     private final JasperReporteService jasper;
     private final ReporteViajesService viajes;
+    private final ReporteEntregasService entregas;
     private final ExecutorService trabajo = Executors.newSingleThreadExecutor(tarea -> {
         Thread hilo = new Thread(tarea, "fleetroute-reportes");
         hilo.setDaemon(true);
@@ -58,9 +60,13 @@ public class ReporteController {
     public ReporteController() { this(new ReporteService(), new JasperReporteService(), new ReporteViajesService()); }
     public ReporteController(ReporteService reportes, JasperReporteService jasper) { this(reportes, jasper, new ReporteViajesService()); }
     public ReporteController(ReporteService reportes, JasperReporteService jasper, ReporteViajesService viajes) {
+        this(reportes, jasper, viajes, new ReporteEntregasService());
+    }
+    public ReporteController(ReporteService reportes, JasperReporteService jasper, ReporteViajesService viajes, ReporteEntregasService entregas) {
         this.reportes = reportes;
         this.jasper = jasper;
         this.viajes = viajes;
+        this.entregas = entregas;
     }
 
     @FXML private void initialize() {
@@ -153,7 +159,7 @@ public class ReporteController {
         txtCarga.setVisible(tipo.detallado()); txtCarga.setManaged(tipo.detallado());
         lblCarga.setVisible(tipo.detallado()); lblCarga.setManaged(tipo.detallado());
         if (!tipo.detallado()) txtCarga.clear();
-        boolean operativo = !tipo.financiero();
+        boolean operativo = tipo == TipoReporte.GESTION_VIAJES;
         chkFiltrarFechas.setVisible(operativo); chkFiltrarFechas.setManaged(operativo);
         if (tipoConfigurado != tipo) {
             cmbEstado.getItems().setAll(operativo ? java.util.List.of(EstadoReporte.values()) : java.util.List.of(EstadoReporte.FINALIZADO));
@@ -190,7 +196,7 @@ public class ReporteController {
         if (cerrado || generando) return;
         if (!listo) { cargarCatalogos(); return; }
         try {
-            boolean usarFechas = cmbTipo.getValue().financiero() || chkFiltrarFechas.isSelected();
+            boolean usarFechas = cmbTipo.getValue().finalizados() || chkFiltrarFechas.isSelected();
             if (usarFechas) {
                 try { dpDesde.commitValue(); dpHasta.commitValue(); }
                 catch (java.time.format.DateTimeParseException e) { throw new IllegalArgumentException("Ingrese fechas válidas o selecciónelas en el calendario."); }
@@ -204,7 +210,11 @@ public class ReporteController {
             lblEstado.setText("Consultando viajes y generando el documento…");
             Task<ResultadoVista> tarea = new Task<>() {
                 @Override protected ResultadoVista call() {
-                    if (!filtro.tipo().financiero()) {
+                    if (filtro.tipo() == TipoReporte.CUMPLIMIENTO_ENTREGAS) {
+                        var doc = entregas.generar(filtro);
+                        return new ResultadoVista(doc, doc.resumen().descripcion(), doc.resumen().viajes() == 0);
+                    }
+                    if (filtro.tipo() == TipoReporte.GESTION_VIAJES) {
                         var doc = viajes.generar(filtro);
                         return new ResultadoVista(doc, "Viajes incluidos: " + doc.viajes(), doc.viajes() == 0);
                     }

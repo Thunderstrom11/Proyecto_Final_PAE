@@ -101,6 +101,7 @@ Ambos roles inician sesión con credenciales almacenadas en la base de datos; la
 - **Monitor de flota en vivo:** tablero semaforizado con el estado de unidades, operadores y viajes activos.
 - **Reportes financieros:** resumen, facturación por operador/unidad, evolución y detalle de viajes finalizados; filtros combinados, gráficos y visor nativo de JasperReports con navegación, zoom, impresión y guardado.
 - **Reporte operativo de viajes:** opción **Gestión de viajes** en la ventana **Reportes**; incluye carga, operador, unidad, origen, destino, estado y fecha límite de entrega, con filtros propios y fecha y hora de generación.
+- **Cumplimiento de entregas:** reporte Jasper de viajes finalizados con fecha límite, fecha de finalización, resultado y atraso; resume entregas puntuales, tardías y porcentaje de cumplimiento.
 - **Gestión de unidades, operadores y cargas:** alta, consulta, actualización y baja.
 - **Gestión de clientes:** pestaña con todos los campos de `clientes` (empresa, contacto, teléfono, email, dirección y activo), con validaciones y bajas protegidas por integridad referencial.
 - **Panel administrativo:** cuentas de administradores y operadores, permisos de reportes, restablecimiento de contraseñas, países activos con buscador (cada país se agrega como una sola ubicación con un centro aproximado, sin provincias ni ciudades), ubicaciones editables con mapa satelital de solo lectura y rutas con tiempo estimado y precio sugerido. Incluye borrados masivos de cuentas filtradas, ubicaciones y rutas protegidos con la contraseña del administrador.
@@ -495,7 +496,7 @@ En Windows, sustituya `./mvnw` por `.\mvnw.cmd`. Estas pruebas crean sus propias
 ## Reportes con visor nativo de JasperReports
 
 1. Ejecuta `mvn clean javafx:run` e inicia sesión como administrador.
-2. En la barra superior de Flota, pulsa el ícono **Reportes**. El administrador principal y los administradores con permiso financiero pueden seleccionar resumen, facturación por operador, facturación por unidad, evolución, detalle de viajes finalizados o gestión de viajes. Los demás administradores pueden consultar gestión de viajes.
+2. En la barra superior de Flota, pulsa el ícono **Reportes**. El administrador principal y los administradores con permiso financiero pueden seleccionar resumen, facturación por operador, facturación por unidad, evolución, detalle de viajes finalizados, gestión de viajes o cumplimiento de entregas. Los demás administradores pueden consultar gestión de viajes y cumplimiento de entregas.
 3. Para los reportes financieros define ambas fechas de finalización, operador, unidad y cliente. El último día se incluye completo. Para detalle también puedes filtrar por número exacto de carga.
 4. Pulsa **Generar vista previa**. La barra nativa del visor Jasper permite navegar páginas, cambiar el zoom, ajustar al ancho o a la página e imprimir. Modificar los filtros invalida el documento anterior; vuelve a generar la vista previa.
 5. Usa el ícono de **Guardar** del visor y selecciona **PDF** u otro formato disponible, como CSV o Excel. Se guarda el mismo documento previsualizado, con fecha y hora de generación, filtros y moneda de la empresa.
@@ -511,6 +512,17 @@ Las plantillas [financiero.jrxml](src/main/resources/edu/ni/uam/proyecto_final_p
 4. Comprueba carga, operador, unidad, origen, destino, estado y **fecha límite de entrega**. Esta última corresponde al plazo pactado de la carga. La fecha y hora de generación aparecen en el encabezado y en el pie de cada página.
 
 La plantilla independiente [viajes.jrxml](src/main/resources/edu/ni/uam/proyecto_final_pae/reportes/viajes.jrxml) se genera con `ReporteViajesService`, también en JasperReports 7.0.8. Consulta PostgreSQL con los filtros de Reportes y ordena por identificador de viaje. Incluye los estados programado, en curso, pausado, finalizado y cancelado según la selección. Admite hasta 10,000 filas por reporte; si se supera ese límite, solicita aplicar más filtros. Tiene los mismos permisos de administrador que Gestión de viajes; el permiso específico de reportes financieros se conserva para los reportes financieros.
+
+### Reporte de Cumplimiento de entregas
+
+1. En **Reportes**, selecciona **Cumplimiento de entregas** y el período de finalización. El último día se incluye completo. Puedes combinar operador, unidad, cliente y número exacto de carga.
+2. Genera la vista previa. Cada fila muestra viaje, carga, cliente, operador, unidad, plazo de entrega, finalización, resultado y tiempo de atraso. Finalizar exactamente a la hora límite cuenta como entrega a tiempo.
+3. Consulta los totales de entregas a tiempo, tardías y sin datos. El porcentaje se calcula como entregas a tiempo entre entregas con ambas fechas registradas. Si no hay entregas evaluables, se muestra **No aplica**.
+4. Usa la misma barra nativa de Jasper para imprimir, guardar, ampliar y navegar.
+
+La plantilla [entregas.jrxml](src/main/resources/edu/ni/uam/proyecto_final_pae/reportes/entregas.jrxml) se genera con `ReporteEntregasService` y consulta únicamente viajes **FINALIZADO** con fecha de finalización dentro del período. Compara con el plazo vigente de la carga, no con una versión histórica del plazo. Admite hasta 10,000 filas y está disponible para los administradores sin requerir permiso financiero. No modifica la base de datos.
+
+La [guía breve de la base de datos](docs/base-de-datos.html) explica las 17 tablas y el recorrido de un viaje. Es un HTML independiente, adaptable a móviles y con lectura nocturna.
 
 ---
 

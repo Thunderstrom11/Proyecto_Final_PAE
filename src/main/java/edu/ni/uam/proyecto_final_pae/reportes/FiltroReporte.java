@@ -20,7 +20,7 @@ public record FiltroReporte(TipoReporte tipo, LocalDate desde, LocalDate hasta,
 
     public FiltroReporte {
         Objects.requireNonNull(tipo, "Seleccione el tipo de reporte.");
-        if ((tipo.financiero() && (desde == null || hasta == null)) || (desde == null) != (hasta == null)) {
+        if ((tipo.finalizados() && (desde == null || hasta == null)) || (desde == null) != (hasta == null)) {
             throw new IllegalArgumentException("Seleccione ambas fechas del período.");
         }
         if (desde != null && desde.isAfter(hasta)) throw new IllegalArgumentException("La fecha desde no puede ser posterior a la fecha hasta.");
@@ -39,9 +39,9 @@ public record FiltroReporte(TipoReporte tipo, LocalDate desde, LocalDate hasta,
         if (grafico == null || !tipo.graficos().contains(grafico)) {
             throw new IllegalArgumentException("Seleccione un gráfico compatible con el reporte.");
         }
-        estado = estado == null ? (tipo.financiero() ? EstadoReporte.FINALIZADO : EstadoReporte.TODOS) : estado;
-        if (tipo.financiero() && estado != EstadoReporte.FINALIZADO) {
-            throw new IllegalArgumentException("Los reportes financieros solo incluyen viajes finalizados.");
+        estado = estado == null ? (tipo.finalizados() ? EstadoReporte.FINALIZADO : EstadoReporte.TODOS) : estado;
+        if (tipo.finalizados() && estado != EstadoReporte.FINALIZADO) {
+            throw new IllegalArgumentException("Este reporte solo incluye viajes finalizados.");
         }
         if (tipo.temporal()) {
             int periodos = 0;
@@ -56,7 +56,7 @@ public record FiltroReporte(TipoReporte tipo, LocalDate desde, LocalDate hasta,
     public LocalDateTime hastaExclusivo() { return hasta == null ? null : hasta.plusDays(1).atStartOfDay(); }
 
     public String descripcion() {
-        String periodo = tipo.financiero() ? "Finalización: " : "Creación del viaje: ";
+        String periodo = tipo.finalizados() ? "Finalización: " : "Creación del viaje: ";
         return periodo + (desde == null ? "Todas las fechas" : desde + " a " + hasta) + " | Estado: " + estado + "\n"
                 + "Operador: " + operador + " | Unidad: " + unidad + " | Cliente: " + cliente
                 + (numeroCarga.isEmpty() ? "" : " | Carga exacta: " + numeroCarga)
